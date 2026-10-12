@@ -43,6 +43,8 @@ post-MVP — see `ROADMAP.md` Phase 8.
 
 - Conventional commits (`feat:`, `fix:`, `chore:`, `docs:`).
 - Small focused commits. Never commit unrelated files.
+- Write the commit message as the change's author: no `Co-Authored-By`
+  trailers and no generated-with footers, unless the user asks for them.
 
 <!-- BEGIN:nextjs-agent-rules -->
 
