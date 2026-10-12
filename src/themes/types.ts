@@ -9,9 +9,12 @@
  * customer-supplied code: only components registered here can render.
  */
 import type { PublicRestaurant, ThemeId } from "@/lib/restaurant";
+import type { ThemeConfig } from "./config";
 
 export interface ThemeProps {
   restaurant: PublicRestaurant;
+  /** Validated options for the rendered theme (see `resolveThemeConfig`). */
+  config: ThemeConfig;
 }
 
 export type ThemeComponent = (props: ThemeProps) => React.ReactElement;

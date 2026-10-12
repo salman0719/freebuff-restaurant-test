@@ -139,6 +139,12 @@ export interface PublicRestaurant {
   slug: string;
   name: string;
   description: string | null;
+  /**
+   * Raw stored theme options (JSON). Pages validate them with
+   * `resolveThemeConfig` before rendering — never trust stored JSON
+   * directly, it may predate the current schema.
+   */
+  themeConfig: Record<string, unknown>;
   contact: PublicContact;
   address: PublicAddress;
   hours: PublicOpeningHours[];

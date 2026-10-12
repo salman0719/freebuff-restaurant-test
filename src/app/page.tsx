@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { getPublicRestaurant } from "@/lib/public-restaurant";
 import { resolveTenantByHost } from "@/lib/tenant-resolution";
+import { resolveThemeConfig } from "@/themes/config";
 import { getTheme, resolveThemeId } from "@/themes/registry";
 import { RestaurantLoading } from "./_components/restaurant-loading";
 
@@ -38,7 +39,9 @@ async function TenantPage(): Promise<React.ReactElement> {
   // Registry returns stable module-level components (never creates them),
   // so element identity is constant across renders; createElement keeps
   // the selection dynamic without tripping static-component analysis.
-  return createElement(getTheme(resolveThemeId(result.data.theme)), {
+  const themeId = resolveThemeId(result.data.theme);
+  return createElement(getTheme(themeId), {
     restaurant: result.data,
+    config: resolveThemeConfig(themeId, result.data.themeConfig),
   });
 }

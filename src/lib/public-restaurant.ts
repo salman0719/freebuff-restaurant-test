@@ -76,6 +76,7 @@ export function toPublicRestaurant(rows: PublicRestaurantRows): PublicRestaurant
     slug: tenant.slug,
     name: profile?.name ?? tenant.slug,
     description: profile?.description ?? null,
+    themeConfig: (tenant.themeConfig ?? {}) as Record<string, unknown>,
     contact: { phone: profile?.phone ?? null, email: profile?.email ?? null },
     address: {
       line1: profile?.addressLine1 ?? null,
