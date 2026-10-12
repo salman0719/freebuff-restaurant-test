@@ -316,6 +316,13 @@ identifiers are agreed.
 
 ## 2.3 Theme A: clean café style
 
+**Status:** Done 2026-10-12. Café polished (warm centred narrative,
+static accent map) and both themes composed from shared sections
+(`HeroSection`/`MenuSection`/`VisitSection`); per-tenant options via
+`tenants.theme_config` (migration 0003, no-migration future options)
+with per-theme Zod schemas resolved defensively at render; takeaway
+reuses the same sections. 156/156 tests green, build green.
+
 **Can be done independently:** Yes, after 2.2's interface is stable.
 
 - Create a mobile-first café/restaurant design.
