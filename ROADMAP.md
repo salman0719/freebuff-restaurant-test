@@ -424,7 +424,7 @@ the database schema or tenant-resolution rules.
 **Exit criteria:** An authorised owner can update profile/menu content,
 select a theme, preview changes, and publish them.
 
-## 3.1 Dashboard shell and navigation
+## 3.1 Dashboard shell and navigation — Done
 
 **Can be done independently:** Yes, after the UI foundation and auth
 route patterns are stable.
@@ -435,6 +435,25 @@ route patterns are stable.
 - Protect routes on the server.
 
 **Deliverable:** Authenticated dashboard shell.
+
+Done: `src/app/login` (magic-link request; pure `parseLoginForm` +
+`safeNext` confine `?next=` to same-origin paths), `listUserTenants`
+in `src/lib/tenant-context.ts` (user-pinned join, unit + live-tested),
+`src/app/dashboard` (landing with member-tenant list and no-restaurant
+empty state; `[slug]` shell with sticky `SiteNav`, role-filtered nav
+from pure `getDashboardNav`, overview with status/counts/quick links;
+`loading.tsx` + `error.tsx` with retry), `src/app/operator` (stub
+behind `requireOperator`, lands fully in Phase 4). Anonymous dashboard
+visitors bounce to `/login`; unknown slug and no-membership render the
+same `notFound()` (no oracle). Nav section targets (profile/hours/menu
+/theme) arrive with the 3.2–3.5 editors; until then they render the
+root not-found page. No path-based "view public site" link: public
+sites are host-resolved (see `src/app/page.tsx`), so no URL exists to
+link to. All new routes partial-prerender (static shell, streamed
+session content); Cache Components notes: `"use server"` modules may
+only export async functions (pure login parsing lives in
+`login-form.ts`), and authenticated routes stream via `loading.tsx` /
+`<Suspense>` — `force-dynamic` is rejected under `cacheComponents`.
 
 ## 3.2 Restaurant profile editor
 
