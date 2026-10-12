@@ -64,8 +64,8 @@ decisions are recorded, and the first implementation tasks are ready.
 
 ## 0.2 Product scope and initial user journeys
 
-**Status:** In progress (draft in `docs/product-scope.md`; needs owner
-confirmation; reservations confirmed post-MVP).
+**Status:** Done (confirmed in `docs/product-scope.md` 2026-10-12:
+two themes, subdomains only, images in, magic-link sign-in).
 
 **Can be done independently:** Yes, in parallel with 0.1.
 
