@@ -107,6 +107,27 @@ live("cross-tenant isolation (live database)", () => {
     if (!foreign.ok) expect(foreign.error.code).toBe("FORBIDDEN");
   });
 
+  it("serves published tenants publicly and hides drafts, unknown, and malformed slugs identically", async () => {
+    const { getPublicRestaurant } = await import("./public-restaurant");
+    const { db, schema } = await libs();
+    const { eq } = await import("drizzle-orm");
+    await db.update(schema.tenants).set({ published: true }).where(eq(schema.tenants.slug, slugB));
+    const visible = await getPublicRestaurant(slugB);
+    expect(visible.ok).toBe(true);
+    if (visible.ok) {
+      expect(
+        visible.data.menu.flatMap((category) => category.items).map((item) => item.name)
+      ).toEqual(["Pizza B"]);
+    }
+    const draft = await getPublicRestaurant(slugA);
+    const unknown = await getPublicRestaurant("iso-nope-zzz");
+    const malformed = await getPublicRestaurant("Bad Slug!");
+    expect(draft).toEqual(unknown);
+    expect(unknown).toEqual(malformed);
+    expect(unknown.ok).toBe(false);
+    if (!unknown.ok) expect(unknown.error.code).toBe("NOT_FOUND");
+  });
+
   it("scopes the owner view and the mutation to the context tenant", async () => {
     const { getTenantContext, getOwnerRestaurant, updateTenantSettings } = await libs();
     const ctx = await getTenantContext({ user: { id: userB, role: "owner" } }, slugB);
