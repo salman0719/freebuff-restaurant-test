@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { getPublicRestaurant } from "@/lib/public-restaurant";
 import { resolveTenantByHost } from "@/lib/tenant-resolution";
 import { getTheme, resolveThemeId } from "@/themes/registry";
+import { RestaurantLoading } from "./_components/restaurant-loading";
 
 /**
  * Public restaurant website (Phase 2.7).
@@ -18,7 +19,7 @@ import { getTheme, resolveThemeId } from "@/themes/registry";
  */
 export default function Home(): React.ReactElement {
   return (
-    <Suspense fallback={<p role="status">Loading restaurant…</p>}>
+    <Suspense fallback={<RestaurantLoading />}>
       <TenantPage />
     </Suspense>
   );
