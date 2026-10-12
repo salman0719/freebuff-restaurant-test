@@ -5,14 +5,20 @@
  * Import ONLY from server code (Server Components, route handlers, server
  * actions). Never import from client components. Moving to Neon later is a
  * `DATABASE_URL` change, not a code change.
+ *
+ * Import-safe by design: importing this module never connects and never
+ * throws, so `next build`, `tsc`, and unit tests run without `DATABASE_URL`
+ * (CI has neither the URL nor a database). The client is created on first
+ * query; only then is a missing `DATABASE_URL` reported.
  */
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "./schema";
 
-const connectionString = process.env.DATABASE_URL;
-if (!connectionString) {
-  throw new Error("DATABASE_URL is not set. Copy `.env.example` to `.env.local` (see README).");
+function missingUrl(): never {
+  throw new Error(
+    "DATABASE_URL is not set. Copy `.env.example` to `.env.local` (see README).",
+  );
 }
 
 declare global {
@@ -20,11 +26,26 @@ declare global {
   var __restaurantAppDbClient: postgres.Sql | undefined;
 }
 
-const client = globalThis.__restaurantAppDbClient ?? postgres(connectionString, { max: 10 });
-
-if (process.env.NODE_ENV !== "production") {
-  globalThis.__restaurantAppDbClient = client;
+function client(): postgres.Sql {
+  const existing = globalThis.__restaurantAppDbClient;
+  if (existing) return existing;
+  const connectionString = process.env.DATABASE_URL;
+  if (!connectionString) missingUrl();
+  const created = postgres(connectionString, { max: 10 });
+  if (process.env.NODE_ENV !== "production") {
+    globalThis.__restaurantAppDbClient = created;
+  }
+  return created;
 }
 
-export const db = drizzle(client, { schema });
+/**
+ * Lazily-connected Drizzle client. Property access forwards to the real
+ * client, creating it on first use.
+ */
+export const db = new Proxy({} as ReturnType<typeof drizzle<typeof schema>>, {
+  get(_target, property, receiver) {
+    return Reflect.get(drizzle(client(), { schema }), property, receiver);
+  },
+});
+
 export type Db = typeof db;
