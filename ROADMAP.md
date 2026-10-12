@@ -287,6 +287,13 @@ resolution contract are stable.
 
 ## 2.2 Theme registry and shared theme contract
 
+**Status:** Done 2026-10-12 (`src/themes/`). Typed contract
+(`ThemeProps` carries only the validated `PublicRestaurant` view),
+registry with café fallback for unknown/retired ids, `resolveThemeId`
+through the shared Zod schema, and minimal café + takeaway themes on the
+same model with empty states. A guard test fails if any theme imports
+the database, session, or permission helpers. 143/143 tests green.
+
 **Can be done independently:** Yes, once the public view model and theme
 identifiers are agreed.
 
