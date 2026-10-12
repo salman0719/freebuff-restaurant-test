@@ -34,7 +34,7 @@ import type {
   Tenant,
 } from "./restaurant";
 import type { TenantContext } from "./tenant-context";
-import { updateTenantSchema, validationFields } from "./validation";
+import { updateProfileSchema, updateTenantSchema, validationFields } from "./validation";
 
 const uuidSchema = z.string().uuid();
 
@@ -164,6 +164,63 @@ export async function getOwnerRestaurant(
   if (isErr(categories)) return categories;
   if (isErr(items)) return items;
   return ok(assembleOwnerRestaurant(ctx, profile.data, hours.data, categories.data, items.data));
+}
+
+/**
+ * Create or update the restaurant profile for the context tenant:
+ * validate input, then save scoped to `ctx.tenant.id`. There is
+ * deliberately no tenant-id parameter — the context IS the
+ * authorisation. Semantics per field: `undefined` keeps the stored
+ * value, `null` clears it — except `name`, which the database requires:
+ * `null` is rejected and a missing profile needs a name, otherwise the
+ * insert could never succeed. An empty update is a no-op returning the
+ * current profile (or null when none exists yet).
+ */
+export async function updateTenantProfile(
+  ctx: TenantContext,
+  input: unknown
+): Promise<ServiceResult<RestaurantProfile | null>> {
+  const parsed = updateProfileSchema.safeParse(input);
+  if (!parsed.success) {
+    return err("VALIDATION_FAILED", "Invalid profile.", validationFields(parsed.error));
+  }
+  const current = await getTenantProfile(ctx);
+  if (isErr(current)) return current;
+  if (parsed.data.name === null || (parsed.data.name === undefined && !current.data)) {
+    return err("VALIDATION_FAILED", "Invalid profile.", {
+      name: ["Restaurant name is required."],
+    });
+  }
+  const set: Partial<RestaurantProfile> = {};
+  for (const [key, value] of Object.entries(parsed.data)) {
+    if (value !== undefined) {
+      (set as Record<string, unknown>)[key] = value;
+    }
+  }
+  if (Object.keys(set).length === 0) {
+    return ok(current.data);
+  }
+  if (!current.data) {
+    const rows = await db
+      .insert(restaurantProfiles)
+      .values({ tenantId: ctx.tenant.id, ...set } as typeof restaurantProfiles.$inferInsert)
+      .returning();
+    const created = rows[0];
+    if (!created) {
+      return err("INTERNAL", "Failed to save profile.");
+    }
+    return ok(created);
+  }
+  const rows = await db
+    .update(restaurantProfiles)
+    .set(set)
+    .where(eq(restaurantProfiles.tenantId, ctx.tenant.id))
+    .returning();
+  const updated = rows[0];
+  if (!updated) {
+    return err("INTERNAL", "Failed to save profile.");
+  }
+  return ok(updated);
 }
 
 /**

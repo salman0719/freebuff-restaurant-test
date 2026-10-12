@@ -138,6 +138,45 @@ live("cross-tenant isolation (live database)", () => {
     expect(stranger.ok).toBe(false);
   });
 
+  it("upserts the profile within the context tenant and rejects bad input", async () => {
+    const { getTenantContext, getOwnerRestaurant, getTenantProfile, updateTenantProfile } =
+      await libs();
+    const ctx = await getTenantContext({ user: { id: userA, role: "owner" } }, slugA);
+    expect(ctx.ok).toBe(true);
+    if (!ctx.ok) return expect.unreachable();
+    const created = await updateTenantProfile(ctx.data, {
+      name: "Trattoria A",
+      phone: "0123",
+    });
+    expect(created.ok).toBe(true);
+    if (!created.ok) return expect.unreachable();
+    expect(created.data?.tenantId).toBeDefined();
+    const cleared = await updateTenantProfile(ctx.data, { phone: null });
+    expect(cleared.ok).toBe(true);
+    if (!cleared.ok) return expect.unreachable();
+    expect(cleared.data?.phone).toBeNull();
+    expect(cleared.data?.name).toBe("Trattoria A");
+    const bad = await updateTenantProfile(ctx.data, { name: "", email: "bad" });
+    expect(bad.ok).toBe(false);
+    if (!bad.ok) {
+      expect(bad.error.code).toBe("VALIDATION_FAILED");
+      expect(Object.keys(bad.error.fields ?? {})).toEqual(
+        expect.arrayContaining(["name", "email"])
+      );
+    }
+    const stored = await getTenantProfile(ctx.data);
+    expect(stored.ok).toBe(true);
+    if (!stored.ok) return expect.unreachable();
+    expect(stored.data?.name).toBe("Trattoria A");
+    const other = await getTenantContext({ user: { id: userB, role: "owner" } }, slugB);
+    expect(other.ok).toBe(true);
+    if (!other.ok) return expect.unreachable();
+    const otherView = await getOwnerRestaurant(other.data);
+    expect(otherView.ok).toBe(true);
+    if (!otherView.ok) return expect.unreachable();
+    expect(otherView.data.profile).toBeNull();
+  });
+
   it("scopes the owner view and the mutation to the context tenant", async () => {
     const { getTenantContext, getOwnerRestaurant, updateTenantSettings } = await libs();
     const ctx = await getTenantContext({ user: { id: userB, role: "owner" } }, slugB);

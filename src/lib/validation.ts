@@ -84,7 +84,7 @@ const profileFields = {
   name: nameSchema("Restaurant name").nullish(),
   description: optionalText(2000),
   phone: optionalText(32),
-  email: z.union([emailSchema, z.literal(""), z.null(), z.undefined()]),
+  email: z.union([emailSchema, z.literal("")]).nullish(),
   addressLine1: optionalText(200),
   addressLine2: optionalText(200),
   city: optionalText(120),
