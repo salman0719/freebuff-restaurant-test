@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 afterEach(cleanup);
 import type { PublicRestaurant } from "@/lib/restaurant";
+import { resolveThemeConfig } from "./config";
 import { getTheme } from "./registry";
 
 function restaurant(overrides: Partial<PublicRestaurant> = {}): PublicRestaurant {
@@ -30,6 +31,7 @@ function restaurant(overrides: Partial<PublicRestaurant> = {}): PublicRestaurant
       },
     ],
     theme: "cafe",
+    themeConfig: {},
     logoImageKey: null,
     ...overrides,
   };
@@ -38,7 +40,7 @@ function restaurant(overrides: Partial<PublicRestaurant> = {}): PublicRestaurant
 describe.each([["cafe"], ["takeaway"]] as const)("theme %s", (id) => {
   it("renders the same public content model", () => {
     const Component = getTheme(id);
-    render(<Component restaurant={restaurant()} />);
+    render(<Component restaurant={restaurant()} config={resolveThemeConfig(id, {})} />);
     expect(screen.getByRole("heading", { name: "Marios" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Pizza" })).toBeInTheDocument();
     expect(screen.getByText(/Margherita/)).toBeInTheDocument();
@@ -49,7 +51,12 @@ describe.each([["cafe"], ["takeaway"]] as const)("theme %s", (id) => {
 
   it("renders empty states instead of empty sections", () => {
     const Component = getTheme(id);
-    render(<Component restaurant={restaurant({ menu: [], hours: [] })} />);
+    render(
+      <Component
+        restaurant={restaurant({ menu: [], hours: [] })}
+        config={resolveThemeConfig(id, {})}
+      />
+    );
     expect(screen.getByText(/menu is coming soon/i)).toBeInTheDocument();
     expect(screen.getByText(/hours coming soon/i)).toBeInTheDocument();
   });

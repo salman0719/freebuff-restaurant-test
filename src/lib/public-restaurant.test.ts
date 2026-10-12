@@ -9,6 +9,7 @@ function rows(overrides: Partial<PublicRestaurantRows> = {}): PublicRestaurantRo
       customDomain: null,
       published: true,
       theme: "cafe",
+      themeConfig: { accent: "forest" },
       createdAt: new Date(),
       updatedAt: new Date(),
     },
@@ -111,6 +112,10 @@ describe("toPublicRestaurant", () => {
     expect(view.name).toBe("marios");
     expect(view.contact).toEqual({ phone: null, email: null });
     expect(view.menu).toHaveLength(1);
+  });
+
+  it("carries stored theme options through for validation at render", () => {
+    expect(toPublicRestaurant(rows()).themeConfig).toEqual({ accent: "forest" });
   });
 
   it("exposes no internal, membership, or config data", () => {
