@@ -455,7 +455,7 @@ only export async functions (pure login parsing lives in
 `login-form.ts`), and authenticated routes stream via `loading.tsx` /
 `<Suspense>` — `force-dynamic` is rejected under `cacheComponents`.
 
-## 3.2 Restaurant profile editor
+## 3.2 Restaurant profile editor — Done
 
 **Can be done independently:** Yes, after the data and validation
 contracts are stable.
@@ -467,6 +467,18 @@ contracts are stable.
 - Display success and failure feedback.
 
 **Deliverable:** Tested profile editor.
+
+Done: `updateTenantProfile` in `src/lib/tenant-data.ts` (validate →
+scope → save, insert when no profile yet; `undefined` keeps, `null`
+clears, cleared `name` rejected since the DB requires one) behind the
+`src/app/dashboard/[slug]/profile` editor (server action + `Field`
+form with per-field errors, typed-input echo on rejection, `role="status"`
+save confirmation, `revalidatePath` so the overview reflects saves).
+Logo excluded until 3.6 owns uploads. Also fixed a real 1.2 bug the
+editor exposed: `updateProfileSchema.email` rejected `undefined`
+(hand-rolled union; now `.nullish()` like its siblings). Pure form
+mapping lives in `form.ts` — `"use server"` modules may only export
+async functions (same lesson as 3.1).
 
 ## 3.3 Opening-hours editor
 
