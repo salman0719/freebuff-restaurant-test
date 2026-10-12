@@ -265,6 +265,13 @@ multiple themes, with only public and published data exposed.
 
 ## 2.1 Public restaurant data service
 
+**Status:** Done 2026-10-12 (`src/lib/public-restaurant.ts`).
+Published-only view: tenant must be `published`, categories need
+`is_published`, items need `is_published AND is_available`, empty
+categories dropped; unknown/unpublished/malformed slugs all yield the
+same `NOT_FOUND`. Pure mapping tests plus live cases in the gated
+isolation suite; 134/134 tests green with a database.
+
 **Can be done independently:** Yes, after the domain model and tenant
 resolution contract are stable.
 
