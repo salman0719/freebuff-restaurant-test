@@ -185,9 +185,18 @@ implementation begins.
 
 ## 1.3 Authentication and authorisation
 
-**Status:** Ready (unblocked by 1.1/1.2; `memberships.user_id` is FK-less
-by design until this phase owns the Auth.js adapter tables and the single
-additive migration for them).
+**Status:** Done 2026-10-12 (pinned `next-auth@5.0.0-beta.32` +
+`@auth/drizzle-adapter@1.11.3`, adapter tables with global `role`, magic-link
+provider, session role callback, `proxy.ts` gate, pure permission helpers;
+112/112 tests green, build green).
+
+**Known limitation — magic-link delivery untested:** no SMTP is
+provisioned, so no sign-in email has ever been sent. The Ethereal test
+API rejects scripted signups, and nothing else is configured:
+`EMAIL_SERVER`/`EMAIL_FROM` are still empty in local env. Resolve before
+owner sign-in can be exercised end to end (blocks 3.9) and before
+operator invites (4.2): either a manual Ethereal account or a local
+Mailpit service in compose.
 
 **Can be done independently:** Yes, after the authentication decision is
 made.
