@@ -6,17 +6,19 @@
  * actions). Never import from client components. Moving to Neon later is a
  * `DATABASE_URL` change, not a code change.
  *
- * Import-safe by design: `postgres()` never connects on creation, so
- * importing this module is side-effect free. The exported client is a REAL
- * drizzle instance (not a Proxy) because `drizzle()` probes the client at
+ * Import-safe by design: importing this module never throws and never
+ * connects, in ANY environment. The exported client is a REAL drizzle
+ * instance (not a Proxy) because `drizzle()` probes the client at
  * construction and adapters (e.g. `@auth/drizzle-adapter`) detect the
  * dialect from the instance. Consequences:
  * - During `next build` without `DATABASE_URL` (CI has neither the URL nor
- *   a database), an unconnected placeholder pool satisfies construction;
- *   the auth route opts out of page collection via `await connection()`,
- *   so the placeholder is never queried.
- * - At runtime without `DATABASE_URL`, the first query throws a clear
- *   error instead of a cryptic connection refusal.
+ *   a database), and in unit tests (which must never touch the database),
+ *   an unconnected placeholder pool satisfies construction. The auth route
+ *   opts out of page collection via `await connection()`, so the
+ *   placeholder is never queried there; a unit test that queries by
+ *   mistake fails loudly on connection instead of passing silently.
+ * - At dev/production runtime without `DATABASE_URL`, the first query
+ *   throws a clear error instead of a cryptic connection refusal.
  */
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
@@ -32,7 +34,7 @@ function underlying(): postgres.Sql {
   if (existing) return existing;
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) {
-    if (process.env.NEXT_PHASE === "phase-production-build") {
+    if (process.env.NEXT_PHASE === "phase-production-build" || process.env.NODE_ENV === "test") {
       return postgres("postgresql://placeholder:placeholder@localhost:1/db", { max: 1 });
     }
     throw new Error("DATABASE_URL is not set. Copy `.env.example` to `.env.local` (see README).");
