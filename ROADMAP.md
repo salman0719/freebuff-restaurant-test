@@ -84,9 +84,9 @@ the MVP.
 
 ## 0.3 Architecture decisions
 
-**Status:** In progress (stack recorded in
-`docs/decisions/0001-app-stack.md`; open items in
-`docs/decisions/0002-open-decisions.md`).
+**Status:** Decisions recorded in `docs/decisions/0002-open-decisions.md`
+(DB, auth, tests, storage, deployment, CI); tenant-ID proposal in
+`docs/decisions/0003-tenant-identification.md` awaits approval.
 
 **Can be done independently:** Partially. Use the repository audit as
 input before finalising decisions.
