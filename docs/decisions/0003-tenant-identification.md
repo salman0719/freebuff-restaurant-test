@@ -1,4 +1,4 @@
-# 0003 — Tenant identification (proposal, needs approval)
+# 0003 — Tenant identification (approved by owner 2026-10-12)
 
 ## Model
 
