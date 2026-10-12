@@ -97,12 +97,8 @@
           "name": "accounts_user_id_users_id_fk",
           "tableFrom": "accounts",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -110,10 +106,7 @@
       "compositePrimaryKeys": {
         "accounts_provider_provider_account_id_pk": {
           "name": "accounts_provider_provider_account_id_pk",
-          "columns": [
-            "provider",
-            "provider_account_id"
-          ]
+          "columns": ["provider", "provider_account_id"]
         }
       },
       "uniqueConstraints": {},
@@ -203,12 +196,8 @@
           "name": "memberships_tenant_id_tenants_id_fk",
           "tableFrom": "memberships",
           "tableTo": "tenants",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tenant_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -218,10 +207,7 @@
         "memberships_user_tenant_unique": {
           "name": "memberships_user_tenant_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "user_id",
-            "tenant_id"
-          ]
+          "columns": ["user_id", "tenant_id"]
         }
       },
       "policies": {},
@@ -334,12 +320,8 @@
           "name": "menu_categories_tenant_id_tenants_id_fk",
           "tableFrom": "menu_categories",
           "tableTo": "tenants",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tenant_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -349,10 +331,7 @@
         "menu_categories_tenant_name_unique": {
           "name": "menu_categories_tenant_name_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "tenant_id",
-            "name"
-          ]
+          "columns": ["tenant_id", "name"]
         }
       },
       "policies": {},
@@ -500,12 +479,8 @@
           "name": "menu_items_tenant_id_tenants_id_fk",
           "tableFrom": "menu_items",
           "tableTo": "tenants",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tenant_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -513,12 +488,8 @@
           "name": "menu_items_category_id_menu_categories_id_fk",
           "tableFrom": "menu_items",
           "tableTo": "menu_categories",
-          "columnsFrom": [
-            "category_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["category_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -613,12 +584,8 @@
           "name": "opening_hours_tenant_id_tenants_id_fk",
           "tableFrom": "opening_hours",
           "tableTo": "tenants",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tenant_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -628,10 +595,7 @@
         "opening_hours_tenant_weekday_unique": {
           "name": "opening_hours_tenant_weekday_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "tenant_id",
-            "weekday"
-          ]
+          "columns": ["tenant_id", "weekday"]
         }
       },
       "policies": {},
@@ -741,12 +705,8 @@
           "name": "restaurant_profiles_tenant_id_tenants_id_fk",
           "tableFrom": "restaurant_profiles",
           "tableTo": "tenants",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tenant_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -756,9 +716,7 @@
         "restaurant_profiles_tenant_unique": {
           "name": "restaurant_profiles_tenant_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "tenant_id"
-          ]
+          "columns": ["tenant_id"]
         }
       },
       "policies": {},
@@ -794,12 +752,8 @@
           "name": "sessions_user_id_users_id_fk",
           "tableFrom": "sessions",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -869,16 +823,12 @@
         "tenants_slug_unique": {
           "name": "tenants_slug_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "slug"
-          ]
+          "columns": ["slug"]
         },
         "tenants_custom_domain_unique": {
           "name": "tenants_custom_domain_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "custom_domain"
-          ]
+          "columns": ["custom_domain"]
         }
       },
       "policies": {},
@@ -958,9 +908,7 @@
         "users_email_unique": {
           "name": "users_email_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "email"
-          ]
+          "columns": ["email"]
         }
       },
       "policies": {},
@@ -1000,10 +948,7 @@
       "compositePrimaryKeys": {
         "verification_tokens_identifier_token_pk": {
           "name": "verification_tokens_identifier_token_pk",
-          "columns": [
-            "identifier",
-            "token"
-          ]
+          "columns": ["identifier", "token"]
         }
       },
       "uniqueConstraints": {},
