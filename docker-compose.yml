@@ -16,5 +16,21 @@ services:
       timeout: 3s
       retries: 10
 
+  # Browser database viewer (http://localhost:7070).
+  # Opt-in via the `tools` profile so plain `docker compose up -d` is unchanged:
+  #   docker compose --profile tools up -d adminer
+  # Login: system PostgreSQL, server `db`, user `app`, password `secret`.
+  adminer:
+    image: adminer:6.1.1
+    restart: unless-stopped
+    profiles:
+      - tools
+    depends_on:
+      - db
+    environment:
+      ADMINER_DEFAULT_SERVER: db
+    ports:
+      - "7070:8080"
+
 volumes:
   pgdata:

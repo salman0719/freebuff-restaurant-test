@@ -23,6 +23,16 @@ Optional local database (Postgres 17, data persists in a Docker volume):
 docker compose up -d         # connection string in .env.example
 ```
 
+Optional browser database viewer (Adminer, profile-gated so the default
+`up -d` is unaffected):
+
+```bash
+docker compose --profile tools up -d adminer   # http://localhost:7070
+```
+
+Adminer login: system `PostgreSQL`, server `db` (pre-filled), username
+`app`, password `secret`, database `restaurant_app`.
+
 ## Scripts
 
 | Command                           | Purpose                                 |
