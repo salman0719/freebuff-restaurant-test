@@ -3,9 +3,13 @@
  * Run with `npm run db:migrate`. Uses a single-connection client and
  * ensures the `pgcrypto` extension exists for `gen_random_uuid()` defaults.
  */
+import { loadEnvConfig } from "@next/env";
 import { drizzle } from "drizzle-orm/postgres-js";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
 import postgres from "postgres";
+
+// Pick up `.env.local` so the script works without exported variables.
+loadEnvConfig(process.cwd());
 
 async function main(): Promise<void> {
   const connectionString = process.env.DATABASE_URL;

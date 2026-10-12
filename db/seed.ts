@@ -8,9 +8,13 @@
  * Deliberately seeds NO users or memberships: owner assignment belongs to
  * the operator onboarding flow (Phase 4). Public pages need none.
  */
+import { loadEnvConfig } from "@next/env";
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
+
+// Pick up `.env.local` so the script works without exported variables.
+loadEnvConfig(process.cwd());
 import { menuCategories, menuItems, openingHours, restaurantProfiles, tenants } from "./schema";
 
 if (process.env.NODE_ENV === "production") {
