@@ -135,6 +135,12 @@ schemas exist, and tenant-access rules are tested.
 
 ## 1.1 Domain model and database schema
 
+**Status:** Done 2026-10-12 (`dc53a49`, Adminer follow-up `a315cf8`). Six
+tables (`db/schema.ts`) with uuid PKs, tenant FKs, indexes, checks,
+timestamps, and cascade/set-null rules; committed SQL in `db/migrations/`;
+fresh-DB migrate + 11 live-constraint checks verified; profile-gated
+Adminer viewer on :7070 for local inspection.
+
 **Can be done independently:** Yes, once the key decisions from Phase 0
 are agreed.
 
@@ -152,6 +158,12 @@ outside the MVP.
 **Deliverable:** Schema definitions and versioned migrations.
 
 ## 1.2 Shared types and validation contracts
+
+**Status:** Done 2026-10-12 (commits `826224f`, `601f651`, `fcace7a`,
+`e494a5f`, `aa7bde7`). Domain types with public/owner views
+(`src/lib/restaurant.ts`), Zod validation schemas (`src/lib/validation.ts`),
+and the `ok`/`err` service contract (`src/lib/result.ts`); 93/93 unit
+tests green; `db:generate` confirms zero SQL drift.
 
 **Can be done independently:** Yes, in parallel with 1.1 if the agent
 coordinates proposed fields before finalising them.
@@ -173,6 +185,10 @@ implementation begins.
 
 ## 1.3 Authentication and authorisation
 
+**Status:** Ready (unblocked by 1.1/1.2; `memberships.user_id` is FK-less
+by design until this phase owns the Auth.js adapter tables and the single
+additive migration for them).
+
 **Can be done independently:** Yes, after the authentication decision is
 made.
 
@@ -186,6 +202,9 @@ made.
 **Deliverable:** A tested authentication and role-checking foundation.
 
 ## 1.4 Tenant-scoped data access
+
+**Status:** Not started (blocked on 1.3's auth model; do not start in
+parallel with it).
 
 **Can be done independently:** Yes, after 1.1 and the core auth model
 are agreed.
@@ -201,6 +220,9 @@ are agreed.
 automated isolation tests.
 
 ## 1.5 Shared UI foundation
+
+**Status:** Done 2026-10-12 (`481ecfe`, merged in `21bfba4`). Tailwind
+primitives under `src/components/ui` with colocated RTL tests.
 
 **Can be done independently:** Yes, in parallel with database/auth work
 if it does not change shared domain contracts.
