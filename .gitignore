@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local scratch space (internal testing; only local/README.md is committed)
+/local/*
+!/local/README.md

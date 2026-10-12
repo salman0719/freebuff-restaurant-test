@@ -26,6 +26,7 @@ Keep the foundation generic until the theme brief lands.
 - Keep components small and colocated (`page.tsx`, `layout.tsx`, `_components/`).
 - Don't add new deps (UI kits, state libs, DBs) without asking — theme is undecided.
 - Don't commit `.env*`, `.next/`, `node_modules/`, or build output.
+- Use `local/` for internal testing/scratch work (git-ignored except its README).
 
 ## Checks before finishing
 
