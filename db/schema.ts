@@ -235,6 +235,7 @@ export const users = pgTable(
   {
     id: text("id")
       .primaryKey()
+      .default(sql`gen_random_uuid()`)
       .$defaultFn(() => crypto.randomUUID()),
     name: text("name"),
     email: text("email").unique(),

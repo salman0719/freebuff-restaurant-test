@@ -15,6 +15,13 @@
       "when": 1791808037959,
       "tag": "0001_rapid_anthem",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791808227581,
+      "tag": "0002_keen_nemesis",
+      "breakpoints": true
     }
   ]
 }
