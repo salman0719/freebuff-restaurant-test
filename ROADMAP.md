@@ -335,6 +335,12 @@ reuses the same sections. 156/156 tests green, build green.
 
 ## 2.4 Theme B: modern takeaway style
 
+**Status:** Done 2026-10-12. Dark hero band with a `tel:` call CTA (plain
+contact link — no ordering), compact dotted-leader menu via a `layout`
+variant on the shared `MenuSection`, and a "Find us" strip reusing
+`VisitSection`; descriptions kept visible in compact rows. 160/160 tests
+green, build green.
+
 **Can be done independently:** Yes, in parallel with 2.3 once the theme
 interface is stable.
 
