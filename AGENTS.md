@@ -7,13 +7,16 @@ post-MVP — see `ROADMAP.md` Phase 8.
 
 ## Commands (npm)
 
-- `npm run dev` — start dev server (Turbopack)
+- `npm run dev` — start dev server on :4000 (Turbopack)
 - `npm run build` — production build (must pass before PRs)
-- `npm run start` — serve production build
+- `npm run start` — serve production build on :4000
 - `npm run lint` / `npm run lint:fix` — ESLint check / auto-fix
 - `npm run format` / `npm run format:check` — Prettier write / check
 - `npm run typecheck` — `tsc --noEmit` (strict)
+- `npm run test` / `test:run` / `test:coverage` — Vitest watch / once / coverage
+- `npm run test:e2e` — Playwright E2E (Chromium, reuses dev server locally)
 - `npm run check` — lint + typecheck + format:check (run before committing)
+- `docker compose up -d` — local Postgres 17 (data in `pgdata` volume)
 - `npx tsx <file.ts>` — run one-off TypeScript scripts
 
 ## Conventions

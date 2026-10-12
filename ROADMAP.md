@@ -105,8 +105,8 @@ infrastructure before the MVP needs it.
 
 ## 0.4 Local development and quality gates
 
-**Status:** In progress (`README.md` setup docs, `.env.example`, and
-`npm run check` done; test runner and CI still pending).
+**Status:** Done (`README.md` setup docs, `.env.example`, `npm run check`,
+Vitest + Playwright suites, and CI workflow all in place).
 
 **Can be done independently:** Mostly, after 0.1 identifies existing
 tooling.

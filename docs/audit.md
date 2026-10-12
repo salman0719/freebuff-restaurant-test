@@ -27,17 +27,19 @@ or environment variables exist.
 | `npm run format:check` | Pass (via `npm run check`)                    |
 | `npm run check`        | Pass — lint + typecheck + format:check        |
 | `npm run build`        | Pass — static `/` + `/_not-found` prerendered |
-| `npm test`             | **Missing** — no test runner installed yet    |
+| `npm run test:run`     | Pass — Vitest (unit + component)              |
+| `npm run test:e2e`     | Pass — Playwright Chromium smoke spec         |
 
 ## Gaps / blockers
 
-1. No test runner or test script (decision needed — see
-   `docs/decisions/0002-open-decisions.md`).
-2. No CI workflow yet.
-3. No `.env.example` yet (no env vars required so far).
-4. Architecture decisions (DB, auth, tenant resolution, storage,
-   deployment) not yet made — see Phase 0.3.
-5. One scaffold bug found and fixed: the default `LayoutProps<"/">` in
+1. ~~No test runner~~ — resolved: Vitest + RTL + Playwright, CI runs
+   check + unit + build + E2E (see `.github/workflows/ci.yml`).
+2. ~~No `.env.example`~~ — added (placeholders only; `.env.local` holds
+   local values, git-ignored).
+3. Architecture decisions (DB, auth, tenant resolution, storage,
+   deployment) now recorded — see `docs/decisions/0002-open-decisions.md`
+   and `0003-tenant-identification.md`.
+4. One scaffold bug found and fixed: the default `LayoutProps<"/">` in
    `src/app/layout.tsx` broke `tsc` without generated route types;
    replaced with `Readonly<{ children: React.ReactNode }>`.
 

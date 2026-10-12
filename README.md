@@ -13,8 +13,14 @@ takeaway shops. See [ROADMAP.md](ROADMAP.md) for the plan and
 
 ```bash
 npm ci
-cp .env.example .env.local   # no variables required yet; placeholders only
-npm run dev                  # http://localhost:3000
+cp .env.example .env.local # placeholders only; PORT=4000 lives here
+npm run dev                 # http://localhost:4000
+```
+
+Optional local database (Postgres 17, data persists in a Docker volume):
+
+```bash
+docker compose up -d         # connection string in .env.example
 ```
 
 ## Scripts
@@ -27,12 +33,18 @@ npm run dev                  # http://localhost:3000
 | `npm run lint` / `lint:fix`       | ESLint check / auto-fix                 |
 | `npm run format` / `format:check` | Prettier write / check                  |
 | `npm run typecheck`               | `tsc --noEmit` (strict)                 |
+| `npm run test`                    | Vitest in watch mode                    |
+| `npm run test:run`                | Vitest single run (unit + component)    |
+| `npm run test:coverage`           | Vitest with V8 coverage                 |
+| `npm run test:e2e`                | Playwright E2E (Chromium)               |
 | `npm run check`                   | lint + typecheck + format:check         |
 | `npx tsx <file.ts>`               | Run one-off TypeScript scripts          |
 
 Run `npm run check` before committing; `npm run build` must succeed for
-user-facing changes. No test runner yet — see
-[docs/decisions/0002-open-decisions.md](docs/decisions/0002-open-decisions.md).
+user-facing changes. Unit tests live next to source as `*.test.ts(x)`;
+async Server Component flows are covered by Playwright specs in `e2e/`
+against a production build. CI (`.github/workflows/ci.yml`) runs check +
+unit + build + E2E on every push and PR.
 
 ## Conventions
 
