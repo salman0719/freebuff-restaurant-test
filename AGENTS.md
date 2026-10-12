@@ -45,6 +45,9 @@ post-MVP — see `ROADMAP.md` Phase 8.
 - Small focused commits. Never commit unrelated files.
 - Write the commit message as the change's author: no `Co-Authored-By`
   trailers and no generated-with footers, unless the user asks for them.
+- Line endings are LF everywhere (enforced by `.gitattributes` +
+  Prettier `endOfLine`). If `format:check` flags a file you did not
+  author, leave it for its owner instead of reformatting it.
 
 <!-- BEGIN:nextjs-agent-rules -->
 

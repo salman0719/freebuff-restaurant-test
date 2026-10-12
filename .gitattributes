@@ -1,0 +1,18 @@
+# Normalize every text file to LF in the repo and on checkout, so Windows,
+# macOS, and Linux checkouts all produce identical bytes and Prettier's
+# `endOfLine: "lf"` check stays green everywhere. `text=auto` leaves
+# detected binaries alone; common binary types are guarded explicitly.
+* text=auto eol=lf
+
+*.ico binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.avif binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
+*.pdf binary

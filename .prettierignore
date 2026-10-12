@@ -6,3 +6,7 @@ node_modules
 package-lock.json
 next-env.d.ts
 *.tsbuildinfo
+# No Prettier parser exists for these plain-text configs.
+.gitattributes
+.prettierignore
+.env.example
