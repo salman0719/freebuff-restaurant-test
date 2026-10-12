@@ -28,6 +28,7 @@ import {
   check,
   index,
   integer,
+  jsonb,
   pgTable,
   primaryKey,
   smallint,
@@ -65,6 +66,13 @@ export const tenants = pgTable(
     customDomain: text("custom_domain"),
     published: boolean("published").notNull().default(false),
     theme: text("theme").notNull().default("cafe"),
+    /**
+     * Per-tenant theme options (Phase 2.3). Validated at write time and
+     * defensively at render by the owning theme's Zod schema (see
+     * `src/themes/config.ts`); the database stores JSON as-is so new
+     * options never need a migration — only a schema default.
+     */
+    themeConfig: jsonb("theme_config").notNull().default({}),
     ...timestamps(),
   },
   (t) => [

@@ -1,0 +1,1 @@
+ALTER TABLE "tenants" ADD COLUMN "theme_config" jsonb DEFAULT '{}'::jsonb NOT NULL;
