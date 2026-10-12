@@ -9,6 +9,7 @@ import { getTableName } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import {
   MEMBERSHIP_ROLES,
+  SLUG_PATTERN,
   THEME_IDS,
   memberships,
   menuCategories,
@@ -68,5 +69,9 @@ describe("committed migrations", () => {
     expect(sql).toContain("tenants_slug_format");
     expect(sql).toContain("opening_hours_weekday_range");
     expect(sql).toContain("menu_items_price_non_negative");
+  });
+
+  it("uses the shared SLUG_PATTERN in the slug CHECK", () => {
+    expect(sql).toContain(SLUG_PATTERN);
   });
 });

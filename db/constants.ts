@@ -18,3 +18,11 @@ export type ThemeId = (typeof THEME_IDS)[number];
  */
 export const MEMBERSHIP_ROLES = ["owner", "operator"] as const;
 export type MembershipRole = (typeof MEMBERSHIP_ROLES)[number];
+
+/**
+ * Tenant slug format: lowercase alphanumerics joined with single hyphens.
+ * Must stay identical to the `tenants_slug_format` CHECK in `./schema.ts`
+ * (which inlines the same pattern in SQL) — `src/lib/db-schema.test.ts`
+ * asserts the committed migration contains this exact string.
+ */
+export const SLUG_PATTERN = "^[a-z0-9]+(-[a-z0-9]+)*$" as const;

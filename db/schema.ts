@@ -37,7 +37,7 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 
-export { MEMBERSHIP_ROLES, THEME_IDS } from "./constants";
+export { MEMBERSHIP_ROLES, SLUG_PATTERN, THEME_IDS } from "./constants";
 export type { MembershipRole, ThemeId } from "./constants";
 
 function timestamps() {
