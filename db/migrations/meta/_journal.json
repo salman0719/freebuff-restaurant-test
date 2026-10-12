@@ -8,6 +8,13 @@
       "when": 1791803872185,
       "tag": "0000_empty_zemo",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791808037959,
+      "tag": "0001_rapid_anthem",
+      "breakpoints": true
     }
   ]
 }

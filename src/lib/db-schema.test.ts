@@ -11,12 +11,16 @@ import {
   MEMBERSHIP_ROLES,
   SLUG_PATTERN,
   THEME_IDS,
+  accounts,
   memberships,
   menuCategories,
   menuItems,
   openingHours,
   restaurantProfiles,
+  sessions,
   tenants,
+  users,
+  verificationTokens,
 } from "../../db/schema";
 
 describe("MVP tables", () => {
@@ -27,6 +31,13 @@ describe("MVP tables", () => {
     expect(getTableName(openingHours)).toBe("opening_hours");
     expect(getTableName(menuCategories)).toBe("menu_categories");
     expect(getTableName(menuItems)).toBe("menu_items");
+  });
+
+  it("defines the Auth.js adapter tables owned by Phase 1.3", () => {
+    expect(getTableName(users)).toBe("users");
+    expect(getTableName(accounts)).toBe("accounts");
+    expect(getTableName(sessions)).toBe("sessions");
+    expect(getTableName(verificationTokens)).toBe("verification_tokens");
   });
 
   it("locks the MVP theme set to cafe + takeaway", () => {
@@ -54,6 +65,10 @@ describe("committed migrations", () => {
     "opening_hours",
     "menu_categories",
     "menu_items",
+    "users",
+    "accounts",
+    "sessions",
+    "verification_tokens",
   ])("creates table %s", (table) => {
     expect(sql).toContain(`create table`);
     expect(sql).toContain(`"${table}"`);

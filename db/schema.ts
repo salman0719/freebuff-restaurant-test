@@ -29,6 +29,7 @@ import {
   index,
   integer,
   pgTable,
+  primaryKey,
   smallint,
   text,
   time,
@@ -208,6 +209,86 @@ export const menuItems = pgTable(
     index("menu_items_category_sort_idx").on(t.categoryId, t.sortOrder),
     check("menu_items_price_non_negative", sql`${t.priceCents} >= 0`),
   ]
+);
+
+/**
+ * Auth.js adapter tables (Phase 1.3 owns this schema; owned by
+ * `@auth/drizzle-adapter`, not invented here).
+ *
+ * JS property names stay adapter-compatible (`userId`, `emailVerified`,
+ * `sessionToken`, …); DB columns use this project's snake_case. Table
+ * names are plural to match the MVP tables; they are passed explicitly to
+ * `DrizzleAdapter({ usersTable, accountsTable, … })` in `src/auth.ts`.
+ *
+ * `users.role` is the GLOBAL platform role (default `owner`): it decides
+ * operator-only access but NEVER access to a specific tenant — only a
+ * `memberships` row proves that (see 0003). `memberships.user_id` stays
+ * FK-less text matched by equality with `users.id` (adapter ids are
+ * UUID-shaped text), so no backfill or FK change is needed.
+ *
+ * Adapter tables carry no `created_at`/`updated_at` except `users`: extra
+ * columns are harmless (defaults fill them) but the adapter surface stays
+ * canonical everywhere else.
+ */
+export const users = pgTable(
+  "users",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    name: text("name"),
+    email: text("email").unique(),
+    emailVerified: timestamp("email_verified", { mode: "date" }),
+    image: text("image"),
+    role: text("role").notNull().default("owner"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (t) => [check("users_role_allowed", sql`${t.role} in ('owner', 'operator')`)]
+);
+
+export const accounts = pgTable(
+  "accounts",
+  {
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    type: text("type").notNull(),
+    provider: text("provider").notNull(),
+    providerAccountId: text("provider_account_id").notNull(),
+    refresh_token: text("refresh_token"),
+    access_token: text("access_token"),
+    expires_at: integer("expires_at"),
+    token_type: text("token_type"),
+    scope: text("scope"),
+    id_token: text("id_token"),
+    session_state: text("session_state"),
+  },
+  (t) => [
+    primaryKey({ columns: [t.provider, t.providerAccountId] }),
+    index("accounts_user_idx").on(t.userId),
+  ]
+);
+
+export const sessions = pgTable("sessions", {
+  sessionToken: text("session_token").primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  expires: timestamp("expires", { mode: "date" }).notNull(),
+});
+
+export const verificationTokens = pgTable(
+  "verification_tokens",
+  {
+    identifier: text("identifier").notNull(),
+    token: text("token").notNull(),
+    expires: timestamp("expires", { mode: "date" }).notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.identifier, t.token] })]
 );
 
 export const tenantsRelations = relations(tenants, ({ many, one }) => ({
