@@ -81,11 +81,14 @@ export function MenuSection({
   accent,
   heading = "Menu",
   emptyText = "Our menu is coming soon — please check back later.",
+  layout = "editorial",
 }: {
   menu: PublicMenuCategory[];
   accent: string;
   heading?: string;
   emptyText?: string;
+  /** Editorial (spacious, centred-friendly) or compact (dense takeaway rows). */
+  layout?: "editorial" | "compact";
 }): React.ReactElement {
   const classes = accentClasses(accent);
   return (
@@ -96,6 +99,35 @@ export function MenuSection({
         </Heading>
         {menu.length === 0 ? (
           <Text>{emptyText}</Text>
+        ) : layout === "compact" ? (
+          menu.map((category) => (
+            <section key={category.id} aria-label={category.name}>
+              <Heading level={3}>{category.name}</Heading>
+              <ul>
+                {category.items.map((item) => (
+                  <li key={item.id} className="py-1.5">
+                    <span className="flex items-baseline gap-2">
+                      <span className="text-base font-medium text-zinc-950 dark:text-zinc-50">
+                        {item.name}
+                      </span>
+                      <span
+                        aria-hidden="true"
+                        className="mx-1 flex-1 border-b border-dotted border-zinc-300 dark:border-zinc-700"
+                      />
+                      <span className="text-base font-semibold text-zinc-950 tabular-nums dark:text-zinc-50">
+                        {formatPrice(item.priceCents)}
+                      </span>
+                    </span>
+                    {item.description ? (
+                      <Text className="text-sm text-zinc-500 dark:text-zinc-400">
+                        {item.description}
+                      </Text>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))
         ) : (
           menu.map((category) => (
             <section key={category.id} aria-label={category.name}>
@@ -123,10 +155,12 @@ export function VisitSection({
   restaurant,
   accent,
   showHours = true,
+  title = "Visit us",
 }: {
   restaurant: PublicRestaurant;
   accent: string;
   showHours?: boolean;
+  title?: string;
 }): React.ReactElement {
   const classes = accentClasses(accent);
   const address = [restaurant.address.line1, restaurant.address.city, restaurant.address.country]
@@ -134,10 +168,10 @@ export function VisitSection({
     .join(", ");
   const hasContact = restaurant.contact.phone || restaurant.contact.email || address;
   return (
-    <Section aria-label="Visit us">
+    <Section aria-label={title}>
       <Stack>
         <Heading level={2} className={classes.heading}>
-          Visit us
+          {title}
         </Heading>
         {showHours ? <HoursList hours={restaurant.hours} /> : null}
         {!hasContact ? (
