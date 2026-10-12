@@ -365,6 +365,14 @@ routing.
 
 ## 2.7 Public-page integration and visual checks
 
+**Status:** Done 2026-10-12. Root page resolves the `Host` header →
+loads the published view → renders the tenant theme (streams in
+`<Suspense>`, partial prerender); `db/seed.ts` (`npm run db:seed`,
+idempotent) provides two published tenants plus an unpublished draft;
+gated flow tests plus live HTTP checks with `Host` headers prove no
+cross-tenant leaks and invisible drafts. Real-browser visual review of
+mobile/desktop layouts remains for pilot readiness (6.3).
+
 **Can be done independently:** No, this integrates the earlier work.
 
 - Connect host resolution, public data service, and theme registry.
