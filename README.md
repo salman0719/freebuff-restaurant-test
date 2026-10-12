@@ -1,36 +1,42 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# restaurant-app
 
-## Getting Started
+Multi-tenant website platform for independent restaurants, cafés, and
+takeaway shops. See [ROADMAP.md](ROADMAP.md) for the plan and
+[docs/product-scope.md](docs/product-scope.md) for the MVP scope.
 
-First, run the development server:
+## Prerequisites
+
+- Node 22 (see [.nvmrc](.nvmrc); `nvm use` picks it up)
+- npm (dependencies are locked in `package-lock.json`)
+
+## Setup
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm ci
+cp .env.example .env.local   # no variables required yet; placeholders only
+npm run dev                  # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Scripts
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Command                           | Purpose                                 |
+| --------------------------------- | --------------------------------------- |
+| `npm run dev`                     | Start dev server (Turbopack)            |
+| `npm run build`                   | Production build (must pass before PRs) |
+| `npm run start`                   | Serve production build                  |
+| `npm run lint` / `lint:fix`       | ESLint check / auto-fix                 |
+| `npm run format` / `format:check` | Prettier write / check                  |
+| `npm run typecheck`               | `tsc --noEmit` (strict)                 |
+| `npm run check`                   | lint + typecheck + format:check         |
+| `npx tsx <file.ts>`               | Run one-off TypeScript scripts          |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Run `npm run check` before committing; `npm run build` must succeed for
+user-facing changes. No test runner yet — see
+[docs/decisions/0002-open-decisions.md](docs/decisions/0002-open-decisions.md).
 
-## Learn More
+## Conventions
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Agent rules live in [AGENTS.md](AGENTS.md).
+- `local/` is git-ignored scratch space for internal testing (see
+  [local/README.md](local/README.md)).
+- Path alias `@/*` maps to `src/*`. Server Components by default.

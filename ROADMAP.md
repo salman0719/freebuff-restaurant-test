@@ -48,6 +48,8 @@ decisions are recorded, and the first implementation tasks are ready.
 
 ## 0.1 Repository and tooling audit
 
+**Status:** Done (see `docs/audit.md`; all commands verified 2026-10-12).
+
 **Can be done independently:** Yes, and it should happen first.
 
 - Inspect the repository, Git status, folder structure, dependencies,
@@ -61,6 +63,9 @@ decisions are recorded, and the first implementation tasks are ready.
 **Deliverable:** A concise audit report and a list of verified commands.
 
 ## 0.2 Product scope and initial user journeys
+
+**Status:** In progress (draft in `docs/product-scope.md`; needs owner
+confirmation; reservations confirmed post-MVP).
 
 **Can be done independently:** Yes, in parallel with 0.1.
 
@@ -79,6 +84,10 @@ the MVP.
 
 ## 0.3 Architecture decisions
 
+**Status:** In progress (stack recorded in
+`docs/decisions/0001-app-stack.md`; open items in
+`docs/decisions/0002-open-decisions.md`).
+
 **Can be done independently:** Partially. Use the repository audit as
 input before finalising decisions.
 
@@ -95,6 +104,9 @@ infrastructure before the MVP needs it.
 **Deliverable:** Short decision records under `docs/decisions/`.
 
 ## 0.4 Local development and quality gates
+
+**Status:** In progress (`README.md` setup docs, `.env.example`, and
+`npm run check` done; test runner and CI still pending).
 
 **Can be done independently:** Mostly, after 0.1 identifies existing
 tooling.
