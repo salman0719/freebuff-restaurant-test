@@ -6,31 +6,37 @@
  * actions). Never import from client components. Moving to Neon later is a
  * `DATABASE_URL` change, not a code change.
  *
- * Import-safe by design: importing this module never connects and never
- * throws, so `next build`, `tsc`, and unit tests run without `DATABASE_URL`
- * (CI has neither the URL nor a database). The client is created on first
- * query; only then is a missing `DATABASE_URL` reported.
+ * Import-safe by design: `postgres()` never connects on creation, so
+ * importing this module is side-effect free. The exported client is a REAL
+ * drizzle instance (not a Proxy) because `drizzle()` probes the client at
+ * construction and adapters (e.g. `@auth/drizzle-adapter`) detect the
+ * dialect from the instance. Consequences:
+ * - During `next build` without `DATABASE_URL` (CI has neither the URL nor
+ *   a database), an unconnected placeholder pool satisfies construction;
+ *   the auth route opts out of page collection via `await connection()`,
+ *   so the placeholder is never queried.
+ * - At runtime without `DATABASE_URL`, the first query throws a clear
+ *   error instead of a cryptic connection refusal.
  */
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "./schema";
-
-function missingUrl(): never {
-  throw new Error(
-    "DATABASE_URL is not set. Copy `.env.example` to `.env.local` (see README).",
-  );
-}
 
 declare global {
   // Reuse one client across dev-server reloads (ambient `var` required here).
   var __restaurantAppDbClient: postgres.Sql | undefined;
 }
 
-function client(): postgres.Sql {
+function underlying(): postgres.Sql {
   const existing = globalThis.__restaurantAppDbClient;
   if (existing) return existing;
   const connectionString = process.env.DATABASE_URL;
-  if (!connectionString) missingUrl();
+  if (!connectionString) {
+    if (process.env.NEXT_PHASE === "phase-production-build") {
+      return postgres("postgresql://placeholder:placeholder@localhost:1/db", { max: 1 });
+    }
+    throw new Error("DATABASE_URL is not set. Copy `.env.example` to `.env.local` (see README).");
+  }
   const created = postgres(connectionString, { max: 10 });
   if (process.env.NODE_ENV !== "production") {
     globalThis.__restaurantAppDbClient = created;
@@ -38,14 +44,5 @@ function client(): postgres.Sql {
   return created;
 }
 
-/**
- * Lazily-connected Drizzle client. Property access forwards to the real
- * client, creating it on first use.
- */
-export const db = new Proxy({} as ReturnType<typeof drizzle<typeof schema>>, {
-  get(_target, property, receiver) {
-    return Reflect.get(drizzle(client(), { schema }), property, receiver);
-  },
-});
-
+export const db = drizzle(underlying(), { schema });
 export type Db = typeof db;

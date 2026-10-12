@@ -32,6 +32,8 @@ declare module "next-auth" {
   }
 }
 
+const isBuildPhase = process.env.NEXT_PHASE === "phase-production-build";
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: DrizzleAdapter(db, {
     usersTable: users,
@@ -41,8 +43,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   }),
   providers: [
     Nodemailer({
-      server: process.env.EMAIL_SERVER,
-      from: process.env.EMAIL_FROM,
+      // Nodemailer validates `server` at creation (module scope), so `next
+      // build` without email config needs an unconnected placeholder — it
+      // is never used to send because the route is dynamic. At runtime a
+      // missing EMAIL_SERVER still fails loudly on sign-in instead of
+      // silently falling back.
+      server:
+        process.env.EMAIL_SERVER ?? (isBuildPhase ? "smtp://build:build@localhost:1" : undefined),
+      from: process.env.EMAIL_FROM ?? (isBuildPhase ? "build@localhost" : undefined),
     }),
   ],
   callbacks: {
