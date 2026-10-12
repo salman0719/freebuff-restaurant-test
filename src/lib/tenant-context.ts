@@ -12,12 +12,12 @@
  * and membership are loaded in ONE join, so there is no observable
  * difference between "no such tenant" and "not a member".
  */
-import { and, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { db } from "../../db";
 import { memberships, tenants } from "../../db/schema";
 import { requireUser, type AuthSession } from "./permissions";
 import { err, ok, type ServiceResult } from "./result";
-import type { Membership, Tenant } from "./restaurant";
+import type { Membership, MembershipRole, Tenant, ThemeId } from "./restaurant";
 import { slugSchema } from "./validation";
 
 export interface TenantContext {
@@ -67,6 +67,46 @@ export function toTenantContext(
     tenant: { ...row.tenant, theme: row.tenant.theme as Tenant["theme"] },
     membership: { ...row.membership, role: row.membership.role as Membership["role"] },
   });
+}
+
+/** One row of "which restaurants may this user open" for the dashboard. */
+export interface UserTenantMembership {
+  slug: string;
+  published: boolean;
+  theme: ThemeId;
+  role: MembershipRole;
+}
+
+export type TenantListFinder = (userId: string) => Promise<UserTenantMembership[]>;
+
+async function findUserTenants(userId: string): Promise<UserTenantMembership[]> {
+  const rows = await db
+    .select({ tenant: tenants, membership: memberships })
+    .from(memberships)
+    .innerJoin(tenants, eq(memberships.tenantId, tenants.id))
+    .where(eq(memberships.userId, userId))
+    .orderBy(asc(tenants.createdAt));
+  return rows.map((row) => ({
+    slug: row.tenant.slug,
+    published: row.tenant.published,
+    theme: row.tenant.theme as ThemeId,
+    role: row.membership.role as MembershipRole,
+  }));
+}
+
+/**
+ * List every tenant the session user belongs to (dashboard landing).
+ * User-scoped by construction: the `WHERE` pins `userId`, so no caller
+ * can enumerate another user's restaurants. Anonymous callers get
+ * `UNAUTHORIZED`; members with no restaurants get an empty list.
+ */
+export async function listUserTenants(
+  session: AuthSession | null,
+  list: TenantListFinder = findUserTenants
+): Promise<ServiceResult<UserTenantMembership[]>> {
+  const user = requireUser(session);
+  if (!user.ok) return user;
+  return ok(await list(user.data.userId));
 }
 
 /**

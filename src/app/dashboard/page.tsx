@@ -1,0 +1,67 @@
+/**
+ * Dashboard landing (Phase 3.1). Lists the restaurants the session
+ * user belongs to — multi-tenant owners pick one; single-restaurant
+ * owners get one link. Anonymous visitors bounce to `/login`
+ * (the proxy normally does this first; the check here is the real one).
+ */
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { auth } from "@/auth";
+import { buttonClasses } from "@/components/ui/button";
+import { Card, CardContent, CardTitle } from "@/components/ui/card";
+import { Container, Section } from "@/components/ui/container";
+import { EmptyState } from "@/components/ui/feedback";
+import { Heading, Text } from "@/components/ui/typography";
+import { listUserTenants } from "@/lib/tenant-context";
+import { requireUser } from "@/lib/permissions";
+
+export default async function DashboardPage(): Promise<React.ReactElement> {
+  const session = await auth();
+  if (!requireUser(session).ok) {
+    redirect("/login?next=/dashboard");
+  }
+  const listed = await listUserTenants(session);
+  if (!listed.ok) {
+    redirect("/login?next=/dashboard");
+  }
+  const restaurants = listed.data;
+  return (
+    <Container className="py-8">
+      <Section>
+        <Heading level={1} className="mb-2">
+          Your restaurants
+        </Heading>
+        <Text className="mb-6">Choose a restaurant to manage its public site.</Text>
+        {restaurants.length === 0 ? (
+          <EmptyState
+            title="No restaurants yet"
+            description="You are signed in, but no restaurant has added you. Ask your operator for an invite."
+          />
+        ) : (
+          <ul className="flex flex-col gap-4">
+            {restaurants.map((restaurant) => (
+              <li key={restaurant.slug}>
+                <Card>
+                  <CardContent className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <CardTitle>{restaurant.slug}</CardTitle>
+                      <Text>
+                        {restaurant.published ? "Published" : "Draft"} · {restaurant.role}
+                      </Text>
+                    </div>
+                    <Link
+                      href={`/dashboard/${restaurant.slug}`}
+                      className={buttonClasses({ variant: "outline" })}
+                    >
+                      Open dashboard
+                    </Link>
+                  </CardContent>
+                </Card>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Section>
+    </Container>
+  );
+}

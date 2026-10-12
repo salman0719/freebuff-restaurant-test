@@ -7,9 +7,9 @@
  * `requireUser` / `requireOperator` / `requireTenantMember` near the data
  * (`src/lib/permissions.ts`) — this gate is never the only check.
  *
- * Unauthenticated hits redirect to `/login`, which the dashboard phase
- * owns; until then the redirect target 404s safely without leaking tenant
- * content. Tenant resolution itself stays in the data layer (see 0003).
+ * Unauthenticated hits redirect to `/login` (owned by the dashboard
+ * phase, `src/app/login`), preserving the wanted path in `?next=`.
+ * Tenant resolution itself stays in the data layer (see 0003).
  */
 import { auth } from "@/auth";
 

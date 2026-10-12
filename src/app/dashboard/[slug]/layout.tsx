@@ -1,0 +1,95 @@
+/**
+ * Tenant dashboard shell (Phase 3.1). Server-side protection:
+ * anonymous visitors bounce to `/login`, and any failure to establish
+ * the membership-gated context (unknown slug, no membership) renders
+ * `notFound()` — the same page for both, so signed-in users cannot
+ * probe which slugs exist (see 0003, and `tenant-context.ts`).
+ *
+ * The shell is a sticky `SiteNav` (collapses to a menu on mobile) with
+ * the role-filtered sections from `../nav` plus a sign-out action.
+ */
+import Link from "next/link";
+import { notFound, redirect } from "next/navigation";
+import { auth, signOut } from "@/auth";
+import { Button } from "@/components/ui/button";
+import { Container } from "@/components/ui/container";
+import { SiteNav, SiteNavLink } from "@/components/ui/site-nav";
+import { getTenantContext } from "@/lib/tenant-context";
+import { getTenantProfile } from "@/lib/tenant-data";
+import { requireUser } from "@/lib/permissions";
+import { getDashboardNav } from "../nav";
+
+async function signOutAction(): Promise<void> {
+  "use server";
+  await signOut({ redirectTo: "/" });
+}
+
+export default async function TenantDashboardLayout({
+  children,
+  params,
+}: {
+  children: React.ReactNode;
+  // Next 16's generated layout props type `params` as `Promise<unknown>`
+  // for this segment, so narrow at the boundary: non-string slugs fall
+  // through to the same `notFound()` as unknown tenants (no oracle).
+  params: Promise<unknown>;
+}): Promise<React.ReactElement> {
+  const resolved = (await params) as { slug?: unknown };
+  const slug = typeof resolved.slug === "string" ? resolved.slug : "";
+  const session = await auth();
+  if (!requireUser(session).ok) {
+    redirect(`/login?next=/dashboard/${slug}`);
+  }
+  const context = await getTenantContext(session, slug);
+  if (!context.ok) {
+    notFound();
+  }
+  const { tenant, membership } = context.data;
+  const profile = await getTenantProfile(context.data);
+  const name = profile.ok && profile.data ? profile.data.name : tenant.slug;
+  const items = getDashboardNav({
+    slug: tenant.slug,
+    membershipRole: membership.role,
+    globalRole: session?.user?.role ?? "owner",
+  });
+  return (
+    <>
+      <SiteNav
+        label="Dashboard"
+        brand={
+          <span className="flex items-baseline gap-2">
+            <Link
+              href="/dashboard"
+              className="text-sm font-medium text-zinc-500 hover:text-zinc-900"
+            >
+              Restaurants
+            </Link>
+            <span aria-hidden="true" className="text-zinc-300">
+              /
+            </span>
+            <span className="truncate text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+              {name}
+            </span>
+          </span>
+        }
+        links={
+          <>
+            {items.map((item) => (
+              <SiteNavLink key={item.href} href={item.href}>
+                {item.label}
+              </SiteNavLink>
+            ))}
+          </>
+        }
+        actions={
+          <form action={signOutAction}>
+            <Button type="submit" variant="ghost" size="sm">
+              Sign out
+            </Button>
+          </form>
+        }
+      />
+      <Container className="py-8">{children}</Container>
+    </>
+  );
+}

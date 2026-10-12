@@ -128,6 +128,16 @@ live("cross-tenant isolation (live database)", () => {
     if (!unknown.ok) expect(unknown.error.code).toBe("NOT_FOUND");
   });
 
+  it("lists only the caller's own restaurants", async () => {
+    const { listUserTenants } = await libs();
+    const own = await listUserTenants({ user: { id: userA, role: "owner" } });
+    expect(own.ok).toBe(true);
+    if (!own.ok) return expect.unreachable();
+    expect(own.data.map((row) => row.slug)).toEqual([slugA]);
+    const stranger = await listUserTenants(null);
+    expect(stranger.ok).toBe(false);
+  });
+
   it("scopes the owner view and the mutation to the context tenant", async () => {
     const { getTenantContext, getOwnerRestaurant, updateTenantSettings } = await libs();
     const ctx = await getTenantContext({ user: { id: userB, role: "owner" } }, slugB);

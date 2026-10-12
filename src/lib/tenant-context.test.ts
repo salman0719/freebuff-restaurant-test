@@ -1,8 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   getTenantContext,
+  listUserTenants,
   toTenantContext,
   type TenantContext,
+  type TenantListFinder,
   type TenantMembershipFinder,
   type TenantMembershipRow,
 } from "./tenant-context";
@@ -84,5 +86,27 @@ describe("getTenantContext", () => {
       error: { code: "FORBIDDEN", message: expect.any(String) },
     });
     expect(find).not.toHaveBeenCalled();
+  });
+});
+
+describe("listUserTenants", () => {
+  it("returns the finder's rows for a signed-in user", async () => {
+    const list: TenantListFinder = vi
+      .fn()
+      .mockResolvedValue([{ slug: "marios", published: true, theme: "cafe", role: "owner" }]);
+    const result = await listUserTenants(session, list);
+    expect(result).toEqual({
+      ok: true,
+      data: [{ slug: "marios", published: true, theme: "cafe", role: "owner" }],
+    });
+    expect(list).toHaveBeenCalledWith("user_1");
+  });
+
+  it("returns UNAUTHORIZED without a session", async () => {
+    const list: TenantListFinder = vi.fn();
+    const result = await listUserTenants(null, list);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error.code).toBe("UNAUTHORIZED");
+    expect(list).not.toHaveBeenCalled();
   });
 });
