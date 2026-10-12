@@ -342,6 +342,14 @@ time and quality permit.
 
 ## 2.6 Host and tenant resolution
 
+**Status:** Done 2026-10-12 (`src/lib/tenant-resolution.ts`).
+`resolveTenantByHost` implements 0003 (normalise → exact custom-domain
+match → platform subdomain → not-found, reserved slugs short-circuit,
+`localhost` subdomains for development via `PLATFORM_BASE_DOMAIN`);
+returns identity only, visibility re-checked downstream; no cache in the
+MVP by decision. Live tests cover valid, unknown, ambiguous
+(custom-domain precedence), reserved, nested, and malformed hosts.
+
 **Can be done independently:** Partially. Build the resolution logic
 separately, but coordinate its interface with deployment and public
 routing.
