@@ -37,13 +37,8 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 
-/** Public themes agreed for the MVP (product-scope sign-off). */
-export const THEME_IDS = ["cafe", "takeaway"] as const;
-export type ThemeId = (typeof THEME_IDS)[number];
-
-/** Membership roles. Platform operators may also appear here when they are explicitly attached to a tenant. */
-export const MEMBERSHIP_ROLES = ["owner", "operator"] as const;
-export type MembershipRole = (typeof MEMBERSHIP_ROLES)[number];
+export { MEMBERSHIP_ROLES, THEME_IDS } from "./constants";
+export type { MembershipRole, ThemeId } from "./constants";
 
 function timestamps() {
   return {
