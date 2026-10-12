@@ -3,7 +3,8 @@
 ## Purpose
 
 This document defines the implementation roadmap for the restaurant
-website platform. It is intended to be used alongside `instructions.md`.
+website platform. It is intended to be used alongside `AGENTS.md`
+(standing agent rules).
 
 The goal is to ship a focused, reliable MVP for independent restaurants,
 cafés, and takeaway shops. Each customer gets a public website and an
@@ -70,7 +71,8 @@ Platform operator creates a restaurant and assigns an owner. - A visitor
 reaches a restaurant through its assigned host/domain.
 
 Write explicit out-of-scope items, including ordering, reservations,
-payments, and POS integrations.
+payments, and POS integrations. Confirmed: reservations are post-MVP
+(see Phase 8) and must not shape the MVP data model.
 
 **Deliverable:** `docs/product-scope.md` with acceptance criteria for
 the MVP.
@@ -751,8 +753,8 @@ Record commands and results accurately.
 ## Documentation
 
 Keep these documents updated as the project evolves: - `README.md`:
-setup and common commands. - `instructions.md`: standing agent rules. -
-`roadmap.md`: phase and subphase status. - `docs/product-scope.md`:
+setup and common commands. - `AGENTS.md`: standing agent rules. -
+`ROADMAP.md`: phase and subphase status. - `docs/product-scope.md`:
 agreed MVP scope and exclusions. - `docs/decisions/`: major architecture
 decisions. - `docs/runbooks/`: deployment, onboarding, and
 troubleshooting.

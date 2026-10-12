@@ -1,8 +1,9 @@
 # Agent Rules — restaurant-app
 
 Next.js 16 + React 19 + TypeScript + Tailwind CSS v4 project.
-Theme: restaurant (menu, reservations, etc. — to be defined later).
-Keep the foundation generic until the theme brief lands.
+Theme: multi-tenant restaurant platform MVP (public sites, menus, owner
+dashboard, operator onboarding). Reservations, ordering, and payments are
+post-MVP — see `ROADMAP.md` Phase 8.
 
 ## Commands (npm)
 
