@@ -203,8 +203,14 @@ made.
 
 ## 1.4 Tenant-scoped data access
 
-**Status:** Not started (blocked on 1.3's auth model; do not start in
-parallel with it).
+**Status:** Done 2026-10-12. Authorised context via slug+membership join
+(`src/lib/tenant-context.ts`, no existence oracle), scoped loaders +
+owner view + one scoped mutation (`src/lib/tenant-data.ts`, context-only
+APIs — no tenant-id parameters), pure unit tests plus a live 4-case
+cross-tenant isolation suite (`src/lib/tenant-isolation.test.ts`, opt-in
+via `TEST_DATABASE_URL`); 128/128 tests green with a database, build
+green. Unblocks Phase 1 exit: migrations work, contracts exist, and
+tenant-access rules are tested.
 
 **Can be done independently:** Yes, after 1.1 and the core auth model
 are agreed.
