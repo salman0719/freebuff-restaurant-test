@@ -64,8 +64,13 @@ Adminer login: system `PostgreSQL`, server `db` (pre-filled), username
 Run `npm run check` before committing; `npm run build` must succeed for
 user-facing changes. Unit tests live next to source as `*.test.ts(x)`;
 async Server Component flows are covered by Playwright specs in `e2e/`
-against a production build. CI (`.github/workflows/ci.yml`) runs check +
-unit + build + E2E on every push and PR.
+against a production build. The owner-journey E2E needs the full local
+stack: `docker compose up -d` (Postgres + Mailpit), `npm run db:migrate`,
+and magic-link env in `.env.local` (`AUTH_SECRET`, `AUTH_URL`,
+`EMAIL_SERVER`/`EMAIL_FROM` — see `.env.example`). Then `npm run build
+&& npm run test:e2e`; the suite seeds and cleans up its own tenant, so
+re-runs are deterministic. CI (`.github/workflows/ci.yml`) runs check +
+unit (with live-DB suites) + migrate + build + E2E on every push and PR.
 
 ## Conventions
 

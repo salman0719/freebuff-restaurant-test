@@ -7,6 +7,38 @@ on:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    services:
+      # Matches `docker-compose.yml` credentials so the same DATABASE_URL
+      # works locally and in CI.
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: app
+          POSTGRES_PASSWORD: secret
+          POSTGRES_DB: restaurant_app
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U app -d restaurant_app"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+      # Real SMTP catch-all for the magic-link E2E (SMTP :1025, API :8025).
+      mailpit:
+        image: axllent/mailpit:v1.27
+        ports:
+          - 1025:1025
+          - 8025:8025
+    env:
+      DATABASE_URL: postgresql://app:secret@localhost:5432/restaurant_app
+      TEST_DATABASE_URL: postgresql://app:secret@localhost:5432/restaurant_app
+      # Ephemeral CI-only values (never production secrets): the E2E signs
+      # in through Mailpit above, so auth needs a complete test config.
+      AUTH_SECRET: ci-only-ephemeral-secret-not-used-in-production-0000
+      AUTH_URL: http://localhost:4000
+      AUTH_TRUST_HOST: "true"
+      EMAIL_SERVER: smtp://localhost:1025
+      EMAIL_FROM: "CI Test <ci-e2e@platform.example>"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -16,6 +48,7 @@ jobs:
       - run: npm ci
       - run: npm run check
       - run: npm run test:run
+      - run: npm run db:migrate
       - run: npm run build
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e

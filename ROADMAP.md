@@ -190,13 +190,12 @@ implementation begins.
 provider, session role callback, `proxy.ts` gate, pure permission helpers;
 112/112 tests green, build green).
 
-**Known limitation — magic-link delivery untested end to end:** local
-SMTP is now provisioned via the `mailpit` service in
-`docker-compose.yml` (SMTP `:1025`, inbox UI `:8025`; `EMAIL_SERVER` /
-`EMAIL_FROM` defaults in `.env.example`; raw-SMTP smoke test 2026-10-13
-landed in the inbox). No sign-in email has been sent through the app
-yet — uncomment the env entries in `.env.local` and exercise the real
-request-link flow before 3.9 and operator invites (4.2).
+**Update 2026-10-13 (3.9):** magic-link delivery is now tested end to
+end — the owner-journey E2E requests a real sign-in link through the
+app, retrieves it from Mailpit, and completes sign-in. Local SMTP stays
+provisioned via the `mailpit` service in `docker-compose.yml` (SMTP
+`:1025`, inbox UI `:8025`; `EMAIL_SERVER` / `EMAIL_FROM` defaults in
+`.env.example`). Operator invites (4.2) reuse this proven path.
 
 **Can be done independently:** Yes, after the authentication decision is
 made.
@@ -670,7 +669,7 @@ isolation suite cycles publish → public-visible → unpublish →
 against local Postgres 2026-10-13); 231/231 unit tests green without a
 database, `npm run check` green, build green.
 
-## 3.9 Owner journey integration
+## 3.9 Owner journey integration — Done
 
 **Can be done independently:** No, this integrates the dashboard
 modules.
@@ -681,6 +680,28 @@ modules.
 - Fix inconsistent states between the dashboard and public website.
 
 **Deliverable:** End-to-end owner workflow.
+
+Done 2026-10-13: `e2e/owner-journey.spec.ts` drives the full workflow
+against the real stack (production build, Postgres, Mailpit) — magic-link
+sign-in via the actual email, profile save, category + item creation,
+hours save, theme switch, draft preview, publish, public-site
+verification on the tenant subdomain, and unpublish cleanup. Global
+setup (`e2e/global-setup.ts` + `helpers.ts`) seeds a deterministic
+draft tenant and the suite purges Mailpit first, so re-runs are stable
+(green in ~11 s locally). CI grew Postgres + Mailpit services,
+test-only auth/mail env, a `db:migrate` step, and `TEST_DATABASE_URL`
+so the 12 live isolation tests also run per push/PR. The obsolete
+starter-content `e2e/home.spec.ts` was removed.
+
+Two real finds fixed along the way: (1) the login page's Suspense
+fallback rendered a second live `LoginForm` whose stale server-action
+reference made sign-in silently do nothing — replaced with the
+non-interactive `LoginFormSkeleton` (the spec asserts exactly one live
+form); (2) category/item lists are server-rendered and `useActionState`
+saves don't refresh them — the spec reloads after creates, matching
+real navigation. Cross-tenant and permission-failure paths stay covered
+by the gated isolation suite (now running in CI), not duplicated in the
+browser journey.
 
 ### Phase 3 parallel work guidance
 
