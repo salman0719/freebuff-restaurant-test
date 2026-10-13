@@ -23,6 +23,11 @@ Optional local database (Postgres 17, data persists in a Docker volume):
 docker compose up -d         # connection string in .env.example
 ```
 
+This also starts Mailpit (local SMTP catch-all): inbox UI at
+http://localhost:8025, SMTP on `localhost:1025`. For local magic-link
+sign-in, uncomment `EMAIL_SERVER`/`EMAIL_FROM` in `.env.local` (values
+in `.env.example` match these defaults).
+
 Optional browser database viewer (Adminer, profile-gated so the default
 `up -d` is unaffected):
 

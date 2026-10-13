@@ -190,13 +190,13 @@ implementation begins.
 provider, session role callback, `proxy.ts` gate, pure permission helpers;
 112/112 tests green, build green).
 
-**Known limitation — magic-link delivery untested:** no SMTP is
-provisioned, so no sign-in email has ever been sent. The Ethereal test
-API rejects scripted signups, and nothing else is configured:
-`EMAIL_SERVER`/`EMAIL_FROM` are still empty in local env. Resolve before
-owner sign-in can be exercised end to end (blocks 3.9) and before
-operator invites (4.2): either a manual Ethereal account or a local
-Mailpit service in compose.
+**Known limitation — magic-link delivery untested end to end:** local
+SMTP is now provisioned via the `mailpit` service in
+`docker-compose.yml` (SMTP `:1025`, inbox UI `:8025`; `EMAIL_SERVER` /
+`EMAIL_FROM` defaults in `.env.example`; raw-SMTP smoke test 2026-10-13
+landed in the inbox). No sign-in email has been sent through the app
+yet — uncomment the env entries in `.env.local` and exercise the real
+request-link flow before 3.9 and operator invites (4.2).
 
 **Can be done independently:** Yes, after the authentication decision is
 made.

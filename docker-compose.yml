@@ -16,6 +16,18 @@ services:
       timeout: 3s
       retries: 10
 
+  # Local SMTP catch-all with inbox UI (http://localhost:8025).
+  # Starts with plain `up -d` so magic-link sign-in works in local dev:
+  # set EMAIL_SERVER/EMAIL_FROM in `.env.local` (see `.env.example`).
+  mailpit:
+    image: axllent/mailpit:v1.27
+    restart: unless-stopped
+    ports:
+      - "1025:1025" # SMTP
+      - "8025:8025" # web UI + API
+    volumes:
+      - mailpit:/data
+
   # Browser database viewer (http://localhost:7070).
   # Opt-in via the `tools` profile so plain `docker compose up -d` is unchanged:
   #   docker compose --profile tools up -d adminer
@@ -34,3 +46,4 @@ services:
 
 volumes:
   pgdata:
+  mailpit:
