@@ -50,12 +50,18 @@ export default async function MenuPage({
       <div>
         <Heading level={1} className="mb-2">
           Menu categories
-        </Heading>
+        </Heading>{" "}
         <Text>
           Categories appear on the public menu in this order. Unpublished categories stay hidden
           until you publish them.
         </Text>
       </div>
+      <Link
+        href={`/dashboard/${tenantSlug}/menu/items`}
+        className={buttonClasses({ variant: "outline", size: "sm" })}
+      >
+        Manage items →
+      </Link>
       {categories.data.length === 0 ? (
         <Text>No categories yet — add the first one below.</Text>
       ) : (

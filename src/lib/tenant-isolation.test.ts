@@ -256,6 +256,72 @@ live("cross-tenant isolation (live database)", () => {
     }
   });
 
+  it("manages items within the tenant and refuses cross-tenant access", async () => {
+    const {
+      createTenantCategory,
+      createTenantItem,
+      updateTenantItem,
+      deleteTenantItem,
+      getTenantItem,
+      getTenantContext,
+    } = await libs();
+    const ctx = await getTenantContext({ user: { id: userA, role: "owner" } }, slugA);
+    expect(ctx.ok).toBe(true);
+    if (!ctx.ok) return expect.unreachable();
+    const sides = await createTenantCategory(ctx.data, { name: "Sides" });
+    expect(sides.ok).toBe(true);
+    if (!sides.ok) return expect.unreachable();
+    const created = await createTenantItem(ctx.data, {
+      name: "Fries",
+      priceCents: 350,
+      categoryId: sides.data.id,
+    });
+    expect(created.ok).toBe(true);
+    if (!created.ok) return expect.unreachable();
+    expect(created.data.priceCents).toBe(350);
+    expect(created.data.categoryId).toBe(sides.data.id);
+    const repriced = await updateTenantItem(ctx.data, created.data.id, {
+      priceCents: 400,
+      categoryId: null,
+    });
+    expect(repriced.ok).toBe(true);
+    if (!repriced.ok) return expect.unreachable();
+    expect(repriced.data.priceCents).toBe(400);
+    expect(repriced.data.categoryId).toBeNull();
+    // A forged category from the other tenant is refused on both paths.
+    const other = await getTenantContext({ user: { id: userB, role: "owner" } }, slugB);
+    expect(other.ok).toBe(true);
+    if (!other.ok) return expect.unreachable();
+    const foreign = await createTenantCategory(other.data, { name: "Sides" });
+    expect(foreign.ok).toBe(true);
+    if (!foreign.ok) return expect.unreachable();
+    const forgedCreate = await createTenantItem(ctx.data, {
+      name: "Smuggled",
+      priceCents: 100,
+      categoryId: foreign.data.id,
+    });
+    expect(forgedCreate.ok).toBe(false);
+    if (!forgedCreate.ok) expect(forgedCreate.error.code).toBe("FORBIDDEN");
+    const forgedUpdate = await updateTenantItem(ctx.data, created.data.id, {
+      categoryId: foreign.data.id,
+    });
+    expect(forgedUpdate.ok).toBe(false);
+    if (!forgedUpdate.ok) expect(forgedUpdate.error.code).toBe("FORBIDDEN");
+    // And the other tenant cannot touch this tenant's item directly.
+    const cross = await Promise.all([
+      updateTenantItem(other.data, created.data.id, { name: "Hijacked" }),
+      deleteTenantItem(other.data, created.data.id),
+    ]);
+    for (const result of cross) {
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.error.code).toBe("FORBIDDEN");
+    }
+    const deleted = await deleteTenantItem(ctx.data, created.data.id);
+    expect(deleted.ok).toBe(true);
+    const gone = await getTenantItem(ctx.data, created.data.id);
+    expect(gone.ok).toBe(false);
+  });
+
   it("scopes the owner view and the mutation to the context tenant", async () => {
     const { getTenantContext, getOwnerRestaurant, updateTenantSettings } = await libs();
     const ctx = await getTenantContext({ user: { id: userB, role: "owner" } }, slugB);
