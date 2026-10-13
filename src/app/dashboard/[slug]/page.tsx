@@ -71,6 +71,9 @@ export default async function TenantOverviewPage({
         <Link href={`${base}/profile`} className={buttonClasses({ variant: "outline" })}>
           Edit profile
         </Link>
+        <Link href={`${base}/hours`} className={buttonClasses({ variant: "outline" })}>
+          Edit hours
+        </Link>
         <Link href={`${base}/menu`} className={buttonClasses({ variant: "outline" })}>
           Edit menu
         </Link>

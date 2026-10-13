@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { assembleOwnerRestaurant, ownsRow, updateTenantSettings } from "./tenant-data";
+import {
+  assembleOwnerRestaurant,
+  ownsRow,
+  updateTenantHours,
+  updateTenantSettings,
+} from "./tenant-data";
 import type { TenantContext as Ctx } from "./tenant-context";
 
 const ctx: Ctx = {
@@ -38,6 +43,46 @@ describe("assembleOwnerRestaurant", () => {
     expect(view.tenant.id).toBe("tenant_a");
     expect(view.profile).toBeNull();
     expect(view.membershipRole).toBe("owner");
+  });
+});
+
+describe("updateTenantHours", () => {
+  it("rejects a partial week without touching the database", async () => {
+    const result = await updateTenantHours(ctx, [
+      { weekday: 1, openTime: "09:00", closeTime: "17:00", isClosed: false },
+    ]);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.code).toBe("VALIDATION_FAILED");
+    }
+  });
+
+  it("rejects duplicate weekdays without touching the database", async () => {
+    const days = Array.from({ length: 7 }, () => ({
+      weekday: 1,
+      openTime: "09:00",
+      closeTime: "17:00",
+      isClosed: false,
+    }));
+    const result = await updateTenantHours(ctx, days);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.code).toBe("VALIDATION_FAILED");
+    }
+  });
+
+  it("rejects an open day missing a time without touching the database", async () => {
+    const days = Array.from({ length: 7 }, (_, weekday) => ({
+      weekday,
+      isClosed: true,
+    }));
+    days[2] = { weekday: 2, openTime: "09:00", isClosed: false } as never;
+    const result = await updateTenantHours(ctx, days);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.code).toBe("VALIDATION_FAILED");
+      expect(Object.keys(result.error.fields ?? {})).toEqual(expect.arrayContaining(["2"]));
+    }
   });
 });
 

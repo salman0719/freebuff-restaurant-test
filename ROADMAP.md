@@ -480,7 +480,7 @@ editor exposed: `updateProfileSchema.email` rejected `undefined`
 mapping lives in `form.ts` — `"use server"` modules may only export
 async functions (same lesson as 3.1).
 
-## 3.3 Opening-hours editor
+## 3.3 Opening-hours editor — Done
 
 **Can be done independently:** Yes, once the opening-hours data model is
 agreed.
@@ -491,6 +491,24 @@ agreed.
 - Render hours consistently on public themes.
 
 **Deliverable:** Hours editor and public display integration.
+
+Done: `updateHoursSchema` in `src/lib/validation.ts` (exactly 7 days,
+unique weekdays 0–6, per-day open/closed rules reused from
+`openingHoursSchema`) plus `updateTenantHours` in `src/lib/tenant-data.ts`
+(validate → upsert each weekday scoped to the context tenant → return the
+week ordered Sunday-first; full-week replacement so the public `HoursList`
+never renders a half-edited week) behind the
+`src/app/dashboard/[slug]/hours` editor (server action + per-day
+closed-checkbox/time-input form with per-day errors, typed-input echo on
+rejection, `role="status"` save confirmation, `revalidatePath` so the
+overview reflects saves; overview gained an "Edit hours" link). Pure form
+mapping lives in `form.ts` — `"use server"` modules may only export
+async functions (same lesson as 3.1/3.2). Unsaved days default to closed;
+public display needed no change (`HoursList` already renders stored rows
+sorted with "Closed" for closed days, overnight ranges pass through).
+178/178 unit tests green (3 gated live suites skip without a database),
+lint + typecheck green, build green with the hours route partial-
+prerendered like the other editors.
 
 ## 3.4 Menu category management
 

@@ -9,6 +9,7 @@ import {
   slugSchema,
   themeSchema,
   updateCategorySchema,
+  updateHoursSchema,
   updateItemSchema,
   updateTenantSchema,
   validationFields,
@@ -104,6 +105,44 @@ describe("openingHoursSchema", () => {
     expect(
       openingHoursSchema.safeParse({ weekday: 2, openTime: "9am", closeTime: "17:00" }).success
     ).toBe(false);
+  });
+});
+
+describe("updateHoursSchema", () => {
+  const openWeek = Array.from({ length: 7 }, (_, weekday) => ({
+    weekday,
+    openTime: "09:00",
+    closeTime: "17:00",
+    isClosed: false,
+  }));
+
+  it("accepts a full open week", () => {
+    expect(updateHoursSchema.safeParse(openWeek).success).toBe(true);
+  });
+
+  it("accepts a mixed week with closed days carrying no times", () => {
+    const week = openWeek.map((day) => (day.weekday === 0 ? { weekday: 0, isClosed: true } : day));
+    expect(updateHoursSchema.safeParse(week).success).toBe(true);
+  });
+
+  it("rejects a partial week", () => {
+    expect(updateHoursSchema.safeParse(openWeek.slice(0, 6)).success).toBe(false);
+  });
+
+  it("rejects duplicate weekdays", () => {
+    const week = openWeek.map((day) => ({ ...day, weekday: 1 }));
+    const result = updateHoursSchema.safeParse(week);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.map((issue) => issue.message)).toContain(
+        "Each weekday must appear exactly once."
+      );
+    }
+  });
+
+  it("rejects malformed times through the per-day schema", () => {
+    const week = openWeek.map((day) => (day.weekday === 2 ? { ...day, openTime: "9am" } : day));
+    expect(updateHoursSchema.safeParse(week).success).toBe(false);
   });
 });
 

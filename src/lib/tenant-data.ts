@@ -34,7 +34,12 @@ import type {
   Tenant,
 } from "./restaurant";
 import type { TenantContext } from "./tenant-context";
-import { updateProfileSchema, updateTenantSchema, validationFields } from "./validation";
+import {
+  updateHoursSchema,
+  updateProfileSchema,
+  updateTenantSchema,
+  validationFields,
+} from "./validation";
 
 const uuidSchema = z.string().uuid();
 
@@ -221,6 +226,47 @@ export async function updateTenantProfile(
     return err("INTERNAL", "Failed to save profile.");
   }
   return ok(updated);
+}
+
+/**
+ * Replace the full opening-hours week for the context tenant: validate all
+ * seven days, then upsert each weekday scoped to `ctx.tenant.id`. Full-week
+ * replacement keeps the public `HoursList` consistent — it renders exactly
+ * the stored rows, so partial saves could leave days silently missing.
+ * Times follow `openingHoursSchema`: closed days carry no times, open days
+ * need both, overnight ranges (18:00–02:00) are legal. Returns the week
+ * ordered Sunday-first.
+ */
+export async function updateTenantHours(
+  ctx: TenantContext,
+  input: unknown
+): Promise<ServiceResult<OpeningHoursRow[]>> {
+  const parsed = updateHoursSchema.safeParse(input);
+  if (!parsed.success) {
+    return err("VALIDATION_FAILED", "Invalid opening hours.", validationFields(parsed.error));
+  }
+  for (const day of parsed.data) {
+    await db
+      .insert(openingHours)
+      .values({
+        tenantId: ctx.tenant.id,
+        weekday: day.weekday,
+        openTime: day.openTime ?? null,
+        closeTime: day.closeTime ?? null,
+        isClosed: day.isClosed,
+      })
+      .onConflictDoUpdate({
+        target: [openingHours.tenantId, openingHours.weekday],
+        set: {
+          openTime: day.openTime ?? null,
+          closeTime: day.closeTime ?? null,
+          isClosed: day.isClosed,
+        },
+      });
+  }
+  const saved = await getTenantHours(ctx);
+  if (isErr(saved)) return saved;
+  return ok(saved.data);
 }
 
 /**

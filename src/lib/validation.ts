@@ -116,6 +116,19 @@ export const openingHoursSchema = z
     }
   );
 
+/**
+ * Full-week hours replacement. The dashboard always saves all seven days
+ * atomically so visitors never see a half-edited week; weekdays must be
+ * unique and cover 0–6 exactly (missing-day ambiguity is a rendering bug
+ * — see `HoursList`, which only renders stored rows).
+ */
+export const updateHoursSchema = z
+  .array(openingHoursSchema)
+  .length(7, "Hours must cover all seven days.")
+  .refine((days) => new Set(days.map((day) => day.weekday)).size === 7, {
+    message: "Each weekday must appear exactly once.",
+  });
+
 const categoryFields = {
   name: nameSchema("Category name"),
   description: optionalText(2000),
@@ -169,6 +182,7 @@ export type CreateTenantInput = z.infer<typeof createTenantSchema>;
 export type UpdateTenantInput = z.infer<typeof updateTenantSchema>;
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
 export type OpeningHoursInput = z.infer<typeof openingHoursSchema>;
+export type UpdateHoursInput = z.infer<typeof updateHoursSchema>;
 export type CreateCategoryInput = z.infer<typeof createCategorySchema>;
 export type UpdateCategoryInput = z.infer<typeof updateCategorySchema>;
 export type CreateItemInput = z.infer<typeof createItemSchema>;
