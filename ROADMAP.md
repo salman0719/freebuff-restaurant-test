@@ -610,7 +610,7 @@ green without a database, `npm run check` green, build green. R2 stays
 open: swapping the driver module (account + keys + SDK) is the only
 move needed before any hosted environment.
 
-## 3.7 Theme selection and preview
+## 3.7 Theme selection and preview — Done
 
 **Can be done independently:** Yes, after the theme registry and draft
 model are stable.
@@ -621,6 +621,23 @@ model are stable.
 - Prevent another tenant's preview from being accessed.
 
 **Deliverable:** Theme selection and private preview.
+
+Done: `toPreviewRestaurant` in `src/lib/preview-restaurant.ts` (pure
+assembly of the theme input shape with nothing filtered — unpublished
+categories/items included, so owners see what publishing would put
+live) behind `src/app/dashboard/[slug]/theme` (every registered theme
+with per-card save through the existing scoped `updateTenantSettings`;
+the refreshed Current badge confirms) and `theme/preview` (renders the
+selected theme with the draft view under a draft banner, membership-
+gated like every dashboard page — forged slugs get the same `notFound()`).
+Also fixed a real 2.3 gap the preview exposed: `Tenant` never carried
+`themeConfig`, so per-tenant options were dropped at the context
+boundary — now typed on the domain model and plumbed through
+`toTenantContext` / `updateTenantSettings` (same class of find as the
+3.2 email bug). Live gated isolation suite proves the preview shows a
+draft category the public view hides, plus stranger-context refusal
+(11/11 green against local Postgres 2026-10-13); 227/227 unit tests
+green without a database, `npm run check` green, build green.
 
 ## 3.8 Draft and publish flow
 
