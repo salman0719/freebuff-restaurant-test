@@ -47,8 +47,10 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run check
-      - run: npm run test:run
+      # Migrate first: the service Postgres starts empty, and both the
+      # live unit suites and the E2E need tables to exist.
       - run: npm run db:migrate
+      - run: npm run test:run
       - run: npm run build
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e

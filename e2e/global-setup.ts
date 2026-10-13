@@ -1,4 +1,3 @@
-import type { FullConfig } from "@playwright/test";
 import { seedOwnerJourney } from "./helpers";
 
 /**
@@ -6,6 +5,6 @@ import { seedOwnerJourney } from "./helpers";
  * suite runs so every run starts from the same draft state, no matter
  * how the previous run ended.
  */
-export default async function globalSetup(_config: FullConfig): Promise<void> {
+export default async function globalSetup(): Promise<void> {
   await seedOwnerJourney();
 }
