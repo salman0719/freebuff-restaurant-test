@@ -8,9 +8,8 @@ import type { ThemeProps } from "./types";
  * then visit details. Composed from shared sections — the narrative order
  * and accent are this theme's only unique decisions.
  *
- * Logo images arrive with Phase 3.6 storage; `logoImageKey` is a provider
- * object key, not a URL, so nothing renders an `<img>` until the public-URL
- * adapter exists.
+ * Logos render from Phase 3.6 storage via the shared `HeroSection` (the
+ * key resolves to `/api/images/…` with `imageUrlForKey`).
  */
 export function CafeTheme({ restaurant, config }: ThemeProps): React.ReactElement {
   const { accent, showHours } = config as CafeConfig;

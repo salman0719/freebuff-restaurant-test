@@ -67,6 +67,47 @@ describe.each([["cafe"], ["takeaway"]] as const)("theme %s", (id) => {
     expect(screen.queryByRole("link", { name: /call/i })).not.toBeInTheDocument();
   });
 
+  it("renders the logo and item photos when keys are present", () => {
+    const Component = getTheme(id);
+    const withImages = restaurant({
+      logoImageKey: "tenants/t/logos/k.png",
+      menu: [
+        {
+          id: "cat_1",
+          name: "Pizza",
+          description: null,
+          items: [
+            {
+              id: "item_1",
+              name: "Margherita",
+              description: null,
+              priceCents: 1299,
+              imageKey: "tenants/t/items/k.png",
+            },
+          ],
+        },
+      ],
+    });
+    const { container } = render(
+      <Component restaurant={withImages} config={resolveThemeConfig(id, {})} />
+    );
+    // next/image optimises through `/_next/image?url=…` with the source
+    // URL-encoded inside — assert on the encoded key, not the raw path.
+    expect(screen.getByRole("img", { name: "Marios logo" })).toHaveAttribute(
+      "src",
+      expect.stringContaining(encodeURIComponent("/api/images/tenants/t/logos/k.png"))
+    );
+    // Logo plus one item photo (decorative `alt=""`, so counted via the
+    // DOM, not the accessible tree); text-only menus render no <img>.
+    expect(container.querySelectorAll("img")).toHaveLength(2);
+  });
+
+  it("renders no images without keys, keeping the text layout", () => {
+    const Component = getTheme(id);
+    render(<Component restaurant={restaurant()} config={resolveThemeConfig(id, {})} />);
+    expect(screen.queryByRole("img")).not.toBeInTheDocument();
+  });
+
   it("renders empty states instead of empty sections", () => {
     const Component = getTheme(id);
     render(

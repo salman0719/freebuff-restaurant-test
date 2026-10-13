@@ -1,4 +1,6 @@
+import Image from "next/image";
 import { buttonClasses, Container, Eyebrow, Heading, Section, Stack, Text } from "@/components/ui";
+import { imageUrlForKey } from "@/lib/image-url";
 import type { TakeawayConfig } from "./config";
 import { HoursList } from "./hours";
 import { MenuSection, VisitSection } from "./sections";
@@ -19,6 +21,15 @@ export function TakeawayTheme({ restaurant, config }: ThemeProps): React.ReactEl
         <Container>
           <Section aria-label="Restaurant introduction">
             <Stack className="items-start text-left">
+              {restaurant.logoImageKey ? (
+                <Image
+                  src={imageUrlForKey(restaurant.logoImageKey)}
+                  alt={`${restaurant.name} logo`}
+                  width={64}
+                  height={64}
+                  className="rounded-xl object-contain"
+                />
+              ) : null}
               <Eyebrow className="text-red-300">Takeaway</Eyebrow>
               <Heading level={1} className="text-zinc-50">
                 {restaurant.name}

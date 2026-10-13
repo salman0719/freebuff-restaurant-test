@@ -9,7 +9,9 @@
  * Accent classes are explicit static strings per option value so Tailwind
  * generates them; option values are NEVER interpolated into class names.
  */
+import Image from "next/image";
 import { Eyebrow, Heading, Section, Stack, Text } from "@/components/ui";
+import { imageUrlForKey } from "@/lib/image-url";
 import type { PublicMenuCategory, PublicRestaurant } from "@/lib/restaurant";
 import { formatPrice } from "./format";
 import { HoursList } from "./hours";
@@ -66,6 +68,15 @@ export function HeroSection({
   return (
     <Section aria-label="Restaurant introduction">
       <Stack className={align === "center" ? "items-center text-center" : "items-start text-left"}>
+        {restaurant.logoImageKey ? (
+          <Image
+            src={imageUrlForKey(restaurant.logoImageKey)}
+            alt={`${restaurant.name} logo`}
+            width={96}
+            height={96}
+            className="rounded-2xl object-contain"
+          />
+        ) : null}
         <Eyebrow className={classes.eyebrow}>{kicker}</Eyebrow>
         <Heading level={1} className={classes.heading}>
           {restaurant.name}
@@ -73,6 +84,24 @@ export function HeroSection({
         {showDescription && restaurant.description ? <Text>{restaurant.description}</Text> : null}
       </Stack>
     </Section>
+  );
+}
+
+/**
+ * Item thumbnail. Renders nothing without a photo, so text-only menus
+ * keep their exact layout; empty `alt` because the item name sits right
+ * beside it.
+ */
+function ItemPhoto({ imageKey, size }: { imageKey: string | null; size: number }) {
+  if (!imageKey) return null;
+  return (
+    <Image
+      src={imageUrlForKey(imageKey)}
+      alt=""
+      width={size}
+      height={size}
+      className="shrink-0 rounded-lg object-cover"
+    />
   );
 }
 
@@ -105,24 +134,27 @@ export function MenuSection({
               <Heading level={3}>{category.name}</Heading>
               <ul>
                 {category.items.map((item) => (
-                  <li key={item.id} className="py-1.5">
-                    <span className="flex items-baseline gap-2">
-                      <span className="text-base font-medium text-zinc-950 dark:text-zinc-50">
-                        {item.name}
+                  <li key={item.id} className="flex items-start gap-3 py-1.5">
+                    <ItemPhoto imageKey={item.imageKey} size={56} />
+                    <div className="min-w-0 flex-1">
+                      <span className="flex items-baseline gap-2">
+                        <span className="text-base font-medium text-zinc-950 dark:text-zinc-50">
+                          {item.name}
+                        </span>
+                        <span
+                          aria-hidden="true"
+                          className="mx-1 flex-1 border-b border-dotted border-zinc-300 dark:border-zinc-700"
+                        />
+                        <span className="text-base font-semibold text-zinc-950 tabular-nums dark:text-zinc-50">
+                          {formatPrice(item.priceCents)}
+                        </span>
                       </span>
-                      <span
-                        aria-hidden="true"
-                        className="mx-1 flex-1 border-b border-dotted border-zinc-300 dark:border-zinc-700"
-                      />
-                      <span className="text-base font-semibold text-zinc-950 tabular-nums dark:text-zinc-50">
-                        {formatPrice(item.priceCents)}
-                      </span>
-                    </span>
-                    {item.description ? (
-                      <Text className="text-sm text-zinc-500 dark:text-zinc-400">
-                        {item.description}
-                      </Text>
-                    ) : null}
+                      {item.description ? (
+                        <Text className="text-sm text-zinc-500 dark:text-zinc-400">
+                          {item.description}
+                        </Text>
+                      ) : null}
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -135,11 +167,14 @@ export function MenuSection({
               {category.description ? <Text>{category.description}</Text> : null}
               <ul>
                 {category.items.map((item) => (
-                  <li key={item.id}>
-                    <Text>
-                      {item.name} — {formatPrice(item.priceCents)}
-                    </Text>
-                    {item.description ? <Text>{item.description}</Text> : null}
+                  <li key={item.id} className="flex items-start gap-3">
+                    <ItemPhoto imageKey={item.imageKey} size={64} />
+                    <div className="min-w-0 flex-1">
+                      <Text>
+                        {item.name} — {formatPrice(item.priceCents)}
+                      </Text>
+                      {item.description ? <Text>{item.description}</Text> : null}
+                    </div>
                   </li>
                 ))}
               </ul>
