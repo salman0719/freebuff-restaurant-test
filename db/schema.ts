@@ -82,7 +82,7 @@ export const tenants = pgTable(
     // Reserved subdomains (www, api, app, admin) and duplicate detection
     // are enforced at creation time in the app layer (Phase 1.2/1.4).
     check("tenants_slug_format", sql`${t.slug} ~ '^[a-z0-9]+(-[a-z0-9]+)*$'`),
-    check("tenants_theme_allowed", sql`${t.theme} in ('cafe', 'takeaway')`),
+    check("tenants_theme_allowed", sql`${t.theme} in ('cafe', 'takeaway', 'bistro')`),
   ]
 );
 

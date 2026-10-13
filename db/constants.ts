@@ -7,8 +7,15 @@
  * import so client bundles can use these without pulling in `drizzle-orm`.
  */
 
-/** Public themes agreed for the MVP (product-scope sign-off). */
-export const THEME_IDS = ["cafe", "takeaway"] as const;
+/**
+ * Public themes the platform ships. Café and takeaway were the agreed MVP
+ * pair; `bistro` joined in Phase C once the theme system could express a
+ * genuinely different look. Adding one is a product decision, not a
+ * refactor: it widens the `tenants_theme_allowed` CHECK, so it ships with a
+ * migration, and every reader of `THEME_IDS` (validation, registry, tests)
+ * picks the new id up from here.
+ */
+export const THEME_IDS = ["cafe", "takeaway", "bistro"] as const;
 export type ThemeId = (typeof THEME_IDS)[number];
 
 /**

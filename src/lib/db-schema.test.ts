@@ -40,8 +40,8 @@ describe("MVP tables", () => {
     expect(getTableName(verificationTokens)).toBe("verification_tokens");
   });
 
-  it("locks the MVP theme set to cafe + takeaway", () => {
-    expect([...THEME_IDS]).toEqual(["cafe", "takeaway"]);
+  it("locks the shipped theme set", () => {
+    expect([...THEME_IDS]).toEqual(["cafe", "takeaway", "bistro"]);
   });
 
   it("supports owner and operator membership roles", () => {
