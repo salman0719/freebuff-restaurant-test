@@ -1,47 +1,74 @@
 /**
- * Menu items list (Phase 3.5). The parent layout already gated the
- * context; the page re-resolves it for its own data load (same
- * `notFound()` on failure — no oracle) and renders items grouped under
+ * Menu items list (Phase 3.5; photo cards in Phase B). The parent layout
+ * already gated the context; the page re-resolves it for its own data load
+ * (same `notFound()` on failure — no oracle) and renders items grouped under
  * their categories in display order, uncategorised last, plus the create
  * form. Renaming, repricing, reassignment, and visibility live in the
  * per-item editor; deletion waits there behind a confirm.
  */
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { UtensilsCrossed } from "lucide-react";
 import { auth } from "@/auth";
 import { Badge } from "@/components/ui/badge";
 import { buttonClasses } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/feedback";
 import { Heading, Text } from "@/components/ui/typography";
+import { imageUrlForKey } from "@/lib/image-url";
 import { getTenantContext } from "@/lib/tenant-context";
 import { getTenantCategories, getTenantItems } from "@/lib/tenant-data";
 import type { MenuItem } from "@/lib/restaurant";
 import { formatPrice } from "@/themes/format";
 import { ItemCreateForm } from "./_components/item-create-form";
 
+/** Item thumbnail, or a neutral placeholder tile when the item has no photo. */
+function ItemThumb({ imageKey }: { imageKey: string | null }) {
+  if (!imageKey) {
+    return (
+      <span
+        aria-hidden="true"
+        className="flex size-14 shrink-0 items-center justify-center rounded-lg bg-surface-muted text-muted-foreground"
+      >
+        <UtensilsCrossed className="size-5" />
+      </span>
+    );
+  }
+  return (
+    <Image
+      src={imageUrlForKey(imageKey)}
+      alt=""
+      width={56}
+      height={56}
+      className="size-14 shrink-0 rounded-lg object-cover"
+    />
+  );
+}
+
 function ItemRow({ base, item }: { base: string; item: MenuItem }) {
   return (
-    <li className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border px-4 py-3">
-      <div>
-        <p className="text-sm font-semibold text-foreground">
-          {item.name}
-          {item.isPublished ? null : <Badge className="ml-2">Unpublished</Badge>}
-          {item.isAvailable ? null : (
-            <Badge tone="warning" className="ml-2">
-              Unavailable
-            </Badge>
-          )}
-        </p>
-        <p className="text-sm text-muted-foreground">
-          ${formatPrice(item.priceCents)}
-          {item.description ? ` — ${item.description}` : null}
-        </p>
-      </div>
-      <Link
-        href={`${base}/${item.id}`}
-        className={buttonClasses({ variant: "outline", size: "sm" })}
-      >
-        Edit
-      </Link>
+    <li>
+      <Card className="flex flex-wrap items-center gap-4 p-4 sm:p-4">
+        <ItemThumb imageKey={item.imageKey} />
+        <div className="min-w-0 flex-1">
+          <p className="flex flex-wrap items-center gap-2 text-sm font-semibold text-foreground">
+            {item.name}
+            {item.isPublished ? null : <Badge>Unpublished</Badge>}
+            {item.isAvailable ? null : <Badge tone="warning">Unavailable</Badge>}
+          </p>
+          {item.description ? (
+            <p className="text-sm text-muted-foreground">{item.description}</p>
+          ) : null}
+        </div>
+        <Badge tone="brand">${formatPrice(item.priceCents)}</Badge>
+        <Link
+          href={`${base}/${item.id}`}
+          className={buttonClasses({ variant: "outline", size: "sm" })}
+        >
+          Edit
+        </Link>
+      </Card>
     </li>
   );
 }
@@ -84,7 +111,7 @@ export default async function ItemsPage({
         </Heading>
         <Text>
           Prices show in dollars and cents. Unpublished or unavailable items stay off the public
-          menu. Photos arrive with 3.6 uploads.
+          menu.
         </Text>
       </div>
       <Link
@@ -94,9 +121,12 @@ export default async function ItemsPage({
         ← Back to categories
       </Link>
       {items.data.length === 0 ? (
-        <Text>No items yet — add the first one below.</Text>
+        <EmptyState
+          title="No items yet"
+          description="Add the first one below to start building the menu."
+        />
       ) : (
-        <div className="flex max-w-2xl flex-col gap-6">
+        <div className="flex max-w-3xl flex-col gap-6">
           {categories.data.map((category) => {
             const group = byCategory.get(category.id) ?? [];
             if (group.length === 0) return null;

@@ -1,8 +1,8 @@
 /**
- * Menu category list (Phase 3.4). The parent layout already gated the
- * context; the page re-resolves it for its own data load (same
- * `notFound()` on failure — no oracle) and renders categories in display
- * order with per-row item counts plus the create form.
+ * Menu category list (Phase 3.4; cards in Phase B). The parent layout
+ * already gated the context; the page re-resolves it for its own data load
+ * (same `notFound()` on failure — no oracle) and renders categories in
+ * display order with per-row item counts plus the create form.
  *
  * Row actions are plain server-action forms (no client JS): move up/down
  * renumbers the list, Edit leads to the per-category editor where
@@ -13,6 +13,8 @@ import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonClasses } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/feedback";
 import { Heading, Text } from "@/components/ui/typography";
 import { getTenantContext } from "@/lib/tenant-context";
 import { getTenantCategories, getTenantItems } from "@/lib/tenant-data";
@@ -51,7 +53,7 @@ export default async function MenuPage({
       <div>
         <Heading level={1} className="mb-2">
           Menu categories
-        </Heading>{" "}
+        </Heading>
         <Text>
           Categories appear on the public menu in this order. Unpublished categories stay hidden
           until you publish them.
@@ -64,16 +66,19 @@ export default async function MenuPage({
         Manage items →
       </Link>
       {categories.data.length === 0 ? (
-        <Text>No categories yet — add the first one below.</Text>
+        <EmptyState
+          title="No categories yet"
+          description="Add the first one below to start building the menu."
+        />
       ) : (
-        <ul className="flex max-w-2xl flex-col gap-3">
+        <ul className="flex max-w-3xl flex-col gap-3">
           {categories.data.map((category, index) => (
-            <li key={category.id} className="rounded-lg border border-border px-4 py-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
+            <li key={category.id}>
+              <Card className="flex flex-wrap items-center justify-between gap-2 p-4 sm:p-4">
                 <div>
-                  <p className="text-sm font-semibold text-foreground">
+                  <p className="flex flex-wrap items-center gap-2 text-sm font-semibold text-foreground">
                     {category.name}
-                    {category.isPublished ? null : <Badge className="ml-2">Unpublished</Badge>}
+                    {category.isPublished ? null : <Badge>Unpublished</Badge>}
                   </p>
                   <p className="text-sm text-muted-foreground">
                     {counts.get(category.id) ?? 0}{" "}
@@ -117,7 +122,7 @@ export default async function MenuPage({
                     Edit
                   </Link>
                 </div>
-              </div>
+              </Card>
             </li>
           ))}
         </ul>
@@ -125,7 +130,7 @@ export default async function MenuPage({
       {uncategorised > 0 ? (
         <Text>
           {uncategorised} {uncategorised === 1 ? "item is" : "items are"} uncategorised (shown under
-          “Menu” on the public site). Item assignment arrives with 3.5.
+          “Menu” on the public site).
         </Text>
       ) : null}
       <div>
