@@ -13,7 +13,10 @@ import { activeNavHref, type DashboardNavItem } from "./nav";
 
 export function DashboardNavLinks({ items }: { items: DashboardNavItem[] }) {
   const pathname = usePathname();
-  const active = activeNavHref(pathname, items.map((item) => item.href));
+  const active = activeNavHref(
+    pathname,
+    items.map((item) => item.href)
+  );
 
   return (
     <>
