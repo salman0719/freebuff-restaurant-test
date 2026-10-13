@@ -574,7 +574,7 @@ against local Postgres 2026-10-13); 210/210 unit tests green without a
 database, `npm run check` green, build green with both item routes
 partial-prerendered.
 
-## 3.6 Logo and image upload
+## 3.6 Logo and image upload — Done
 
 **Can be done independently:** Yes, after the storage provider and
 upload contract are chosen.
@@ -586,6 +586,29 @@ upload contract are chosen.
 - Handle failed uploads and unused files appropriately.
 
 **Deliverable:** Secure upload flow.
+
+Done: `src/lib/storage.ts` (local-filesystem driver behind the
+provider-neutral key shape 0002 §5 targets for R2: `tenants/{id}/
+logos|items/{random}.{ext}`, JPEG/PNG/WebP, 2 MB cap, magic-byte sniff
+matching the declared MIME, strict key allowlist + contained resolve so
+traversal is structural; `STORAGE_DIR` override for tests; dev-only
+under git-ignored `local/uploads`) with `setTenantLogo` /
+`setTenantItemImage` / `clearTenantItemImage` in `tenant-data.ts`
+(validate → ownership-check → store → link → remove the replaced file;
+item deletion removes its photo too; link-write failures clean up the
+new file) wired into the profile editor (logo input + preview, honest
+"profile saved, logo not" partial messaging — never false success) and
+the item editor (photo input + preview + remove checkbox), served back
+unauthenticated via `/api/images/[…key]` as unguessable capability URLs
+with immutable long caching, and rendered on both themes (logo in the
+hero, thumbnails in both menu layouts, nothing when keyless). File
+inputs can't be re-echoed, so failures ask to reselect. Live gated
+isolation suite covers logo replace (old file gone), photo set/clear,
+forged-item `FORBIDDEN` on both photo paths, and delete-removes-file
+(10/10 green against local Postgres 2026-10-13); 224/224 unit tests
+green without a database, `npm run check` green, build green. R2 stays
+open: swapping the driver module (account + keys + SDK) is the only
+move needed before any hosted environment.
 
 ## 3.7 Theme selection and preview
 
