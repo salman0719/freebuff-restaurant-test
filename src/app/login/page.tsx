@@ -10,7 +10,7 @@ import { Suspense } from "react";
 import { Container } from "@/components/ui/container";
 import { Heading, Text } from "@/components/ui/typography";
 import { safeNext } from "./login-form";
-import { LoginForm } from "./_components/login-form";
+import { LoginForm, LoginFormSkeleton } from "./_components/login-form";
 
 async function LoginSection({
   searchParams,
@@ -34,7 +34,7 @@ export default function LoginPage({
       <Text className="mb-6">
         Enter your email and we&apos;ll send you a sign-in link — no password to remember.
       </Text>
-      <Suspense fallback={<LoginForm next="/dashboard" />}>
+      <Suspense fallback={<LoginFormSkeleton />}>
         <LoginSection searchParams={searchParams} />
       </Suspense>
     </Container>
