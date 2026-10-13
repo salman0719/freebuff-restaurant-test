@@ -639,7 +639,7 @@ draft category the public view hides, plus stranger-context refusal
 (11/11 green against local Postgres 2026-10-13); 227/227 unit tests
 green without a database, `npm run check` green, build green.
 
-## 3.8 Draft and publish flow
+## 3.8 Draft and publish flow — Done
 
 **Can be done independently:** Partially. The UI can be developed
 separately, but publishing must integrate with the chosen content model
@@ -653,6 +653,22 @@ and public data service.
 - Avoid reporting success if publication failed.
 
 **Deliverable:** Tested preview-to-publish journey.
+
+Done: `src/app/dashboard/[slug]/publishing` (Live/Draft state in plain
+words, advisory readiness checklist — profile, published menu, hours —
+linking to the editors that fill the gaps, one-click publish, two-step
+unpublish since it takes the site offline, persistence failures surface
+as errors never false success; overview links in with a Live/Draft
+badge). The flip reuses the scoped `updateTenantSettings`, so
+server-side authorisation and persistence-then-report hold by
+construction. Draft semantics stated honestly on the page: the flag
+gates the whole site and unpublished records stay hidden, but edits to
+visible records go live immediately — no edit-staging or versioning in
+the MVP; the 3.7 preview is how owners check drafts. Live gated
+isolation suite cycles publish → public-visible → unpublish →
+`NOT_FOUND` on one tenant while the neighbour is untouched (12/12 green
+against local Postgres 2026-10-13); 231/231 unit tests green without a
+database, `npm run check` green, build green.
 
 ## 3.9 Owner journey integration
 
