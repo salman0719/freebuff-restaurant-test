@@ -24,6 +24,7 @@ import {
   restaurantProfiles,
   tenants,
 } from "../../db/schema";
+import { themeConfigSchema } from "../themes/config";
 import { err, isErr, ok, type ServiceResult } from "./result";
 import type {
   MenuCategory,
@@ -685,6 +686,37 @@ export async function clearTenantItemImage(
  * the context IS the authorisation. An empty update is a no-op returning
  * the current tenant.
  */
+/**
+ * Save per-tenant theme options for `themeId`: validate with that theme's
+ * own schema (strict — a bad value is rejected, never silently reset), then
+ * write scoped to `ctx.tenant.id`. The schema strips unknown keys, so stored
+ * JSON only ever holds options the theme actually understands.
+ */
+export async function updateTenantThemeConfig(
+  ctx: TenantContext,
+  themeId: Tenant["theme"],
+  input: unknown
+): Promise<ServiceResult<Tenant>> {
+  const parsed = themeConfigSchema(themeId).safeParse(input ?? {});
+  if (!parsed.success) {
+    return err("VALIDATION_FAILED", "Invalid theme options.", validationFields(parsed.error));
+  }
+  const rows = await db
+    .update(tenants)
+    .set({ themeConfig: parsed.data as Record<string, unknown> })
+    .where(eq(tenants.id, ctx.tenant.id))
+    .returning();
+  const updated = rows[0];
+  if (!updated) {
+    return err("INTERNAL", "Failed to save theme options.");
+  }
+  return ok({
+    ...updated,
+    theme: updated.theme as Tenant["theme"],
+    themeConfig: (updated.themeConfig ?? {}) as Record<string, unknown>,
+  });
+}
+
 export async function updateTenantSettings(
   ctx: TenantContext,
   input: unknown

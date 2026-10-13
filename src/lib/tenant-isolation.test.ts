@@ -483,4 +483,42 @@ live("cross-tenant isolation (live database)", () => {
     expect(saved.ok).toBe(true);
     if (saved.ok) expect(saved.data.theme).toBe("takeaway");
   });
+
+  it("saves theme options for the context tenant only, rejecting bad values", async () => {
+    const { getTenantContext, updateTenantThemeConfig } = await libs();
+    const ctx = await getTenantContext({ user: { id: userA, role: "owner" } }, slugA);
+    expect(ctx.ok).toBe(true);
+    if (!ctx.ok) return expect.unreachable();
+
+    const saved = await updateTenantThemeConfig(ctx.data, "cafe", {
+      accent: "forest",
+      menuLayout: "grid",
+      showHours: false,
+    });
+    expect(saved.ok).toBe(true);
+    if (saved.ok) {
+      expect(saved.data.themeConfig).toEqual({
+        accent: "forest",
+        menuLayout: "grid",
+        showHours: false,
+      });
+    }
+
+    // A bad option is rejected outright — never written, never silently reset.
+    const bad = await updateTenantThemeConfig(ctx.data, "cafe", { accent: "neon" });
+    expect(bad.ok).toBe(false);
+    if (!bad.ok) expect(bad.error.code).toBe("VALIDATION_FAILED");
+
+    // The rejected write left the stored options intact. A context is a
+    // snapshot of the row when it was loaded, so reload to read the database.
+    const reloaded = await getTenantContext({ user: { id: userA, role: "owner" } }, slugA);
+    expect(reloaded.ok).toBe(true);
+    if (reloaded.ok) {
+      expect(reloaded.data.tenant.themeConfig.accent).toBe("forest");
+    }
+
+    // A stranger cannot reach another tenant's context at all.
+    const stranger = await getTenantContext({ user: { id: userB, role: "owner" } }, slugA);
+    expect(stranger.ok).toBe(false);
+  });
 });

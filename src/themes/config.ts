@@ -41,6 +41,15 @@ export type CafeConfig = z.infer<typeof cafeConfigSchema>;
 export type TakeawayConfig = z.infer<typeof takeawayConfigSchema>;
 export type ThemeConfig = CafeConfig | TakeawayConfig;
 
+/**
+ * The strict schema for a theme — no silent fallback, for write paths that
+ * must reject a bad option rather than quietly reset it. Read paths keep
+ * using `resolveThemeConfig`, which is deliberately forgiving.
+ */
+export function themeConfigSchema(themeId: ThemeId): z.ZodTypeAny {
+  return CONFIG_SCHEMAS[themeId] ?? CONFIG_SCHEMAS.cafe;
+}
+
 /** The accent vocabulary for a theme (used by the dashboard options form). */
 export function accentsFor(themeId: ThemeId): readonly string[] {
   return themeId === "takeaway" ? TAKEAWAY_ACCENTS : CAFE_ACCENTS;
