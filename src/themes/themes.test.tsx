@@ -119,4 +119,22 @@ describe.each([["cafe"], ["takeaway"]] as const)("theme %s", (id) => {
     expect(screen.getByText(/menu is coming soon/i)).toBeInTheDocument();
     expect(screen.getByText(/hours coming soon/i)).toBeInTheDocument();
   });
+
+  it("applies the configured accent palette, not just the defaults", () => {
+    const Component = getTheme(id);
+    const config = resolveThemeConfig(
+      id,
+      id === "cafe" ? { accent: "forest" } : { accent: "gold" }
+    );
+    const { container } = render(<Component restaurant={restaurant()} config={config} />);
+    // Café tints its page surface; takeaway paints its hero band.
+    expect(container.innerHTML).toContain(id === "cafe" ? "bg-emerald-50/70" : "bg-yellow-600");
+  });
+
+  it("honours the menu layout option", () => {
+    const Component = getTheme(id);
+    const config = resolveThemeConfig(id, { menuLayout: "grid" });
+    const { container } = render(<Component restaurant={restaurant()} config={config} />);
+    expect(container.innerHTML).toContain("sm:grid-cols-2");
+  });
 });
