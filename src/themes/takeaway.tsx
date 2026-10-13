@@ -1,23 +1,33 @@
 import Image from "next/image";
-import { buttonClasses, Container, Eyebrow, Heading, Section, Stack, Text } from "@/components/ui";
+import {
+  buttonClasses,
+  cn,
+  Container,
+  Eyebrow,
+  Heading,
+  Section,
+  Stack,
+  Text,
+} from "@/components/ui";
 import { imageUrlForKey } from "@/lib/image-url";
 import type { TakeawayConfig } from "./config";
 import { HoursList } from "./hours";
-import { MenuSection, VisitSection } from "./sections";
+import { accentClasses, MenuSection, VisitSection } from "./sections";
 import type { ThemeProps } from "./types";
 
 /**
- * Takeaway theme (Phase 2.4). Bold and high-contrast: a dark hero band with
- * a call-to-order CTA, a dense dotted-leader menu, and a compact find-us
- * strip. Same content model as café, composed from the same sections —
- * only order, density, and palette differ. No ordering or payment features:
- * the CTA is a plain `tel:` contact link.
+ * Takeaway theme (Phase 2.4). Bold and high-contrast: an accent hero band
+ * with a call-to-order CTA, a dense dotted-leader menu, and a compact
+ * find-us strip. Same content model as café, composed from the same
+ * sections — only order, density, and palette differ. No ordering or
+ * payment features: the CTA is a plain `tel:` contact link.
  */
 export function TakeawayTheme({ restaurant, config }: ThemeProps): React.ReactElement {
-  const { accent, showDescription } = config as TakeawayConfig;
+  const { accent, showDescription, menuLayout } = config as TakeawayConfig;
+  const classes = accentClasses(accent);
   return (
     <>
-      <div className="bg-zinc-950 text-zinc-50 dark:bg-black">
+      <div className={classes.band}>
         <Container>
           <Section aria-label="Restaurant introduction">
             <Stack className="items-start text-left">
@@ -30,16 +40,16 @@ export function TakeawayTheme({ restaurant, config }: ThemeProps): React.ReactEl
                   className="rounded-xl object-contain"
                 />
               ) : null}
-              <Eyebrow className="text-red-300">Takeaway</Eyebrow>
-              <Heading level={1} className="text-zinc-50">
+              <Eyebrow className={classes.bandEyebrow}>Takeaway</Eyebrow>
+              <Heading level={1} className={classes.bandText}>
                 {restaurant.name}
               </Heading>
               {showDescription && restaurant.description ? (
-                <Text className="text-zinc-300">{restaurant.description}</Text>
+                <Text className={classes.bandBody}>{restaurant.description}</Text>
               ) : null}
               {restaurant.contact.phone ? (
                 <a
-                  className={buttonClasses({ variant: "danger", size: "lg" })}
+                  className={cn(buttonClasses({ size: "lg" }), classes.button)}
                   href={`tel:${restaurant.contact.phone.replace(/[^+\d]/g, "")}`}
                 >
                   Call {restaurant.contact.phone}
@@ -50,10 +60,12 @@ export function TakeawayTheme({ restaurant, config }: ThemeProps): React.ReactEl
         </Container>
       </div>
       <Container>
-        <MenuSection menu={restaurant.menu} accent={accent} layout="compact" />
+        <MenuSection menu={restaurant.menu} accent={accent} layout={menuLayout} />
         <Section aria-label="Opening hours">
           <Stack>
-            <Heading level={2}>Open now? Check the hours</Heading>
+            <Heading level={2} className={classes.heading}>
+              Open now? Check the hours
+            </Heading>
             <HoursList hours={restaurant.hours} />
           </Stack>
         </Section>

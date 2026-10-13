@@ -1,54 +1,134 @@
 /**
- * Composable theme sections (Phase 2.3, extensibility move 2).
+ * Composable theme sections (Phase 2.3; full accent palettes in Phase C).
  *
  * Themes compose these blocks instead of copy-pasting content rules:
  * `HeroSection` (identity), `MenuSection` (categories + items),
  * `VisitSection` (hours + contact). Each theme chooses order, alignment,
  * and accent — the content mapping lives here exactly once.
  *
- * Accent classes are explicit static strings per option value so Tailwind
+ * An accent is a whole palette, not a text colour: it tints the page
+ * surface, paints the hero band, colours the CTA, and draws the accent
+ * rules. Class strings are explicit and static per value so Tailwind
  * generates them; option values are NEVER interpolated into class names.
  */
 import Image from "next/image";
-import { Eyebrow, Heading, Section, Stack, Text } from "@/components/ui";
+import { cn, Eyebrow, Heading, Section, Stack, Text } from "@/components/ui";
 import { imageUrlForKey } from "@/lib/image-url";
 import type { PublicMenuCategory, PublicRestaurant } from "@/lib/restaurant";
+import type { MenuLayout } from "./config";
 import { formatPrice } from "./format";
 import { HoursList } from "./hours";
 
-type Accent = "espresso" | "forest" | "terracotta" | "chili" | "charcoal" | "gold" | "default";
+export interface AccentPalette {
+  /** Kicker text above headings, on the page surface. */
+  eyebrow: string;
+  /** Section/hero heading on the page surface. */
+  heading: string;
+  /** Page background tint. */
+  surface: string;
+  /** Hero band background. */
+  band: string;
+  /** Heading text inside the band. */
+  bandText: string;
+  /** Kicker text inside the band. */
+  bandEyebrow: string;
+  /** Body copy inside the band. */
+  bandBody: string;
+  /** Primary call-to-action fill (composed over the shared button base). */
+  button: string;
+  /** Short decorative rule under headings. */
+  rule: string;
+}
 
-/** Static accent map — every key must appear literally for Tailwind. */
-export const ACCENTS: Record<Accent, { eyebrow: string; heading: string }> = {
+/** Static accent map — every class must appear literally for Tailwind. */
+export const ACCENTS: Record<string, AccentPalette> = {
   espresso: {
     eyebrow: "text-amber-800 dark:text-amber-200",
     heading: "text-stone-900 dark:text-stone-50",
+    surface: "bg-amber-50/70 dark:bg-stone-950",
+    band: "bg-amber-900",
+    bandText: "text-amber-50",
+    bandEyebrow: "text-amber-200",
+    bandBody: "text-amber-100",
+    button: "bg-amber-700 text-white hover:bg-amber-800",
+    rule: "bg-amber-600",
   },
   forest: {
-    eyebrow: "text-green-800 dark:text-green-200",
+    eyebrow: "text-emerald-800 dark:text-emerald-200",
     heading: "text-stone-900 dark:text-stone-50",
+    surface: "bg-emerald-50/70 dark:bg-stone-950",
+    band: "bg-emerald-900",
+    bandText: "text-emerald-50",
+    bandEyebrow: "text-emerald-200",
+    bandBody: "text-emerald-100",
+    button: "bg-emerald-700 text-white hover:bg-emerald-800",
+    rule: "bg-emerald-600",
   },
   terracotta: {
     eyebrow: "text-orange-800 dark:text-orange-200",
     heading: "text-stone-900 dark:text-stone-50",
+    surface: "bg-orange-50/70 dark:bg-stone-950",
+    band: "bg-orange-800",
+    bandText: "text-orange-50",
+    bandEyebrow: "text-orange-200",
+    bandBody: "text-orange-100",
+    button: "bg-orange-700 text-white hover:bg-orange-800",
+    rule: "bg-orange-600",
   },
-  chili: { eyebrow: "text-red-700 dark:text-red-300", heading: "text-zinc-950 dark:text-zinc-50" },
+  chili: {
+    eyebrow: "text-red-700 dark:text-red-300",
+    heading: "text-zinc-950 dark:text-zinc-50",
+    surface: "bg-red-50/60 dark:bg-zinc-950",
+    band: "bg-red-800",
+    bandText: "text-red-50",
+    bandEyebrow: "text-red-200",
+    bandBody: "text-red-100",
+    button: "bg-red-600 text-white hover:bg-red-700",
+    rule: "bg-red-600",
+  },
   charcoal: {
     eyebrow: "text-zinc-600 dark:text-zinc-300",
     heading: "text-zinc-950 dark:text-zinc-50",
+    surface: "bg-zinc-50 dark:bg-zinc-950",
+    band: "bg-zinc-900",
+    bandText: "text-zinc-50",
+    bandEyebrow: "text-zinc-300",
+    bandBody: "text-zinc-300",
+    button: "bg-zinc-800 text-white hover:bg-zinc-900",
+    rule: "bg-zinc-700",
   },
   gold: {
     eyebrow: "text-yellow-700 dark:text-yellow-300",
     heading: "text-zinc-950 dark:text-zinc-50",
+    surface: "bg-yellow-50/70 dark:bg-zinc-950",
+    band: "bg-yellow-600",
+    bandText: "text-yellow-50",
+    bandEyebrow: "text-yellow-100",
+    bandBody: "text-yellow-50",
+    button: "bg-yellow-600 text-white hover:bg-yellow-700",
+    rule: "bg-yellow-500",
   },
   default: {
     eyebrow: "text-zinc-600 dark:text-zinc-300",
     heading: "text-zinc-950 dark:text-zinc-50",
+    surface: "bg-zinc-50 dark:bg-zinc-950",
+    band: "bg-zinc-900",
+    bandText: "text-zinc-50",
+    bandEyebrow: "text-zinc-300",
+    bandBody: "text-zinc-300",
+    button: "bg-zinc-800 text-white hover:bg-zinc-900",
+    rule: "bg-zinc-700",
   },
 };
 
-export function accentClasses(accent: string): { eyebrow: string; heading: string } {
-  return ACCENTS[accent as Accent] ?? ACCENTS.default;
+/** Never throws: an unknown accent (stale database value) falls back. */
+export function accentClasses(accent: string): AccentPalette {
+  return ACCENTS[accent] ?? ACCENTS.default;
+}
+
+/** Short decorative rule that anchors a heading to its accent. */
+function AccentRule({ className }: { className: string }) {
+  return <span aria-hidden="true" className={cn("h-1 w-12 rounded-full", className)} />;
 }
 
 export function HeroSection({
@@ -78,6 +158,7 @@ export function HeroSection({
           />
         ) : null}
         <Eyebrow className={classes.eyebrow}>{kicker}</Eyebrow>
+        <AccentRule className={classes.rule} />
         <Heading level={1} className={classes.heading}>
           {restaurant.name}
         </Heading>
@@ -116,8 +197,8 @@ export function MenuSection({
   accent: string;
   heading?: string;
   emptyText?: string;
-  /** Editorial (spacious, centred-friendly) or compact (dense takeaway rows). */
-  layout?: "editorial" | "compact";
+  /** Editorial (spacious), compact (dense dotted rows), or grid (cards). */
+  layout?: MenuLayout;
 }): React.ReactElement {
   const classes = accentClasses(accent);
   return (
@@ -126,31 +207,64 @@ export function MenuSection({
         <Heading level={2} className={classes.heading}>
           {heading}
         </Heading>
+        <AccentRule className={classes.rule} />
         {menu.length === 0 ? (
           <Text>{emptyText}</Text>
         ) : layout === "compact" ? (
           menu.map((category) => (
             <section key={category.id} aria-label={category.name}>
-              <Heading level={3}>{category.name}</Heading>
+              <Heading level={3} className={classes.heading}>
+                {category.name}
+              </Heading>
               <ul>
                 {category.items.map((item) => (
                   <li key={item.id} className="flex items-start gap-3 py-1.5">
                     <ItemPhoto imageKey={item.imageKey} size={56} />
                     <div className="min-w-0 flex-1">
                       <span className="flex items-baseline gap-2">
-                        <span className="text-base font-medium text-zinc-950 dark:text-zinc-50">
-                          {item.name}
-                        </span>
+                        <span className="text-base font-medium text-foreground">{item.name}</span>
                         <span
                           aria-hidden="true"
-                          className="mx-1 flex-1 border-b border-dotted border-zinc-300 dark:border-zinc-700"
+                          className="mx-1 flex-1 border-b border-dotted border-border"
                         />
-                        <span className="text-base font-semibold text-zinc-950 tabular-nums dark:text-zinc-50">
+                        <span className="text-base font-semibold text-foreground tabular-nums">
                           {formatPrice(item.priceCents)}
                         </span>
                       </span>
                       {item.description ? (
-                        <Text className="text-sm text-zinc-500 dark:text-zinc-400">
+                        <Text size="sm" muted>
+                          {item.description}
+                        </Text>
+                      ) : null}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))
+        ) : layout === "grid" ? (
+          menu.map((category) => (
+            <section key={category.id} aria-label={category.name}>
+              <Heading level={3} className={classes.heading}>
+                {category.name}
+              </Heading>
+              {category.description ? <Text muted>{category.description}</Text> : null}
+              <ul className="grid gap-3 sm:grid-cols-2">
+                {category.items.map((item) => (
+                  <li
+                    key={item.id}
+                    className="flex gap-3 rounded-xl border border-border bg-surface p-4 shadow-sm"
+                  >
+                    <ItemPhoto imageKey={item.imageKey} size={56} />
+                    <div className="min-w-0 flex-1">
+                      <p className="flex items-baseline justify-between gap-2">
+                        <span className="text-base font-medium text-foreground">{item.name}</span>
+                        <span className="text-base font-semibold text-foreground tabular-nums">
+                          {formatPrice(item.priceCents)}
+                        </span>
+                      </p>
+                      {item.description ? (
+                        <Text size="sm" muted>
                           {item.description}
                         </Text>
                       ) : null}
@@ -163,8 +277,10 @@ export function MenuSection({
         ) : (
           menu.map((category) => (
             <section key={category.id} aria-label={category.name}>
-              <Heading level={3}>{category.name}</Heading>
-              {category.description ? <Text>{category.description}</Text> : null}
+              <Heading level={3} className={classes.heading}>
+                {category.name}
+              </Heading>
+              {category.description ? <Text muted>{category.description}</Text> : null}
               <ul>
                 {category.items.map((item) => (
                   <li key={item.id} className="flex items-start gap-3">
@@ -173,7 +289,7 @@ export function MenuSection({
                       <Text>
                         {item.name} — {formatPrice(item.priceCents)}
                       </Text>
-                      {item.description ? <Text>{item.description}</Text> : null}
+                      {item.description ? <Text muted>{item.description}</Text> : null}
                     </div>
                   </li>
                 ))}
@@ -208,9 +324,10 @@ export function VisitSection({
         <Heading level={2} className={classes.heading}>
           {title}
         </Heading>
+        <AccentRule className={classes.rule} />
         {showHours ? <HoursList hours={restaurant.hours} /> : null}
         {!hasContact ? (
-          <Text>Contact details coming soon.</Text>
+          <Text muted>Contact details coming soon.</Text>
         ) : (
           <address>
             {restaurant.contact.phone ? <Text>{restaurant.contact.phone}</Text> : null}

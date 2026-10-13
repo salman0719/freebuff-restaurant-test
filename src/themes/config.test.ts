@@ -1,16 +1,30 @@
 import { describe, expect, it } from "vitest";
-import { resolveThemeConfig } from "./config";
+import { accentsFor, resolveThemeConfig } from "./config";
 
 describe("resolveThemeConfig", () => {
   it("fills defaults for missing keys", () => {
-    expect(resolveThemeConfig("cafe", {})).toEqual({ accent: "espresso", showHours: true });
-    expect(resolveThemeConfig("takeaway", {})).toEqual({ accent: "chili", showDescription: true });
+    expect(resolveThemeConfig("cafe", {})).toEqual({
+      accent: "espresso",
+      menuLayout: "editorial",
+      showHours: true,
+    });
+    expect(resolveThemeConfig("takeaway", {})).toEqual({
+      accent: "chili",
+      menuLayout: "compact",
+      showDescription: true,
+    });
   });
 
-  it("keeps valid stored options", () => {
+  it("keeps valid stored options and fills the rest from defaults", () => {
     expect(resolveThemeConfig("cafe", { accent: "forest", showHours: false })).toEqual({
       accent: "forest",
+      menuLayout: "editorial",
       showHours: false,
+    });
+    expect(resolveThemeConfig("takeaway", { menuLayout: "grid" })).toEqual({
+      accent: "chili",
+      menuLayout: "grid",
+      showDescription: true,
     });
   });
 
@@ -19,17 +33,35 @@ describe("resolveThemeConfig", () => {
     // config rather than merging half-valid state.
     expect(resolveThemeConfig("cafe", { accent: "neon", showHours: false, hacked: true })).toEqual({
       accent: "espresso",
+      menuLayout: "editorial",
       showHours: true,
     });
     expect(resolveThemeConfig("cafe", { accent: "forest", hacked: true })).toEqual({
       accent: "forest",
+      menuLayout: "editorial",
+      showHours: true,
+    });
+    expect(resolveThemeConfig("cafe", { menuLayout: "carousel" })).toEqual({
+      accent: "espresso",
+      menuLayout: "editorial",
       showHours: true,
     });
   });
 
   it("returns full defaults for unparseable input", () => {
     for (const input of [null, undefined, "espresso", 42, []] as const) {
-      expect(resolveThemeConfig("cafe", input)).toEqual({ accent: "espresso", showHours: true });
+      expect(resolveThemeConfig("cafe", input)).toEqual({
+        accent: "espresso",
+        menuLayout: "editorial",
+        showHours: true,
+      });
     }
+  });
+});
+
+describe("accentsFor", () => {
+  it("returns each theme's own accent vocabulary", () => {
+    expect(accentsFor("cafe")).toEqual(["espresso", "forest", "terracotta"]);
+    expect(accentsFor("takeaway")).toEqual(["chili", "charcoal", "gold"]);
   });
 });

@@ -16,14 +16,19 @@ import type { ThemeId } from "../../db/constants";
 
 export const CAFE_ACCENTS = ["espresso", "forest", "terracotta"] as const;
 export const TAKEAWAY_ACCENTS = ["chili", "charcoal", "gold"] as const;
+export const MENU_LAYOUTS = ["editorial", "compact", "grid"] as const;
+
+export type MenuLayout = (typeof MENU_LAYOUTS)[number];
 
 const cafeConfigSchema = z.object({
   accent: z.enum(CAFE_ACCENTS).default("espresso"),
+  menuLayout: z.enum(MENU_LAYOUTS).default("editorial"),
   showHours: z.boolean().default(true),
 });
 
 const takeawayConfigSchema = z.object({
   accent: z.enum(TAKEAWAY_ACCENTS).default("chili"),
+  menuLayout: z.enum(MENU_LAYOUTS).default("compact"),
   showDescription: z.boolean().default(true),
 });
 
@@ -35,6 +40,11 @@ const CONFIG_SCHEMAS = {
 export type CafeConfig = z.infer<typeof cafeConfigSchema>;
 export type TakeawayConfig = z.infer<typeof takeawayConfigSchema>;
 export type ThemeConfig = CafeConfig | TakeawayConfig;
+
+/** The accent vocabulary for a theme (used by the dashboard options form). */
+export function accentsFor(themeId: ThemeId): readonly string[] {
+  return themeId === "takeaway" ? TAKEAWAY_ACCENTS : CAFE_ACCENTS;
+}
 
 /**
  * Validate stored JSON for `themeId`, filling defaults for missing keys
