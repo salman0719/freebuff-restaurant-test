@@ -13,12 +13,13 @@ import { notFound, redirect } from "next/navigation";
 import { auth, signOut } from "@/auth";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
-import { SiteNav, SiteNavLink } from "@/components/ui/site-nav";
+import { SiteNav } from "@/components/ui/site-nav";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { getTenantContext } from "@/lib/tenant-context";
 import { getTenantProfile } from "@/lib/tenant-data";
 import { requireUser } from "@/lib/permissions";
 import { getDashboardNav } from "../nav";
+import { DashboardNavLinks } from "../nav-links";
 
 async function signOutAction(): Promise<void> {
   "use server";
@@ -71,15 +72,7 @@ export default async function TenantDashboardLayout({
             <span className="truncate text-sm font-semibold text-foreground">{name}</span>
           </span>
         }
-        links={
-          <>
-            {items.map((item) => (
-              <SiteNavLink key={item.href} href={item.href}>
-                {item.label}
-              </SiteNavLink>
-            ))}
-          </>
-        }
+        links={<DashboardNavLinks items={items} />}
         actions={
           <>
             <ThemeToggle />

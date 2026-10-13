@@ -47,3 +47,15 @@ export function getDashboardNav({ slug, globalRole }: DashboardNavOptions): Dash
   }
   return items;
 }
+
+/**
+ * Which nav href owns the current path, so the shell can highlight it.
+ * Longest match wins: `/dashboard/x/profile` matches both the profile
+ * section and the overview (`/dashboard/x`), and the deeper link is the
+ * one the visitor is actually on. Pure so the rule stays unit-tested.
+ */
+export function activeNavHref(pathname: string, hrefs: string[]): string | undefined {
+  return hrefs
+    .filter((href) => pathname === href || pathname.startsWith(`${href}/`))
+    .sort((a, b) => b.length - a.length)[0];
+}

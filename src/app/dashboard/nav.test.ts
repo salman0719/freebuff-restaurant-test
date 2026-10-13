@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getDashboardNav } from "./nav";
+import { activeNavHref, getDashboardNav } from "./nav";
 
 describe("getDashboardNav", () => {
   it("gives every member the five content sections", () => {
@@ -34,5 +34,31 @@ describe("getDashboardNav", () => {
     expect(staff.at(-1)).toEqual({ href: "/operator", label: "Operator console" });
     const plain = getDashboardNav({ slug: "s", membershipRole: "owner", globalRole: "owner" });
     expect(plain.some((item) => item.href === "/operator")).toBe(false);
+  });
+});
+
+describe("activeNavHref", () => {
+  const hrefs = [
+    "/dashboard/marios",
+    "/dashboard/marios/profile",
+    "/dashboard/marios/hours",
+    "/dashboard/marios/menu",
+    "/operator",
+  ];
+
+  it("matches the overview exactly", () => {
+    expect(activeNavHref("/dashboard/marios", hrefs)).toBe("/dashboard/marios");
+  });
+
+  it("prefers the deepest matching section over the overview prefix", () => {
+    expect(activeNavHref("/dashboard/marios/profile", hrefs)).toBe("/dashboard/marios/profile");
+  });
+
+  it("keeps a section active on its child routes", () => {
+    expect(activeNavHref("/dashboard/marios/menu/items/abc", hrefs)).toBe("/dashboard/marios/menu");
+  });
+
+  it("returns nothing for an unrelated path", () => {
+    expect(activeNavHref("/login", hrefs)).toBeUndefined();
   });
 });
