@@ -540,7 +540,7 @@ uncategorised plus cross-tenant `FORBIDDEN` on update/delete/move
 without a database, lint + typecheck green, build green with both menu
 routes partial-prerendered.
 
-## 3.5 Menu item management
+## 3.5 Menu item management — Done
 
 **Can be done independently:** Yes, after the menu category and item
 contracts are stable.
@@ -552,6 +552,27 @@ contracts are stable.
 - Enforce tenant ownership.
 
 **Deliverable:** Menu item management flow.
+
+Done: `createTenantItem` / `updateTenantItem` / `deleteTenantItem` in
+`src/lib/tenant-data.ts` (validate → ownership-check → save, all scoped
+to the context tenant; a set `categoryId` is proven to belong to the
+tenant on both create and update, closing a cross-tenant link forgery;
+new items go last; `null` names rejected; `null` categoryId means
+uncategorised; items are leaves so deletion is immediate) behind the
+`src/app/dashboard/[slug]/menu/items` screens (list grouped by category
+with price/visibility badges, create form with category select, per-item
+editor with published/available toggles and two-step delete). Money
+crosses the form as a dollars string parsed to integer cents by pure
+`parsePriceToCents` (`form.ts`) — the database never sees a float — and
+unparseable prices fail keyed to `priceCents` with a dollars-worded
+message. Photos excluded: `imageKey` rides the contract for 3.6 uploads
+but no 3.5 form sends one (same as the logo in 3.2). No item reorder:
+not required by 3.5, recategorising via edit covers organisation. Live
+gated isolation suite covers create/update-recategorise, forged-category
+refusals, cross-tenant update/delete `FORBIDDEN`, and delete (9/9 green
+against local Postgres 2026-10-13); 210/210 unit tests green without a
+database, `npm run check` green, build green with both item routes
+partial-prerendered.
 
 ## 3.6 Logo and image upload
 
