@@ -64,16 +64,16 @@ export default async function PublishingPage({
           {checklist.map((entry) => (
             <li
               key={entry.key}
-              className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-zinc-200 px-4 py-3 dark:border-zinc-800"
+              className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border px-4 py-3"
             >
-              <p className="text-sm text-zinc-900 dark:text-zinc-50">
+              <p className="text-sm text-foreground">
                 {entry.met ? "✓ " : "○ "}
                 {entry.label}
               </p>
               {entry.met ? null : (
                 <Link
                   href={entry.href}
-                  className="text-sm font-medium text-zinc-700 underline dark:text-zinc-300"
+                  className="text-sm font-medium text-foreground/80 underline"
                 >
                   Fix →
                 </Link>

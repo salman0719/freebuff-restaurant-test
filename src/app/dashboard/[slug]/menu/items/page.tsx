@@ -9,6 +9,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { auth } from "@/auth";
+import { Badge } from "@/components/ui/badge";
 import { buttonClasses } from "@/components/ui/button";
 import { Heading, Text } from "@/components/ui/typography";
 import { getTenantContext } from "@/lib/tenant-context";
@@ -19,22 +20,18 @@ import { ItemCreateForm } from "./_components/item-create-form";
 
 function ItemRow({ base, item }: { base: string; item: MenuItem }) {
   return (
-    <li className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-zinc-200 px-4 py-3 dark:border-zinc-800">
+    <li className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border px-4 py-3">
       <div>
-        <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+        <p className="text-sm font-semibold text-foreground">
           {item.name}
-          {item.isPublished ? null : (
-            <span className="ml-2 rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
-              Unpublished
-            </span>
-          )}
+          {item.isPublished ? null : <Badge className="ml-2">Unpublished</Badge>}
           {item.isAvailable ? null : (
-            <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900 dark:text-amber-200">
+            <Badge tone="warning" className="ml-2">
               Unavailable
-            </span>
+            </Badge>
           )}
         </p>
-        <p className="text-sm text-zinc-500 dark:text-zinc-400">
+        <p className="text-sm text-muted-foreground">
           ${formatPrice(item.priceCents)}
           {item.description ? ` — ${item.description}` : null}
         </p>

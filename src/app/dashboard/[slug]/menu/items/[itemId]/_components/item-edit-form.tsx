@@ -113,37 +113,37 @@ export function ItemEditForm({
               alt=""
               width={128}
               height={128}
-              className="mb-2 rounded-lg border border-zinc-200 object-cover dark:border-zinc-800"
+              className="mb-2 rounded-lg border border-border object-cover"
             />
           ) : null}
           <Input name="photo" type="file" accept="image/jpeg,image/png,image/webp" />
           {item.imageKey ? (
-            <label className="mt-2 flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
-              <input type="checkbox" name="removePhoto" className="h-4 w-4 accent-zinc-900" />
+            <label className="mt-2 flex items-center gap-2 text-sm text-foreground/80">
+              <input type="checkbox" name="removePhoto" className="h-4 w-4 accent-brand-600" />
               Remove the current photo
             </label>
           ) : null}
           {fieldError(saveState.fields, "image") ? (
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">
+            <p className="text-sm text-muted-foreground">
               Select the file again — browsers don&apos;t keep it after a failed save.
             </p>
           ) : null}
         </Field>
-        <label className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
+        <label className="flex items-center gap-2 text-sm text-foreground/80">
           <input
             type="checkbox"
             name="isPublished"
             defaultChecked={isPublished}
-            className="h-4 w-4 accent-zinc-900"
+            className="h-4 w-4 accent-brand-600"
           />
           Published — visible on the public menu
         </label>
-        <label className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
+        <label className="flex items-center gap-2 text-sm text-foreground/80">
           <input
             type="checkbox"
             name="isAvailable"
             defaultChecked={isAvailable}
-            className="h-4 w-4 accent-zinc-900"
+            className="h-4 w-4 accent-brand-600"
           />
           Available — shown as available on the public menu
         </label>
@@ -154,8 +154,8 @@ export function ItemEditForm({
         </div>
       </form>
       <section aria-label="Delete item" className="flex flex-col gap-3">
-        <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Delete item</h2>
-        <p className="text-sm text-zinc-500 dark:text-zinc-400">
+        <h2 className="text-sm font-semibold text-foreground">Delete item</h2>
+        <p className="text-sm text-muted-foreground">
           Deleting removes “{item.name}” from the menu immediately. Nothing else depends on it.
         </p>
         {deleteState.status === "error" ? (

@@ -68,12 +68,12 @@ export function ProfileForm({
             alt="Current restaurant logo"
             width={96}
             height={96}
-            className="mb-2 rounded-lg border border-zinc-200 object-contain dark:border-zinc-800"
+            className="mb-2 rounded-lg border border-border object-contain"
           />
         ) : null}
         <Input name="logo" type="file" accept="image/jpeg,image/png,image/webp" />
         {fieldError(state.fields, "image") ? (
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">
+          <p className="text-sm text-muted-foreground">
             Select the file again — browsers don&apos;t keep it after a failed save.
           </p>
         ) : null}

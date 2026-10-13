@@ -14,6 +14,7 @@ import { auth, signOut } from "@/auth";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import { SiteNav, SiteNavLink } from "@/components/ui/site-nav";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { getTenantContext } from "@/lib/tenant-context";
 import { getTenantProfile } from "@/lib/tenant-data";
 import { requireUser } from "@/lib/permissions";
@@ -60,16 +61,14 @@ export default async function TenantDashboardLayout({
           <span className="flex items-baseline gap-2">
             <Link
               href="/dashboard"
-              className="text-sm font-medium text-zinc-500 hover:text-zinc-900"
+              className="text-sm font-medium text-muted-foreground hover:text-foreground"
             >
               Restaurants
             </Link>
-            <span aria-hidden="true" className="text-zinc-300">
+            <span aria-hidden="true" className="text-muted-foreground/40">
               /
             </span>
-            <span className="truncate text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-              {name}
-            </span>
+            <span className="truncate text-sm font-semibold text-foreground">{name}</span>
           </span>
         }
         links={
@@ -82,11 +81,14 @@ export default async function TenantDashboardLayout({
           </>
         }
         actions={
-          <form action={signOutAction}>
-            <Button type="submit" variant="ghost" size="sm">
-              Sign out
-            </Button>
-          </form>
+          <>
+            <ThemeToggle />
+            <form action={signOutAction}>
+              <Button type="submit" variant="ghost" size="sm">
+                Sign out
+              </Button>
+            </form>
+          </>
         }
       />
       <Container className="py-8">{children}</Container>

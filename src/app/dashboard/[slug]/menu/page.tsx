@@ -11,6 +11,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { auth } from "@/auth";
+import { Badge } from "@/components/ui/badge";
 import { Button, buttonClasses } from "@/components/ui/button";
 import { Heading, Text } from "@/components/ui/typography";
 import { getTenantContext } from "@/lib/tenant-context";
@@ -67,21 +68,14 @@ export default async function MenuPage({
       ) : (
         <ul className="flex max-w-2xl flex-col gap-3">
           {categories.data.map((category, index) => (
-            <li
-              key={category.id}
-              className="rounded-lg border border-zinc-200 px-4 py-3 dark:border-zinc-800"
-            >
+            <li key={category.id} className="rounded-lg border border-border px-4 py-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
-                  <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+                  <p className="text-sm font-semibold text-foreground">
                     {category.name}
-                    {category.isPublished ? null : (
-                      <span className="ml-2 rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
-                        Unpublished
-                      </span>
-                    )}
+                    {category.isPublished ? null : <Badge className="ml-2">Unpublished</Badge>}
                   </p>
-                  <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                  <p className="text-sm text-muted-foreground">
                     {counts.get(category.id) ?? 0}{" "}
                     {(counts.get(category.id) ?? 0) === 1 ? "item" : "items"}
                     {category.description ? ` — ${category.description}` : null}

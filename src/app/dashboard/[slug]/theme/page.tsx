@@ -9,6 +9,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { auth } from "@/auth";
+import { Badge } from "@/components/ui/badge";
 import { Button, buttonClasses } from "@/components/ui/button";
 import { Heading, Text } from "@/components/ui/typography";
 import { getTenantContext } from "@/lib/tenant-context";
@@ -50,17 +51,17 @@ export default async function ThemePage({
           return (
             <li
               key={theme.id}
-              className="flex flex-col gap-2 rounded-lg border border-zinc-200 px-4 py-3 dark:border-zinc-800"
+              className="flex flex-col gap-2 rounded-lg border border-border px-4 py-3"
             >
-              <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+              <p className="text-sm font-semibold text-foreground">
                 {theme.label}
                 {selected ? (
-                  <span className="ml-2 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900 dark:text-green-200">
+                  <Badge tone="success" className="ml-2">
                     Current
-                  </span>
+                  </Badge>
                 ) : null}
               </p>
-              <p className="text-sm text-zinc-500 dark:text-zinc-400">{theme.blurb}</p>
+              <p className="text-sm text-muted-foreground">{theme.blurb}</p>
               {selected ? null : (
                 <form action={saveTheme}>
                   <input type="hidden" name="slug" value={tenantSlug} />

@@ -69,12 +69,12 @@ export function CategoryEditForm({
         >
           <Textarea name="description" rows={3} defaultValue={description} />
         </Field>
-        <label className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
+        <label className="flex items-center gap-2 text-sm text-foreground/80">
           <input
             type="checkbox"
             name="isPublished"
             defaultChecked={isPublished}
-            className="h-4 w-4 accent-zinc-900"
+            className="h-4 w-4 accent-brand-600"
           />
           Published — visible on the public menu
         </label>
@@ -85,15 +85,15 @@ export function CategoryEditForm({
         </div>
       </form>
       <section aria-label="Delete category" className="flex flex-col gap-3">
-        <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Delete category</h2>
+        <h2 className="text-sm font-semibold text-foreground">Delete category</h2>
         {itemCount > 0 ? (
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">
+          <p className="text-sm text-muted-foreground">
             This category holds {itemCount} {itemCount === 1 ? "item" : "items"}. Deleting keeps{" "}
             {itemCount === 1 ? "it" : "them"} on the menu as uncategorised — nothing is deleted
             except the heading.
           </p>
         ) : (
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">
+          <p className="text-sm text-muted-foreground">
             This category is empty, so deleting only removes the heading.
           </p>
         )}

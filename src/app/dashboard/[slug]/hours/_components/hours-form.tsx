@@ -67,25 +67,20 @@ export function HoursForm({ slug, hours }: { slug: string; hours: OpeningHoursRo
           const errors = dayErrors(state.fields, weekday);
           const errorId = errors.length > 0 ? `hours-${weekday}-error` : undefined;
           return (
-            <li
-              key={label}
-              className="rounded-lg border border-zinc-200 px-4 py-3 dark:border-zinc-800"
-            >
+            <li key={label} className="rounded-lg border border-border px-4 py-3">
               <fieldset>
-                <legend className="px-1 text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-                  {label}
-                </legend>
+                <legend className="px-1 text-sm font-semibold text-foreground">{label}</legend>
                 <div className="flex flex-wrap items-center gap-4">
-                  <label className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
+                  <label className="flex items-center gap-2 text-sm text-foreground/80">
                     <input
                       type="checkbox"
                       name={`closed-${weekday}`}
                       defaultChecked={closed}
-                      className="h-4 w-4 accent-zinc-900"
+                      className="h-4 w-4 accent-brand-600"
                     />
                     Closed
                   </label>
-                  <label className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
+                  <label className="flex items-center gap-2 text-sm text-foreground/80">
                     Opens
                     <Input
                       type="time"
@@ -96,7 +91,7 @@ export function HoursForm({ slug, hours }: { slug: string; hours: OpeningHoursRo
                       className="w-32"
                     />
                   </label>
-                  <label className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
+                  <label className="flex items-center gap-2 text-sm text-foreground/80">
                     Closes
                     <Input
                       type="time"
@@ -122,7 +117,7 @@ export function HoursForm({ slug, hours }: { slug: string; hours: OpeningHoursRo
           );
         })}
       </ul>
-      <p className="text-sm text-zinc-500 dark:text-zinc-400">
+      <p className="text-sm text-muted-foreground">
         Overnight hours are allowed — for example 18:00 to 02:00. Days with no saved times yet start
         as closed; the public site lists exactly what is saved here.
       </p>
