@@ -47,7 +47,7 @@ describe("typography", () => {
     render(<Text muted>Closed Mondays</Text>);
     const text = screen.getByText("Closed Mondays");
     expect(text.tagName).toBe("P");
-    expect(text.className).toContain("text-zinc-500");
+    expect(text.className).toContain("text-muted-foreground");
   });
 
   it("Eyebrow renders a kicker", () => {

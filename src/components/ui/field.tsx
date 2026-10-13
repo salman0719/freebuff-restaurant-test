@@ -60,7 +60,7 @@ export function Field({
       </Label>
       {control}
       {hint ? (
-        <p id={hintId} className="text-sm text-zinc-500 dark:text-zinc-400">
+        <p id={hintId} className="text-sm text-muted-foreground">
           {hint}
         </p>
       ) : null}

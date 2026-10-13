@@ -10,10 +10,9 @@ export function SiteNavLink({ className, children, ...rest }: SiteNavLinkProps) 
   return (
     <a
       className={cn(
-        "rounded-md px-3 py-2 text-sm font-medium text-zinc-600 transition-colors",
-        "hover:bg-zinc-100 hover:text-zinc-900",
-        "focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 focus-visible:outline-none",
-        "dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-zinc-50",
+        "rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors",
+        "hover:bg-surface-muted hover:text-foreground",
+        "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none",
         className
       )}
       {...rest}
@@ -46,7 +45,7 @@ export function SiteNav({ brand, links, actions, label = "Site", className }: Si
   return (
     <header
       className={cn(
-        "sticky top-0 z-40 border-b border-zinc-200 bg-background/95 backdrop-blur dark:border-zinc-800",
+        "sticky top-0 z-40 border-b border-border bg-background/90 shadow-xs backdrop-blur-md",
         className
       )}
     >
@@ -66,7 +65,7 @@ export function SiteNav({ brand, links, actions, label = "Site", className }: Si
             aria-expanded={open}
             aria-controls={menuId}
             onClick={() => setOpen((value) => !value)}
-            className="inline-flex items-center justify-center rounded-md p-2 text-zinc-700 transition-colors hover:bg-zinc-100 focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 focus-visible:outline-none md:hidden dark:text-zinc-200 dark:hover:bg-zinc-800"
+            className="inline-flex items-center justify-center rounded-md p-2 text-foreground/80 transition-colors hover:bg-surface-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none md:hidden"
           >
             <span className="sr-only">{open ? "Close menu" : "Open menu"}</span>
             <svg aria-hidden="true" viewBox="0 0 20 20" fill="none" className="size-5">
@@ -91,10 +90,7 @@ export function SiteNav({ brand, links, actions, label = "Site", className }: Si
       </Container>
       <div
         id={menuId}
-        className={cn(
-          "border-t border-zinc-200 md:hidden dark:border-zinc-800",
-          open ? "block" : "hidden"
-        )}
+        className={cn("border-t border-border md:hidden", open ? "block" : "hidden")}
       >
         <Container className="flex flex-col gap-1 py-4">
           {links ? (

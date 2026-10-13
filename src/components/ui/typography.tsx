@@ -4,8 +4,8 @@ import { cn } from "./cn";
 export type HeadingLevel = 1 | 2 | 3 | 4;
 
 const headingSizes: Record<HeadingLevel, string> = {
-  1: "text-3xl font-semibold tracking-tight sm:text-4xl",
-  2: "text-2xl font-semibold tracking-tight sm:text-3xl",
+  1: "font-display text-4xl font-semibold tracking-tight sm:text-5xl",
+  2: "font-display text-2xl font-semibold tracking-tight sm:text-3xl",
   3: "text-xl font-semibold tracking-tight",
   4: "text-lg font-semibold tracking-tight",
 };
@@ -14,15 +14,10 @@ export interface HeadingProps extends HTMLAttributes<HTMLHeadingElement> {
   level?: HeadingLevel;
 }
 
-/** Semantic heading (h1–h4) with responsive scale. */
+/** Semantic heading (h1–h4); levels 1–2 use the editorial display serif. */
 export function Heading({ level = 2, className, ...rest }: HeadingProps) {
   const Tag = `h${level}` as const;
-  return (
-    <Tag
-      className={cn(headingSizes[level], "text-zinc-900 dark:text-zinc-50", className)}
-      {...rest}
-    />
-  );
+  return <Tag className={cn(headingSizes[level], "text-foreground", className)} {...rest} />;
 }
 
 export type TextSize = "sm" | "md" | "lg";
@@ -45,7 +40,7 @@ export function Text({ size = "md", muted = false, className, ...rest }: TextPro
       className={cn(
         textSizes[size],
         "leading-7",
-        muted ? "text-zinc-500 dark:text-zinc-400" : "text-zinc-700 dark:text-zinc-200",
+        muted ? "text-muted-foreground" : "text-foreground/80",
         className
       )}
       {...rest}
@@ -60,7 +55,7 @@ export function Eyebrow({ className, ...rest }: EyebrowProps) {
   return (
     <p
       className={cn(
-        "text-xs font-semibold tracking-widest text-brand-700 uppercase dark:text-brand-100",
+        "text-xs font-semibold tracking-[0.2em] text-brand-700 uppercase dark:text-brand-300",
         className
       )}
       {...rest}

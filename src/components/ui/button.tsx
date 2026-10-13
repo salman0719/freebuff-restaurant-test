@@ -5,12 +5,11 @@ export type ButtonVariant = "primary" | "secondary" | "outline" | "ghost" | "dan
 export type ButtonSize = "sm" | "md" | "lg";
 
 const variantClasses: Record<ButtonVariant, string> = {
-  primary: "bg-brand-600 text-white shadow-sm hover:bg-brand-700 active:bg-brand-700",
+  primary: "bg-brand-600 text-white shadow-sm hover:bg-brand-700 active:bg-brand-800",
   secondary:
-    "bg-zinc-900 text-white hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200",
-  outline:
-    "border border-zinc-300 bg-transparent text-zinc-900 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-50 dark:hover:bg-zinc-800",
-  ghost: "bg-transparent text-zinc-700 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-zinc-800",
+    "bg-foreground text-background shadow-sm hover:bg-foreground/90 active:bg-foreground/90",
+  outline: "border border-border bg-transparent text-foreground hover:bg-surface-muted",
+  ghost: "bg-transparent text-muted-foreground hover:bg-surface-muted hover:text-foreground",
   danger: "bg-red-600 text-white shadow-sm hover:bg-red-700 active:bg-red-700",
 };
 
@@ -36,7 +35,7 @@ export function buttonClasses({
 }: ButtonClassOptions = {}): string {
   return cn(
     "inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg font-medium whitespace-nowrap transition-colors",
-    "focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 focus-visible:outline-none dark:focus-visible:ring-offset-zinc-950",
+    "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none",
     "disabled:cursor-not-allowed disabled:opacity-50",
     "[&_svg]:size-4 [&_svg]:shrink-0",
     variantClasses[variant],
