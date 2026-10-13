@@ -401,6 +401,48 @@ live("cross-tenant isolation (live database)", () => {
     }
   });
 
+  it("previews drafts the public view hides, scoped to the context tenant", async () => {
+    const { createTenantCategory, createTenantItem, getOwnerRestaurant, getTenantContext } =
+      await libs();
+    // Dynamic imports: `./public-restaurant` pulls in the database module,
+    // which must load after `libs()` pins `DATABASE_URL` (see above).
+    const { getPublicRestaurant } = await import("./public-restaurant");
+    const { toPreviewRestaurant } = await import("./preview-restaurant");
+    const other = await getTenantContext({ user: { id: userB, role: "owner" } }, slugB);
+    expect(other.ok).toBe(true);
+    if (!other.ok) return expect.unreachable();
+    const hidden = await createTenantCategory(other.data, {
+      name: "Hidden",
+      isPublished: false,
+    });
+    expect(hidden.ok).toBe(true);
+    if (!hidden.ok) return expect.unreachable();
+    const draft = await createTenantItem(other.data, {
+      name: "Secret dish",
+      priceCents: 100,
+      categoryId: hidden.data.id,
+      isPublished: false,
+    });
+    expect(draft.ok).toBe(true);
+    if (!draft.ok) return expect.unreachable();
+    const view = await getOwnerRestaurant(other.data);
+    expect(view.ok).toBe(true);
+    if (!view.ok) return expect.unreachable();
+    const preview = toPreviewRestaurant(view.data);
+    expect(preview.menu.map((category) => category.name)).toContain("Hidden");
+    const publicView = await getPublicRestaurant(slugB);
+    expect(publicView.ok).toBe(true);
+    if (!publicView.ok) return expect.unreachable();
+    expect(publicView.data.menu.map((category) => category.name)).not.toContain("Hidden");
+    // The other tenant's context cannot build this preview at all.
+    const stranger = await getTenantContext({ user: { id: userA, role: "owner" } }, slugB);
+    expect(stranger.ok).toBe(false);
+    // Clean up so later tests see slugB as they left it.
+    const { deleteTenantCategory, deleteTenantItem } = await libs();
+    expect((await deleteTenantItem(other.data, draft.data.id)).ok).toBe(true);
+    expect((await deleteTenantCategory(other.data, hidden.data.id)).ok).toBe(true);
+  });
+
   it("scopes the owner view and the mutation to the context tenant", async () => {
     const { getTenantContext, getOwnerRestaurant, updateTenantSettings } = await libs();
     const ctx = await getTenantContext({ user: { id: userB, role: "owner" } }, slugB);

@@ -64,7 +64,11 @@ export function toTenantContext(
     return forbidden();
   }
   return ok({
-    tenant: { ...row.tenant, theme: row.tenant.theme as Tenant["theme"] },
+    tenant: {
+      ...row.tenant,
+      theme: row.tenant.theme as Tenant["theme"],
+      themeConfig: (row.tenant.themeConfig ?? {}) as Record<string, unknown>,
+    },
     membership: { ...row.membership, role: row.membership.role as Membership["role"] },
   });
 }

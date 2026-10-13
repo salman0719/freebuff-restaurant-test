@@ -705,5 +705,9 @@ export async function updateTenantSettings(
   if (!updated) {
     return err("INTERNAL", "Failed to save settings.");
   }
-  return ok({ ...updated, theme: updated.theme as Tenant["theme"] });
+  return ok({
+    ...updated,
+    theme: updated.theme as Tenant["theme"],
+    themeConfig: (updated.themeConfig ?? {}) as Record<string, unknown>,
+  });
 }

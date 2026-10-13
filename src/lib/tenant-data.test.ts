@@ -24,6 +24,7 @@ const ctx: Ctx = {
     customDomain: null,
     published: true,
     theme: "cafe",
+    themeConfig: {},
     createdAt: new Date(),
     updatedAt: new Date(),
   },

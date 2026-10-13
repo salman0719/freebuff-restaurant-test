@@ -24,6 +24,12 @@ export interface Tenant {
   customDomain: string | null;
   published: boolean;
   theme: ThemeId;
+  /**
+   * Raw stored theme options (JSON). Consumers validate with
+   * `resolveThemeConfig` before rendering — never trust stored JSON
+   * directly, it may predate the current schema.
+   */
+  themeConfig: Record<string, unknown>;
   createdAt: Date;
   updatedAt: Date;
 }
