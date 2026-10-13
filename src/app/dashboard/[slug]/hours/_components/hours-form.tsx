@@ -13,6 +13,7 @@
 import { useActionState } from "react";
 import { Button } from "@/components/ui/button";
 import { ErrorState } from "@/components/ui/feedback";
+import { FormActions } from "@/components/ui/form-actions";
 import { Input } from "@/components/ui/input";
 import type { OpeningHoursRow } from "@/lib/restaurant";
 import { saveHours, type HoursState } from "../actions";
@@ -121,11 +122,11 @@ export function HoursForm({ slug, hours }: { slug: string; hours: OpeningHoursRo
         Overnight hours are allowed — for example 18:00 to 02:00. Days with no saved times yet start
         as closed; the public site lists exactly what is saved here.
       </p>
-      <div>
+      <FormActions hint="Saves the whole week at once.">
         <Button type="submit" loading={pending}>
           {pending ? "Saving…" : "Save hours"}
         </Button>
-      </div>
+      </FormActions>
     </form>
   );
 }

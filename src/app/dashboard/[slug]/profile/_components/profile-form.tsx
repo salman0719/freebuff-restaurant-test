@@ -13,6 +13,7 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { ErrorState } from "@/components/ui/feedback";
+import { FormActions } from "@/components/ui/form-actions";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { imageUrlForKey } from "@/lib/image-url";
@@ -116,11 +117,11 @@ export function ProfileForm({
           <Input name="country" defaultValue={value("country")} autoComplete="country-name" />
         </Field>
       </div>
-      <div>
+      <FormActions hint="Saves the public details visitors see.">
         <Button type="submit" loading={pending}>
           {pending ? "Saving…" : "Save profile"}
         </Button>
-      </div>
+      </FormActions>
     </form>
   );
 }

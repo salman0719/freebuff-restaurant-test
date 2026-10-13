@@ -13,6 +13,7 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { ErrorState } from "@/components/ui/feedback";
+import { FormActions } from "@/components/ui/form-actions";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -147,11 +148,11 @@ export function ItemEditForm({
           />
           Available — shown as available on the public menu
         </label>
-        <div>
+        <FormActions>
           <Button type="submit" loading={savePending}>
             {savePending ? "Saving…" : "Save item"}
           </Button>
-        </div>
+        </FormActions>
       </form>
       <section aria-label="Delete item" className="flex flex-col gap-3">
         <h2 className="text-sm font-semibold text-foreground">Delete item</h2>

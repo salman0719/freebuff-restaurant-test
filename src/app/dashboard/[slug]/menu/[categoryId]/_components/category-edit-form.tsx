@@ -11,6 +11,7 @@ import { useActionState, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { ErrorState } from "@/components/ui/feedback";
+import { FormActions } from "@/components/ui/form-actions";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import type { MenuCategory } from "@/lib/restaurant";
@@ -78,11 +79,11 @@ export function CategoryEditForm({
           />
           Published — visible on the public menu
         </label>
-        <div>
+        <FormActions>
           <Button type="submit" loading={savePending}>
             {savePending ? "Saving…" : "Save category"}
           </Button>
-        </div>
+        </FormActions>
       </form>
       <section aria-label="Delete category" className="flex flex-col gap-3">
         <h2 className="text-sm font-semibold text-foreground">Delete category</h2>
