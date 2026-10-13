@@ -8,6 +8,7 @@
  */
 import { Suspense } from "react";
 import { Container } from "@/components/ui/container";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { Heading, Text } from "@/components/ui/typography";
 import { safeNext } from "./login-form";
 import { LoginForm, LoginFormSkeleton } from "./_components/login-form";
@@ -28,6 +29,9 @@ export default function LoginPage({
 }): React.ReactElement {
   return (
     <Container className="flex min-h-[70vh] max-w-md flex-col justify-center py-12">
+      <div className="mb-4 flex justify-end">
+        <ThemeToggle />
+      </div>
       <Heading level={1} className="mb-2">
         Sign in
       </Heading>
