@@ -36,14 +36,31 @@ async function tenantId(slug: string): Promise<string | null> {
   return rows[0]?.id ?? null;
 }
 
+/**
+ * Presentation options per demo tenant. Each theme validates these against
+ * its own schema at render, so they only ever hold values that theme
+ * understands. Deliberately distinct: the point of the demo set is to show
+ * how different a tenant can look from the same content model.
+ */
+const mariosOptions = { accent: "espresso", menuLayout: "editorial", showHours: true };
+const dragonOptions = { accent: "chili", menuLayout: "compact", showDescription: true };
+const draftOptions = { accent: "terracotta", menuLayout: "grid", showHours: true };
+
 async function seedMarios(): Promise<void> {
-  if (await tenantId("marios-pizza")) {
-    console.log("skip marios-pizza (already seeded)");
+  const existing = await tenantId("marios-pizza");
+  if (existing) {
+    // Converge the look on re-run: presentation is part of the seed, so an
+    // accidental theme change does not silently stick in a demo database.
+    await seedDb
+      .update(tenants)
+      .set({ theme: "cafe", themeConfig: mariosOptions })
+      .where(eq(tenants.id, existing));
+    console.log("refreshed marios-pizza (cafe, espresso, editorial)");
     return;
   }
   const [tenant] = await seedDb
     .insert(tenants)
-    .values({ slug: "marios-pizza", theme: "cafe", published: true })
+    .values({ slug: "marios-pizza", theme: "cafe", themeConfig: mariosOptions, published: true })
     .returning({ id: tenants.id });
   await seedDb.insert(restaurantProfiles).values({
     tenantId: tenant.id,
@@ -113,13 +130,23 @@ async function seedMarios(): Promise<void> {
 }
 
 async function seedDragon(): Promise<void> {
-  if (await tenantId("golden-dragon")) {
-    console.log("skip golden-dragon (already seeded)");
+  const existing = await tenantId("golden-dragon");
+  if (existing) {
+    await seedDb
+      .update(tenants)
+      .set({ theme: "takeaway", themeConfig: dragonOptions })
+      .where(eq(tenants.id, existing));
+    console.log("refreshed golden-dragon (takeaway, chili, compact)");
     return;
   }
   const [tenant] = await seedDb
     .insert(tenants)
-    .values({ slug: "golden-dragon", theme: "takeaway", published: true })
+    .values({
+      slug: "golden-dragon",
+      theme: "takeaway",
+      themeConfig: dragonOptions,
+      published: true,
+    })
     .returning({ id: tenants.id });
   await seedDb.insert(restaurantProfiles).values({
     tenantId: tenant.id,
@@ -160,13 +187,18 @@ async function seedDragon(): Promise<void> {
 }
 
 async function seedDraft(): Promise<void> {
-  if (await tenantId("draft-diner")) {
-    console.log("skip draft-diner (already seeded)");
+  const existing = await tenantId("draft-diner");
+  if (existing) {
+    await seedDb
+      .update(tenants)
+      .set({ theme: "cafe", themeConfig: draftOptions })
+      .where(eq(tenants.id, existing));
+    console.log("refreshed draft-diner (cafe, terracotta, grid)");
     return;
   }
   const [tenant] = await seedDb
     .insert(tenants)
-    .values({ slug: "draft-diner", theme: "cafe", published: false })
+    .values({ slug: "draft-diner", theme: "cafe", themeConfig: draftOptions, published: false })
     .returning({ id: tenants.id });
   await seedDb.insert(restaurantProfiles).values({
     tenantId: tenant.id,
