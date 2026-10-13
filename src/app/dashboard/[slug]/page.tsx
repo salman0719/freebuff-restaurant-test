@@ -36,9 +36,10 @@ export default async function TenantOverviewPage({
           {profile?.name ?? tenant.slug}
         </Heading>
         <Text>
+          {tenant.published ? <strong>Live</strong> : <strong>Draft</strong>}{" "}
           {tenant.published
-            ? "Published — visitors can find this restaurant."
-            : "Draft — only you can see it until it is published."}{" "}
+            ? "— visitors can find this restaurant."
+            : "— only you can see it until it is published."}{" "}
           Theme: {tenant.theme}.
         </Text>
       </div>
@@ -76,6 +77,9 @@ export default async function TenantOverviewPage({
         </Link>
         <Link href={`${base}/menu`} className={buttonClasses({ variant: "outline" })}>
           Edit menu
+        </Link>
+        <Link href={`${base}/publishing`} className={buttonClasses({ variant: "outline" })}>
+          Publishing
         </Link>
       </div>
     </div>

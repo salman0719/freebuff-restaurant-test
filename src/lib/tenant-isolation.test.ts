@@ -443,6 +443,32 @@ live("cross-tenant isolation (live database)", () => {
     expect((await deleteTenantCategory(other.data, hidden.data.id)).ok).toBe(true);
   });
 
+  it("publishes and unpublishes one tenant without touching the other", async () => {
+    const { getTenantContext, updateTenantSettings } = await libs();
+    const { getPublicRestaurant } = await import("./public-restaurant");
+    const ctx = await getTenantContext({ user: { id: userA, role: "owner" } }, slugA);
+    expect(ctx.ok).toBe(true);
+    if (!ctx.ok) return expect.unreachable();
+    // Drafts never leak: unpublished reads exactly like unknown slugs.
+    const before = await getPublicRestaurant(slugA);
+    expect(before.ok).toBe(false);
+    const published = await updateTenantSettings(ctx.data, { published: true });
+    expect(published.ok).toBe(true);
+    if (!published.ok) return expect.unreachable();
+    expect(published.data.published).toBe(true);
+    // Success is only reported from persistence: the public view agrees.
+    const live = await getPublicRestaurant(slugA);
+    expect(live.ok).toBe(true);
+    const off = await updateTenantSettings(ctx.data, { published: false });
+    expect(off.ok).toBe(true);
+    const after = await getPublicRestaurant(slugA);
+    expect(after.ok).toBe(false);
+    if (!after.ok) expect(after.error.code).toBe("NOT_FOUND");
+    // The neighbour tenant kept whatever state it had.
+    const neighbour = await getPublicRestaurant(slugB);
+    expect(neighbour.ok).toBe(true);
+  });
+
   it("scopes the owner view and the mutation to the context tenant", async () => {
     const { getTenantContext, getOwnerRestaurant, updateTenantSettings } = await libs();
     const ctx = await getTenantContext({ user: { id: userB, role: "owner" } }, slugB);
