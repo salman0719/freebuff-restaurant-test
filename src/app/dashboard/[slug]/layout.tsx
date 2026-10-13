@@ -15,11 +15,12 @@ import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import { SiteNav } from "@/components/ui/site-nav";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
-import { getTenantContext } from "@/lib/tenant-context";
+import { getTenantContext, listUserTenants } from "@/lib/tenant-context";
 import { getTenantProfile } from "@/lib/tenant-data";
 import { requireUser } from "@/lib/permissions";
 import { getDashboardNav } from "../nav";
 import { DashboardNavLinks } from "../nav-links";
+import { RestaurantSwitcher } from "../restaurant-switcher";
 
 async function signOutAction(): Promise<void> {
   "use server";
@@ -47,8 +48,14 @@ export default async function TenantDashboardLayout({
     notFound();
   }
   const { tenant, membership } = context.data;
-  const profile = await getTenantProfile(context.data);
+  const [profile, listed] = await Promise.all([
+    getTenantProfile(context.data),
+    listUserTenants(session),
+  ]);
   const name = profile.ok && profile.data ? profile.data.name : tenant.slug;
+  const others = listed.ok
+    ? listed.data.map((row) => ({ slug: row.slug, published: row.published }))
+    : [];
   const items = getDashboardNav({
     slug: tenant.slug,
     membershipRole: membership.role,
@@ -59,7 +66,7 @@ export default async function TenantDashboardLayout({
       <SiteNav
         label="Dashboard"
         brand={
-          <span className="flex items-baseline gap-2">
+          <span className="flex items-center gap-2">
             <Link
               href="/dashboard"
               className="text-sm font-medium text-muted-foreground hover:text-foreground"
@@ -69,7 +76,11 @@ export default async function TenantDashboardLayout({
             <span aria-hidden="true" className="text-muted-foreground/40">
               /
             </span>
-            <span className="truncate text-sm font-semibold text-foreground">{name}</span>
+            <RestaurantSwitcher
+              currentLabel={name}
+              currentSlug={tenant.slug}
+              restaurants={others}
+            />
           </span>
         }
         links={<DashboardNavLinks items={items} />}
