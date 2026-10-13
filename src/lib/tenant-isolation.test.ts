@@ -177,6 +177,85 @@ live("cross-tenant isolation (live database)", () => {
     expect(otherView.data.profile).toBeNull();
   });
 
+  it("manages categories within the tenant and refuses cross-tenant access", async () => {
+    const {
+      createTenantCategory,
+      updateTenantCategory,
+      deleteTenantCategory,
+      moveTenantCategory,
+      getTenantItem,
+      getTenantContext,
+      db,
+      schema,
+    } = await libs();
+    const { eq } = await import("drizzle-orm");
+    const ctx = await getTenantContext({ user: { id: userA, role: "owner" } }, slugA);
+    expect(ctx.ok).toBe(true);
+    if (!ctx.ok) return expect.unreachable();
+    const tenantRows = await db
+      .select({ id: schema.tenants.id })
+      .from(schema.tenants)
+      .where(eq(schema.tenants.slug, slugA))
+      .limit(1);
+    const tenantId = tenantRows[0]?.id;
+    expect(tenantId).toBeDefined();
+    const ids: Record<string, string> = {};
+    for (const name of ["Starters", "Mains", "Desserts"]) {
+      const created = await createTenantCategory(ctx.data, { name });
+      expect(created.ok).toBe(true);
+      if (!created.ok) return expect.unreachable();
+      ids[name] = created.data.id;
+    }
+    const duplicate = await createTenantCategory(ctx.data, { name: "Mains" });
+    expect(duplicate.ok).toBe(false);
+    if (!duplicate.ok) {
+      expect(duplicate.error.code).toBe("VALIDATION_FAILED");
+      expect(Object.keys(duplicate.error.fields ?? {})).toEqual(["name"]);
+    }
+    // Deleting a category keeps its items as uncategorised (SET NULL).
+    const [plated] = await db
+      .insert(schema.menuItems)
+      .values({
+        tenantId: tenantId as string,
+        categoryId: ids["Mains"],
+        name: "Steak",
+        priceCents: 2500,
+      })
+      .returning({ id: schema.menuItems.id });
+    const removed = await deleteTenantCategory(ctx.data, ids["Mains"] as string);
+    expect(removed.ok).toBe(true);
+    if (!removed.ok) return expect.unreachable();
+    expect(removed.data.uncategorisedCount).toBe(1);
+    const kept = await getTenantItem(ctx.data, (plated as { id: string }).id);
+    expect(kept.ok).toBe(true);
+    if (!kept.ok) return expect.unreachable();
+    expect(kept.data.categoryId).toBeNull();
+    // New categories go last; moving renumbers the whole list by index.
+    const drinks = await createTenantCategory(ctx.data, { name: "Drinks" });
+    expect(drinks.ok).toBe(true);
+    if (!drinks.ok) return expect.unreachable();
+    const moved = await moveTenantCategory(ctx.data, drinks.data.id, { direction: "up" });
+    expect(moved.ok).toBe(true);
+    if (!moved.ok) return expect.unreachable();
+    expect(moved.data.map((row) => row.name)).toEqual(["Starters", "Drinks", "Desserts"]);
+    // Cross-tenant: user B's category refuses user A's update/delete/move.
+    const other = await getTenantContext({ user: { id: userB, role: "owner" } }, slugB);
+    expect(other.ok).toBe(true);
+    if (!other.ok) return expect.unreachable();
+    const foreign = await createTenantCategory(other.data, { name: "Mains" });
+    expect(foreign.ok).toBe(true);
+    if (!foreign.ok) return expect.unreachable();
+    const cross = await Promise.all([
+      updateTenantCategory(ctx.data, foreign.data.id, { name: "Hijacked" }),
+      deleteTenantCategory(ctx.data, foreign.data.id),
+      moveTenantCategory(ctx.data, foreign.data.id, { direction: "up" }),
+    ]);
+    for (const result of cross) {
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.error.code).toBe("FORBIDDEN");
+    }
+  });
+
   it("scopes the owner view and the mutation to the context tenant", async () => {
     const { getTenantContext, getOwnerRestaurant, updateTenantSettings } = await libs();
     const ctx = await getTenantContext({ user: { id: userB, role: "owner" } }, slugB);
