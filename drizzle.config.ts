@@ -11,6 +11,6 @@ export default defineConfig({
   out: "./db/migrations",
   dbCredentials: {
     // `generate` never connects; `migrate` needs a real DATABASE_URL.
-    url: process.env.DATABASE_URL ?? "postgresql://app:secret@localhost:5432/restaurant_app",
+    url: process.env.DATABASE_URL ?? "postgresql://app:secret@localhost:4432/restaurant_app",
   },
 });

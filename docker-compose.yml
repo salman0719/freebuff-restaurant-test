@@ -6,8 +6,10 @@ services:
       POSTGRES_USER: app
       POSTGRES_PASSWORD: secret
       POSTGRES_DB: restaurant_app
+    # Host port 4432 (not 5432): leaves room for a system Postgres on the
+    # standard port. The container still listens on 5432 internally.
     ports:
-      - "5432:5432"
+      - "4432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:

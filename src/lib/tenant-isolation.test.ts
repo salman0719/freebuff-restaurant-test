@@ -4,7 +4,7 @@
  * Exercises the REAL `getTenantContext` + scoped loaders + mutation against
  * a database — the negative paths no mock can fully prove. Opt-in: runs
  * only when `TEST_DATABASE_URL` points at a disposable database (local
- * Docker: `TEST_DATABASE_URL="postgresql://app:secret@localhost:5432/restaurant_app"`);
+ * Docker: `TEST_DATABASE_URL="postgresql://app:secret@localhost:4432/restaurant_app"`);
  * otherwise the suite skips so CI (no database) stays green. The suite
  * seeds two tenants + users and removes them afterwards; nothing outside
  * the `iso_` slug namespace is touched.
