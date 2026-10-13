@@ -35,7 +35,7 @@ jobs:
       # Ephemeral CI-only values (never production secrets): the E2E signs
       # in through Mailpit above, so auth needs a complete test config.
       AUTH_SECRET: ci-only-ephemeral-secret-not-used-in-production-0000
-      AUTH_URL: http://localhost:4000
+      AUTH_URL: http://localhost:4030
       AUTH_TRUST_HOST: "true"
       EMAIL_SERVER: smtp://localhost:1025
       EMAIL_FROM: "CI Test <ci-e2e@platform.example>"

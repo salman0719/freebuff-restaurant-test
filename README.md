@@ -13,8 +13,8 @@ takeaway shops. See [ROADMAP.md](ROADMAP.md) for the plan and
 
 ```bash
 npm ci
-cp .env.example .env.local # placeholders only; PORT=4000 lives here
-npm run dev                 # http://localhost:4000
+cp .env.example .env.local # placeholders only; PORT=4030 lives here
+npm run dev                 # http://localhost:4030
 ```
 
 Optional local database (Postgres 17, data persists in a Docker volume):

@@ -13,7 +13,7 @@ import { expect, test } from "@playwright/test";
 import { E2E_EMAIL, E2E_NAME, E2E_SLUG, fetchSignInLink, purgeMailpit } from "./helpers";
 
 const dashboard = `/dashboard/${E2E_SLUG}`;
-const publicSite = `http://${E2E_SLUG}.localhost:4000/`;
+const publicSite = `http://${E2E_SLUG}.localhost:4030/`;
 
 /** Server-action round-trips compile on first hit (dev) — allow room. */
 const ACTION_TIMEOUT = 30_000;
