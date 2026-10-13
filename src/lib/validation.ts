@@ -136,6 +136,15 @@ const categoryFields = {
   isPublished: z.boolean().default(true),
 };
 
+/**
+ * Reorder direction for dashboard move up/down buttons. The data layer
+ * renumbers the whole list by index, so moves work even when several
+ * categories share the same `sortOrder` (e.g. seed data).
+ */
+export const categoryMoveSchema = z.object({
+  direction: z.enum(["up", "down"]),
+});
+
 export const createCategorySchema = z.object(categoryFields);
 
 export const updateCategorySchema = z.object({
@@ -183,6 +192,7 @@ export type UpdateTenantInput = z.infer<typeof updateTenantSchema>;
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
 export type OpeningHoursInput = z.infer<typeof openingHoursSchema>;
 export type UpdateHoursInput = z.infer<typeof updateHoursSchema>;
+export type CategoryMoveInput = z.infer<typeof categoryMoveSchema>;
 export type CreateCategoryInput = z.infer<typeof createCategorySchema>;
 export type UpdateCategoryInput = z.infer<typeof updateCategorySchema>;
 export type CreateItemInput = z.infer<typeof createItemSchema>;

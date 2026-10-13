@@ -10,11 +10,11 @@
  * tenant yields `FORBIDDEN`, never the row.
  *
  * Reads return `ok(...)` (only the database throwing escapes, per the
- * `ServiceResult` contract — unexpected crashes throw). The single mutation
- * here, `updateTenantSettings`, establishes the validate → scope → save
- * pattern Phase 3 extends to profiles, hours, categories, and items.
+ * `ServiceResult` contract — unexpected crashes throw). Mutations follow
+ * validate → scope → save: profile, hours, and category mutations all
+ * take a context plus untrusted input, never ids they could smuggle.
  */
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../../db";
 import {
@@ -35,6 +35,9 @@ import type {
 } from "./restaurant";
 import type { TenantContext } from "./tenant-context";
 import {
+  categoryMoveSchema,
+  createCategorySchema,
+  updateCategorySchema,
   updateHoursSchema,
   updateProfileSchema,
   updateTenantSchema,
@@ -81,7 +84,10 @@ export async function getTenantCategories(
     .select()
     .from(menuCategories)
     .where(eq(menuCategories.tenantId, ctx.tenant.id))
-    .orderBy(menuCategories.sortOrder);
+    // Name tiebreak keeps display order deterministic when rows share a
+    // `sortOrder` (e.g. seed data); `moveTenantCategory` renumbers by
+    // index so ties never block reordering.
+    .orderBy(menuCategories.sortOrder, menuCategories.name);
   return ok(rows);
 }
 
@@ -265,6 +271,189 @@ export async function updateTenantHours(
       });
   }
   const saved = await getTenantHours(ctx);
+  if (isErr(saved)) return saved;
+  return ok(saved.data);
+}
+
+/** Postgres unique-violation code — maps a lost name race to a field error. */
+function isUniqueViolation(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code: unknown }).code === "23505"
+  );
+}
+
+function duplicateName<T>(): ServiceResult<T> {
+  return err("VALIDATION_FAILED", "Invalid category.", {
+    name: ["A category with this name already exists."],
+  });
+}
+
+/**
+ * Create a menu category for the context tenant: validate input, reject a
+ * duplicate name within the tenant, then insert scoped to
+ * `ctx.tenant.id`. New categories go last (`max(sortOrder) + 1`) — the
+ * server owns display order, so any client-sent `sortOrder` is ignored.
+ * A lost insert race on the `(tenant_id, name)` unique index maps to the
+ * same friendly field error instead of leaking a database crash.
+ */
+export async function createTenantCategory(
+  ctx: TenantContext,
+  input: unknown
+): Promise<ServiceResult<MenuCategory>> {
+  const parsed = createCategorySchema.safeParse(input);
+  if (!parsed.success) {
+    return err("VALIDATION_FAILED", "Invalid category.", validationFields(parsed.error));
+  }
+  const existing = await getTenantCategories(ctx);
+  if (isErr(existing)) return existing;
+  if (existing.data.some((row) => row.name === parsed.data.name)) {
+    return duplicateName();
+  }
+  const nextSort = existing.data.reduce((max, row) => Math.max(max, row.sortOrder), -1) + 1;
+  try {
+    const rows = await db
+      .insert(menuCategories)
+      .values({
+        tenantId: ctx.tenant.id,
+        name: parsed.data.name,
+        description: parsed.data.description ?? null,
+        sortOrder: nextSort,
+        isPublished: parsed.data.isPublished,
+      })
+      .returning();
+    const created = rows[0];
+    if (!created) {
+      return err("INTERNAL", "Failed to create category.");
+    }
+    return ok(created);
+  } catch (error) {
+    if (isUniqueViolation(error)) return duplicateName();
+    throw error;
+  }
+}
+
+/**
+ * Update a category of the context tenant: validate input, prove the row
+ * belongs to the tenant (forged ids yield `FORBIDDEN`), reject a rename
+ * onto a sibling's name, then save scoped by id AND tenant. `null` names
+ * are rejected — the database requires one. An empty update is a no-op
+ * returning the current row.
+ */
+export async function updateTenantCategory(
+  ctx: TenantContext,
+  categoryId: string,
+  input: unknown
+): Promise<ServiceResult<MenuCategory>> {
+  const parsed = updateCategorySchema.safeParse(input);
+  if (!parsed.success) {
+    return err("VALIDATION_FAILED", "Invalid category.", validationFields(parsed.error));
+  }
+  if (parsed.data.name === null) {
+    return err("VALIDATION_FAILED", "Invalid category.", {
+      name: ["Category name is required."],
+    });
+  }
+  const current = await getTenantCategory(ctx, categoryId);
+  if (isErr(current)) return current;
+  if (parsed.data.name !== undefined && parsed.data.name !== current.data.name) {
+    const siblings = await getTenantCategories(ctx);
+    if (isErr(siblings)) return siblings;
+    if (siblings.data.some((row) => row.id !== current.data.id && row.name === parsed.data.name)) {
+      return duplicateName();
+    }
+  }
+  const set: Partial<MenuCategory> = {};
+  for (const [key, value] of Object.entries(parsed.data)) {
+    if (value !== undefined) {
+      (set as Record<string, unknown>)[key] = value;
+    }
+  }
+  if (Object.keys(set).length === 0) {
+    return ok(current.data);
+  }
+  try {
+    const rows = await db
+      .update(menuCategories)
+      .set(set)
+      .where(
+        and(eq(menuCategories.id, current.data.id), eq(menuCategories.tenantId, ctx.tenant.id))
+      )
+      .returning();
+    const updated = rows[0];
+    if (!updated) {
+      return err("INTERNAL", "Failed to save category.");
+    }
+    return ok(updated);
+  } catch (error) {
+    if (isUniqueViolation(error)) return duplicateName();
+    throw error;
+  }
+}
+
+/** A deleted category plus the items it left behind as uncategorised. */
+export interface DeleteCategoryResult {
+  category: MenuCategory;
+  /** Items kept in the tenant with `categoryId` cleared (FK `SET NULL`). */
+  uncategorisedCount: number;
+}
+
+/**
+ * Delete a category of the context tenant: prove the row belongs to the
+ * tenant (forged ids yield `FORBIDDEN`), then delete scoped by id AND
+ * tenant. Member items are NOT deleted — the foreign key clears them to
+ * uncategorised, and the returned count lets the UI say so honestly.
+ */
+export async function deleteTenantCategory(
+  ctx: TenantContext,
+  categoryId: string
+): Promise<ServiceResult<DeleteCategoryResult>> {
+  const current = await getTenantCategory(ctx, categoryId);
+  if (isErr(current)) return current;
+  const items = await getTenantItems(ctx, current.data.id);
+  if (isErr(items)) return items;
+  await db
+    .delete(menuCategories)
+    .where(and(eq(menuCategories.id, current.data.id), eq(menuCategories.tenantId, ctx.tenant.id)));
+  return ok({ category: current.data, uncategorisedCount: items.data.length });
+}
+
+/**
+ * Move a category of the context tenant one step up or down the display
+ * order: prove the row belongs to the tenant, then renumber the whole
+ * list by index with the row relocated. Renumbering (instead of swapping
+ * two `sortOrder` values) keeps moves working when rows share a value.
+ * Moving past either end is a no-op returning the current order.
+ */
+export async function moveTenantCategory(
+  ctx: TenantContext,
+  categoryId: string,
+  input: unknown
+): Promise<ServiceResult<MenuCategory[]>> {
+  const parsed = categoryMoveSchema.safeParse(input);
+  if (!parsed.success) {
+    return err("VALIDATION_FAILED", "Invalid move.", validationFields(parsed.error));
+  }
+  const current = await getTenantCategory(ctx, categoryId);
+  if (isErr(current)) return current;
+  const list = await getTenantCategories(ctx);
+  if (isErr(list)) return list;
+  const ordered = list.data.map((row) => row.id);
+  const from = ordered.indexOf(current.data.id);
+  const to = parsed.data.direction === "up" ? from - 1 : from + 1;
+  if (from < 0 || to < 0 || to >= ordered.length) {
+    return ok(list.data);
+  }
+  ordered.splice(to, 0, ...ordered.splice(from, 1));
+  for (const [index, id] of ordered.entries()) {
+    await db
+      .update(menuCategories)
+      .set({ sortOrder: index })
+      .where(and(eq(menuCategories.id, id), eq(menuCategories.tenantId, ctx.tenant.id)));
+  }
+  const saved = await getTenantCategories(ctx);
   if (isErr(saved)) return saved;
   return ok(saved.data);
 }

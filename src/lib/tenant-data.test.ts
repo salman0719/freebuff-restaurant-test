@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   assembleOwnerRestaurant,
+  createTenantCategory,
+  deleteTenantCategory,
+  moveTenantCategory,
   ownsRow,
+  updateTenantCategory,
   updateTenantHours,
   updateTenantSettings,
 } from "./tenant-data";
@@ -82,6 +86,62 @@ describe("updateTenantHours", () => {
     if (!result.ok) {
       expect(result.error.code).toBe("VALIDATION_FAILED");
       expect(Object.keys(result.error.fields ?? {})).toEqual(expect.arrayContaining(["2"]));
+    }
+  });
+});
+
+describe("category mutations", () => {
+  it("rejects invalid creation input without touching the database", async () => {
+    const result = await createTenantCategory(ctx, { name: "" });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.code).toBe("VALIDATION_FAILED");
+      expect(Object.keys(result.error.fields ?? {})).toEqual(["name"]);
+    }
+  });
+
+  it("rejects invalid update input without touching the database", async () => {
+    const result = await updateTenantCategory(ctx, "00000000-0000-0000-0000-000000000000", {
+      name: "",
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.code).toBe("VALIDATION_FAILED");
+      expect(Object.keys(result.error.fields ?? {})).toEqual(["name"]);
+    }
+  });
+
+  it("rejects a cleared name without touching the database", async () => {
+    const result = await updateTenantCategory(ctx, "00000000-0000-0000-0000-000000000000", {
+      name: null,
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.code).toBe("VALIDATION_FAILED");
+      expect(Object.keys(result.error.fields ?? {})).toEqual(["name"]);
+    }
+  });
+
+  it("refuses update, delete, and move with a malformed id before any query", async () => {
+    const [updated, deleted, moved] = await Promise.all([
+      updateTenantCategory(ctx, "not-a-uuid", { name: "Sides" }),
+      deleteTenantCategory(ctx, "not-a-uuid"),
+      moveTenantCategory(ctx, "not-a-uuid", { direction: "up" }),
+    ]);
+    for (const result of [updated, deleted, moved]) {
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.error.code).toBe("FORBIDDEN");
+    }
+  });
+
+  it("rejects an invalid move direction without touching the database", async () => {
+    const result = await moveTenantCategory(ctx, "00000000-0000-0000-0000-000000000000", {
+      direction: "sideways",
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.code).toBe("VALIDATION_FAILED");
+      expect(Object.keys(result.error.fields ?? {})).toEqual(["direction"]);
     }
   });
 });
