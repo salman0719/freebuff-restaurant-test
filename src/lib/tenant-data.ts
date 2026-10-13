@@ -37,7 +37,9 @@ import type { TenantContext } from "./tenant-context";
 import {
   categoryMoveSchema,
   createCategorySchema,
+  createItemSchema,
   updateCategorySchema,
+  updateItemSchema,
   updateHoursSchema,
   updateProfileSchema,
   updateTenantSchema,
@@ -456,6 +458,117 @@ export async function moveTenantCategory(
   const saved = await getTenantCategories(ctx);
   if (isErr(saved)) return saved;
   return ok(saved.data);
+}
+
+/**
+ * Create a menu item for the context tenant: validate input, prove the
+ * target category (when set) belongs to the tenant — a forged `categoryId`
+ * from another tenant yields `FORBIDDEN`, never a cross-tenant link —
+ * then insert scoped to `ctx.tenant.id`. New items go last
+ * (`max(sortOrder) + 1`); the server owns display order. `imageKey` is
+ * accepted by the contract for Phase 3.6 uploads but no 3.5 form sends it.
+ */
+export async function createTenantItem(
+  ctx: TenantContext,
+  input: unknown
+): Promise<ServiceResult<MenuItem>> {
+  const parsed = createItemSchema.safeParse(input);
+  if (!parsed.success) {
+    return err("VALIDATION_FAILED", "Invalid item.", validationFields(parsed.error));
+  }
+  if (parsed.data.categoryId != null) {
+    const category = await getTenantCategory(ctx, parsed.data.categoryId);
+    if (isErr(category)) return category;
+  }
+  const existing = await getTenantItems(ctx);
+  if (isErr(existing)) return existing;
+  const nextSort = existing.data.reduce((max, row) => Math.max(max, row.sortOrder), -1) + 1;
+  const rows = await db
+    .insert(menuItems)
+    .values({
+      tenantId: ctx.tenant.id,
+      categoryId: parsed.data.categoryId ?? null,
+      name: parsed.data.name,
+      description: parsed.data.description ?? null,
+      priceCents: parsed.data.priceCents,
+      imageKey: parsed.data.imageKey ?? null,
+      sortOrder: nextSort,
+      isPublished: parsed.data.isPublished,
+      isAvailable: parsed.data.isAvailable,
+    })
+    .returning();
+  const created = rows[0];
+  if (!created) {
+    return err("INTERNAL", "Failed to create item.");
+  }
+  return ok(created);
+}
+
+/**
+ * Update an item of the context tenant: validate input, prove the row
+ * belongs to the tenant (forged ids yield `FORBIDDEN`), prove a new
+ * `categoryId` (when set and non-null) belongs to the tenant too, then
+ * save scoped by id AND tenant. `null` names are rejected — the database
+ * requires one; `null` categoryId moves the item to uncategorised. An
+ * empty update is a no-op returning the current row.
+ */
+export async function updateTenantItem(
+  ctx: TenantContext,
+  itemId: string,
+  input: unknown
+): Promise<ServiceResult<MenuItem>> {
+  const parsed = updateItemSchema.safeParse(input);
+  if (!parsed.success) {
+    return err("VALIDATION_FAILED", "Invalid item.", validationFields(parsed.error));
+  }
+  if (parsed.data.name === null) {
+    return err("VALIDATION_FAILED", "Invalid item.", {
+      name: ["Item name is required."],
+    });
+  }
+  const current = await getTenantItem(ctx, itemId);
+  if (isErr(current)) return current;
+  if (parsed.data.categoryId) {
+    const category = await getTenantCategory(ctx, parsed.data.categoryId);
+    if (isErr(category)) return category;
+  }
+  const set: Partial<MenuItem> = {};
+  for (const [key, value] of Object.entries(parsed.data)) {
+    if (value !== undefined) {
+      (set as Record<string, unknown>)[key] = value;
+    }
+  }
+  if (Object.keys(set).length === 0) {
+    return ok(current.data);
+  }
+  const rows = await db
+    .update(menuItems)
+    .set(set)
+    .where(and(eq(menuItems.id, current.data.id), eq(menuItems.tenantId, ctx.tenant.id)))
+    .returning();
+  const updated = rows[0];
+  if (!updated) {
+    return err("INTERNAL", "Failed to save item.");
+  }
+  return ok(updated);
+}
+
+/**
+ * Delete an item of the context tenant: prove the row belongs to the
+ * tenant (forged ids yield `FORBIDDEN`), then delete scoped by id AND
+ * tenant. Items are leaves — nothing depends on them — so deletion is
+ * immediate, with a two-step confirm in the UI against stray clicks.
+ */
+export async function deleteTenantItem(
+  ctx: TenantContext,
+  itemId: string
+): Promise<ServiceResult<MenuItem>> {
+  const current = await getTenantItem(ctx, itemId);
+  if (isErr(current)) return current;
+  await db
+    .delete(menuItems)
+    .where(and(eq(menuItems.id, current.data.id), eq(menuItems.tenantId, ctx.tenant.id)));
+  return ok(current.data);
 }
 
 /**

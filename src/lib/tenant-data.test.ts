@@ -2,11 +2,14 @@ import { describe, expect, it } from "vitest";
 import {
   assembleOwnerRestaurant,
   createTenantCategory,
+  createTenantItem,
   deleteTenantCategory,
   moveTenantCategory,
   ownsRow,
+  deleteTenantItem,
   updateTenantCategory,
   updateTenantHours,
+  updateTenantItem,
   updateTenantSettings,
 } from "./tenant-data";
 import type { TenantContext as Ctx } from "./tenant-context";
@@ -142,6 +145,63 @@ describe("category mutations", () => {
     if (!result.ok) {
       expect(result.error.code).toBe("VALIDATION_FAILED");
       expect(Object.keys(result.error.fields ?? {})).toEqual(["direction"]);
+    }
+  });
+});
+
+describe("item mutations", () => {
+  it("rejects invalid creation input without touching the database", async () => {
+    const bad = await createTenantItem(ctx, { name: "", priceCents: -1 });
+    expect(bad.ok).toBe(false);
+    if (!bad.ok) {
+      expect(bad.error.code).toBe("VALIDATION_FAILED");
+      expect(Object.keys(bad.error.fields ?? {}).sort()).toEqual(["name", "priceCents"]);
+    }
+    const missing = await createTenantItem(ctx, { name: "Pizza" });
+    expect(missing.ok).toBe(false);
+    if (!missing.ok) {
+      expect(missing.error.code).toBe("VALIDATION_FAILED");
+      expect(Object.keys(missing.error.fields ?? {})).toEqual(["priceCents"]);
+    }
+  });
+
+  it("rejects a non-uuid category id before any query", async () => {
+    const result = await createTenantItem(ctx, {
+      name: "Pizza",
+      priceCents: 100,
+      categoryId: "not-a-uuid",
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error.code).toBe("VALIDATION_FAILED");
+  });
+
+  it("rejects invalid update input without touching the database", async () => {
+    const bad = await updateTenantItem(ctx, "00000000-0000-0000-0000-000000000000", {
+      priceCents: -5,
+    });
+    expect(bad.ok).toBe(false);
+    if (!bad.ok) {
+      expect(bad.error.code).toBe("VALIDATION_FAILED");
+      expect(Object.keys(bad.error.fields ?? {})).toEqual(["priceCents"]);
+    }
+    const cleared = await updateTenantItem(ctx, "00000000-0000-0000-0000-000000000000", {
+      name: null,
+    });
+    expect(cleared.ok).toBe(false);
+    if (!cleared.ok) {
+      expect(cleared.error.code).toBe("VALIDATION_FAILED");
+      expect(Object.keys(cleared.error.fields ?? {})).toEqual(["name"]);
+    }
+  });
+
+  it("refuses update and delete with a malformed id before any query", async () => {
+    const [updated, deleted] = await Promise.all([
+      updateTenantItem(ctx, "not-a-uuid", { name: "Pizza" }),
+      deleteTenantItem(ctx, "not-a-uuid"),
+    ]);
+    for (const result of [updated, deleted]) {
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.error.code).toBe("FORBIDDEN");
     }
   });
 });
