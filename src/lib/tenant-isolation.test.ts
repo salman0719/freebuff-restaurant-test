@@ -485,7 +485,7 @@ live("cross-tenant isolation (live database)", () => {
   });
 
   it("saves theme options for the context tenant only, rejecting bad values", async () => {
-    const { getTenantContext, updateTenantThemeConfig } = await libs();
+    const { getTenantContext, updateTenantThemeConfig, updateTenantSettings } = await libs();
     const ctx = await getTenantContext({ user: { id: userA, role: "owner" } }, slugA);
     expect(ctx.ok).toBe(true);
     if (!ctx.ok) return expect.unreachable();
@@ -520,5 +520,11 @@ live("cross-tenant isolation (live database)", () => {
     // A stranger cannot reach another tenant's context at all.
     const stranger = await getTenantContext({ user: { id: userB, role: "owner" } }, slugA);
     expect(stranger.ok).toBe(false);
+
+    // The Phase C migration widened the DB CHECK, so the new theme id is
+    // accepted by the database itself — not just by application validation.
+    const switched = await updateTenantSettings(ctx.data, { theme: "bistro" });
+    expect(switched.ok).toBe(true);
+    if (switched.ok) expect(switched.data.theme).toBe("bistro");
   });
 });

@@ -10,6 +10,7 @@
  */
 import { THEME_IDS, type ThemeId } from "../../db/constants";
 import { themeSchema } from "../lib/validation";
+import { BistroTheme } from "./bistro";
 import { CafeTheme } from "./cafe";
 import { TakeawayTheme } from "./takeaway";
 import type { ThemeComponent, ThemeDefinition } from "./types";
@@ -26,8 +27,14 @@ const REGISTRY: Record<ThemeId, ThemeDefinition> = {
   takeaway: {
     id: "takeaway",
     label: "Takeaway",
-    blurb: "Bold and direct — menu leads, details follow in one pass.",
+    blurb: "Bold and direct — an accent hero band, menu leads, details follow in one pass.",
     Component: TakeawayTheme,
+  },
+  bistro: {
+    id: "bistro",
+    label: "Bistro",
+    blurb: "Refined and modern — a split hero and a card-style two-column menu.",
+    Component: BistroTheme,
   },
 };
 

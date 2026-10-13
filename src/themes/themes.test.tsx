@@ -37,7 +37,14 @@ function restaurant(overrides: Partial<PublicRestaurant> = {}): PublicRestaurant
   };
 }
 
-describe.each([["cafe"], ["takeaway"]] as const)("theme %s", (id) => {
+/** One accent per theme, with the class that proves it reached the page. */
+const ACCENT_CASE = {
+  cafe: { accent: "forest", marker: "bg-emerald-50/70" },
+  takeaway: { accent: "gold", marker: "bg-yellow-600" },
+  bistro: { accent: "sage", marker: "bg-lime-50/60" },
+} as const;
+
+describe.each([["cafe"], ["takeaway"], ["bistro"]] as const)("theme %s", (id) => {
   it("renders the same public content model", () => {
     const Component = getTheme(id);
     render(<Component restaurant={restaurant()} config={resolveThemeConfig(id, {})} />);
@@ -119,16 +126,13 @@ describe.each([["cafe"], ["takeaway"]] as const)("theme %s", (id) => {
     expect(screen.getByText(/menu is coming soon/i)).toBeInTheDocument();
     expect(screen.getByText(/hours coming soon/i)).toBeInTheDocument();
   });
-
   it("applies the configured accent palette, not just the defaults", () => {
     const Component = getTheme(id);
-    const config = resolveThemeConfig(
-      id,
-      id === "cafe" ? { accent: "forest" } : { accent: "gold" }
-    );
+    const { accent, marker } = ACCENT_CASE[id];
+    const config = resolveThemeConfig(id, { accent });
     const { container } = render(<Component restaurant={restaurant()} config={config} />);
-    // Café tints its page surface; takeaway paints its hero band.
-    expect(container.innerHTML).toContain(id === "cafe" ? "bg-emerald-50/70" : "bg-yellow-600");
+    // Café and bistro tint their page surface; takeaway paints its hero band.
+    expect(container.innerHTML).toContain(marker);
   });
 
   it("honours the menu layout option", () => {
