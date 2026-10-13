@@ -7,11 +7,13 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
+import { Badge } from "@/components/ui/badge";
 import { buttonClasses } from "@/components/ui/button";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { Container, Section } from "@/components/ui/container";
 import { EmptyState } from "@/components/ui/feedback";
-import { Heading, Text } from "@/components/ui/typography";
+import { PageHeader } from "@/components/ui/page-header";
+import { Text } from "@/components/ui/typography";
 import { listUserTenants } from "@/lib/tenant-context";
 import { requireUser } from "@/lib/permissions";
 
@@ -28,10 +30,12 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
   return (
     <Container className="py-8">
       <Section>
-        <Heading level={1} className="mb-2">
-          Your restaurants
-        </Heading>
-        <Text className="mb-6">Choose a restaurant to manage its public site.</Text>
+        <PageHeader
+          eyebrow="Your account"
+          title="Your restaurants"
+          description="Choose a restaurant to manage its public site."
+          className="mb-6"
+        />
         {restaurants.length === 0 ? (
           <EmptyState
             title="No restaurants yet"
@@ -41,19 +45,24 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
           <ul className="flex flex-col gap-4">
             {restaurants.map((restaurant) => (
               <li key={restaurant.slug}>
-                <Card>
+                <Card interactive>
                   <CardContent className="flex flex-wrap items-center justify-between gap-3">
                     <div>
-                      <CardTitle>{restaurant.slug}</CardTitle>
-                      <Text>
-                        {restaurant.published ? "Published" : "Draft"} · {restaurant.role}
+                      <CardTitle className="flex flex-wrap items-center gap-2">
+                        {restaurant.slug}
+                        <Badge tone={restaurant.published ? "success" : "neutral"}>
+                          {restaurant.published ? "Live" : "Draft"}
+                        </Badge>
+                      </CardTitle>
+                      <Text muted className="mt-1 capitalize">
+                        {restaurant.role}
                       </Text>
                     </div>
                     <Link
                       href={`/dashboard/${restaurant.slug}`}
                       className={buttonClasses({ variant: "outline" })}
                     >
-                      Open dashboard
+                      Open dashboard →
                     </Link>
                   </CardContent>
                 </Card>

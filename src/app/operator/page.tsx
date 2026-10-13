@@ -11,7 +11,7 @@ import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { Container, Section } from "@/components/ui/container";
 import { EmptyState } from "@/components/ui/feedback";
-import { Heading, Text } from "@/components/ui/typography";
+import { PageHeader } from "@/components/ui/page-header";
 import { requireOperator } from "@/lib/permissions";
 
 export default async function OperatorPage(): Promise<React.ReactElement> {
@@ -26,10 +26,12 @@ export default async function OperatorPage(): Promise<React.ReactElement> {
   return (
     <Container className="py-8">
       <Section>
-        <Heading level={1} className="mb-2">
-          Operator console
-        </Heading>
-        <Text className="mb-6">Signed in as platform staff.</Text>
+        <PageHeader
+          eyebrow="Platform"
+          title="Operator console"
+          description="Signed in as platform staff."
+          className="mb-6"
+        />
         <EmptyState
           title="Console arrives in Phase 4"
           description="Tenant provisioning, onboarding review, and platform status will live here."

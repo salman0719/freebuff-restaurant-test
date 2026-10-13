@@ -5,9 +5,13 @@
  */
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Clock, UtensilsCrossed } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { buttonClasses } from "@/components/ui/button";
-import { Card, CardContent, CardTitle } from "@/components/ui/card";
-import { Heading, Text } from "@/components/ui/typography";
+import { Card, CardTitle } from "@/components/ui/card";
+import { PageHeader } from "@/components/ui/page-header";
+import { Stat } from "@/components/ui/stat";
+import { Text } from "@/components/ui/typography";
 import { getTenantContext } from "@/lib/tenant-context";
 import { getOwnerRestaurant } from "@/lib/tenant-data";
 import { auth } from "@/auth";
@@ -29,43 +33,39 @@ export default async function TenantOverviewPage({
   const { tenant, profile, hours, categories, items } = view.data;
   const hoursSet = hours.filter((row) => row.openTime ?? row.isClosed).length;
   const base = `/dashboard/${tenant.slug}`;
+  const contact = profile?.phone ?? profile?.email ?? "No contact details yet";
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <Heading level={1} className="mb-2">
-          {profile?.name ?? tenant.slug}
-        </Heading>
-        <Text>
-          {tenant.published ? <strong>Live</strong> : <strong>Draft</strong>}{" "}
-          {tenant.published
-            ? "— visitors can find this restaurant."
-            : "— only you can see it until it is published."}{" "}
-          Theme: {tenant.theme}.
-        </Text>
-      </div>
+      <PageHeader
+        eyebrow="Restaurant"
+        title={profile?.name ?? tenant.slug}
+        description={
+          tenant.published
+            ? "Live — visitors can find this restaurant on its public site."
+            : "Draft — only you can see it until it is published."
+        }
+        actions={
+          <Badge tone={tenant.published ? "success" : "neutral"}>
+            {tenant.published ? "Live" : "Draft"}
+          </Badge>
+        }
+      />
       <div className="grid gap-4 sm:grid-cols-3">
+        <Stat
+          label="Menu"
+          value={items.length}
+          hint={`${categories.length} ${categories.length === 1 ? "category" : "categories"}`}
+          icon={<UtensilsCrossed className="size-4" />}
+        />
+        <Stat
+          label="Hours"
+          value={`${hoursSet}/7`}
+          hint="days set"
+          icon={<Clock className="size-4" />}
+        />
         <Card>
-          <CardContent>
-            <CardTitle>Menu</CardTitle>
-            <Text>
-              {categories.length} {categories.length === 1 ? "category" : "categories"},{" "}
-              {items.length} {items.length === 1 ? "item" : "items"}
-            </Text>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent>
-            <CardTitle>Hours</CardTitle>
-            <Text>
-              {hoursSet} of 7 {hoursSet === 1 ? "day" : "days"} set
-            </Text>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent>
-            <CardTitle>Contact</CardTitle>
-            <Text>{profile?.phone ?? profile?.email ?? "No contact details yet"}</Text>
-          </CardContent>
+          <CardTitle>Contact</CardTitle>
+          <Text className="mt-1">{contact}</Text>
         </Card>
       </div>
       <div className="flex flex-wrap gap-2">
