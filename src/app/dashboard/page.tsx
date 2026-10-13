@@ -6,6 +6,7 @@
  */
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { Store } from "lucide-react";
 import { auth } from "@/auth";
 import { Badge } from "@/components/ui/badge";
 import { buttonClasses } from "@/components/ui/button";
@@ -38,6 +39,7 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
         />
         {restaurants.length === 0 ? (
           <EmptyState
+            icon={<Store className="size-6" />}
             title="No restaurants yet"
             description="You are signed in, but no restaurant has added you. Ask your operator for an invite."
           />

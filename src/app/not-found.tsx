@@ -13,7 +13,7 @@ export default function NotFound(): React.ReactElement {
   return (
     <Container className="flex min-h-[70vh] max-w-xl flex-col justify-center">
       <Section>
-        <Stack className="items-center text-center">
+        <Stack className="animate-rise items-center text-center">
           <span
             aria-hidden="true"
             className="flex size-14 items-center justify-center rounded-2xl bg-brand-50 text-brand-700 dark:bg-brand-950/60 dark:text-brand-300"

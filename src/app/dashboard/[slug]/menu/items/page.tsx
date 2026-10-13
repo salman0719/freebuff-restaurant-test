@@ -122,6 +122,7 @@ export default async function ItemsPage({
       </Link>
       {items.data.length === 0 ? (
         <EmptyState
+          icon={<UtensilsCrossed className="size-6" />}
           title="No items yet"
           description="Add the first one below to start building the menu."
         />

@@ -10,6 +10,7 @@
  */
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { FolderPlus } from "lucide-react";
 import { auth } from "@/auth";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonClasses } from "@/components/ui/button";
@@ -67,6 +68,7 @@ export default async function MenuPage({
       </Link>
       {categories.data.length === 0 ? (
         <EmptyState
+          icon={<FolderPlus className="size-6" />}
           title="No categories yet"
           description="Add the first one below to start building the menu."
         />

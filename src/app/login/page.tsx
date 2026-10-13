@@ -55,7 +55,7 @@ export default function LoginPage({
       </aside>
 
       <main className="flex flex-col justify-center px-4 py-12 sm:px-8 lg:px-12">
-        <div className="mx-auto w-full max-w-md">
+        <div className="animate-rise mx-auto w-full max-w-md">
           <div className="mb-8 flex items-center justify-between">
             <span className="font-display text-xl font-semibold lg:hidden">Restaurant App</span>
             <ThemeToggle className="ml-auto" />

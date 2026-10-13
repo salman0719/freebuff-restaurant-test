@@ -51,10 +51,19 @@ export interface EmptyStateProps extends Omit<HTMLAttributes<HTMLDivElement>, "t
   description?: ReactNode;
   /** Slot: follow-up action (e.g. a Button). */
   action?: ReactNode;
+  /** Optional icon shown in a tinted tile above the title. */
+  icon?: ReactNode;
 }
 
 /** Dashed placeholder for lists with zero results. */
-export function EmptyState({ title, description, action, className, ...rest }: EmptyStateProps) {
+export function EmptyState({
+  title,
+  description,
+  action,
+  icon,
+  className,
+  ...rest
+}: EmptyStateProps) {
   return (
     <div
       className={cn(
@@ -63,6 +72,14 @@ export function EmptyState({ title, description, action, className, ...rest }: E
       )}
       {...rest}
     >
+      {icon ? (
+        <span
+          aria-hidden="true"
+          className="mb-1 flex size-12 items-center justify-center rounded-2xl bg-brand-50 text-brand-700 dark:bg-brand-950/60 dark:text-brand-300"
+        >
+          {icon}
+        </span>
+      ) : null}
       <p className="font-display text-lg font-semibold text-foreground">{title}</p>
       {description ? <p className="max-w-sm text-sm text-muted-foreground">{description}</p> : null}
       {action ? <div className="mt-2">{action}</div> : null}

@@ -8,6 +8,7 @@
  * the console exists to them).
  */
 import { notFound, redirect } from "next/navigation";
+import { Construction } from "lucide-react";
 import { auth } from "@/auth";
 import { Container, Section } from "@/components/ui/container";
 import { EmptyState } from "@/components/ui/feedback";
@@ -33,6 +34,7 @@ export default async function OperatorPage(): Promise<React.ReactElement> {
           className="mb-6"
         />
         <EmptyState
+          icon={<Construction className="size-6" />}
           title="Console arrives in Phase 4"
           description="Tenant provisioning, onboarding review, and platform status will live here."
         />
