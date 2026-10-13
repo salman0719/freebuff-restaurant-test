@@ -34,6 +34,7 @@ import type {
   Tenant,
 } from "./restaurant";
 import type { TenantContext } from "./tenant-context";
+import { buildObjectKey, deleteObject, parseImageUpload, putObject } from "./storage";
 import {
   categoryMoveSchema,
   createCategorySchema,
@@ -558,6 +559,7 @@ export async function updateTenantItem(
  * tenant (forged ids yield `FORBIDDEN`), then delete scoped by id AND
  * tenant. Items are leaves — nothing depends on them — so deletion is
  * immediate, with a two-step confirm in the UI against stray clicks.
+ * A stored photo is removed too, so deletions never orphan files.
  */
 export async function deleteTenantItem(
   ctx: TenantContext,
@@ -568,7 +570,113 @@ export async function deleteTenantItem(
   await db
     .delete(menuItems)
     .where(and(eq(menuItems.id, current.data.id), eq(menuItems.tenantId, ctx.tenant.id)));
+  if (current.data.imageKey) {
+    await deleteObject(current.data.imageKey).catch(() => undefined);
+  }
   return ok(current.data);
+}
+
+/** Best-effort file cleanup: a failed delete must never fail the save. */
+async function forgetObject(key: string | null): Promise<void> {
+  if (key) {
+    await deleteObject(key).catch(() => undefined);
+  }
+}
+
+/**
+ * Replace the logo of the context tenant from an upload: validate the
+ * file (type, size, magic bytes), store it under a server-generated key,
+ * then link it onto the profile scoped to `ctx.tenant.id`. The previous
+ * logo is removed once the new one is linked, so replaces never orphan
+ * files. Needs an existing profile — the name field is required for one,
+ * so a logo-only upload with no profile reports the missing name instead
+ * of uploading anything.
+ */
+export async function setTenantLogo(
+  ctx: TenantContext,
+  file: unknown
+): Promise<ServiceResult<RestaurantProfile>> {
+  const parsed = await parseImageUpload(file);
+  if (isErr(parsed)) return parsed;
+  const current = await getTenantProfile(ctx);
+  if (isErr(current)) return current;
+  if (!current.data) {
+    return err("VALIDATION_FAILED", "Invalid profile.", {
+      name: ["Restaurant name is required."],
+    });
+  }
+  const key = buildObjectKey("logos", ctx.tenant.id, parsed.data.extension);
+  await putObject(key, parsed.data.bytes);
+  const rows = await db
+    .update(restaurantProfiles)
+    .set({ logoImageKey: key })
+    .where(eq(restaurantProfiles.tenantId, ctx.tenant.id))
+    .returning();
+  const updated = rows[0];
+  if (!updated) {
+    await forgetObject(key);
+    return err("INTERNAL", "Failed to save logo.");
+  }
+  await forgetObject(current.data.logoImageKey);
+  return ok(updated);
+}
+
+/**
+ * Replace an item photo from an upload: validate the file, prove the item
+ * belongs to the tenant (forged ids yield `FORBIDDEN`), store under a
+ * server-generated key, then link it scoped by id AND tenant. The
+ * previous photo is removed once the new one is linked.
+ */
+export async function setTenantItemImage(
+  ctx: TenantContext,
+  itemId: string,
+  file: unknown
+): Promise<ServiceResult<MenuItem>> {
+  const parsed = await parseImageUpload(file);
+  if (isErr(parsed)) return parsed;
+  const current = await getTenantItem(ctx, itemId);
+  if (isErr(current)) return current;
+  const key = buildObjectKey("items", ctx.tenant.id, parsed.data.extension);
+  await putObject(key, parsed.data.bytes);
+  const rows = await db
+    .update(menuItems)
+    .set({ imageKey: key })
+    .where(and(eq(menuItems.id, current.data.id), eq(menuItems.tenantId, ctx.tenant.id)))
+    .returning();
+  const updated = rows[0];
+  if (!updated) {
+    await forgetObject(key);
+    return err("INTERNAL", "Failed to save photo.");
+  }
+  await forgetObject(current.data.imageKey);
+  return ok(updated);
+}
+
+/**
+ * Remove an item photo: prove the item belongs to the tenant, clear the
+ * link scoped by id AND tenant, then remove the file. Already-photoless
+ * items are a no-op returning the current row.
+ */
+export async function clearTenantItemImage(
+  ctx: TenantContext,
+  itemId: string
+): Promise<ServiceResult<MenuItem>> {
+  const current = await getTenantItem(ctx, itemId);
+  if (isErr(current)) return current;
+  if (!current.data.imageKey) {
+    return ok(current.data);
+  }
+  const rows = await db
+    .update(menuItems)
+    .set({ imageKey: null })
+    .where(and(eq(menuItems.id, current.data.id), eq(menuItems.tenantId, ctx.tenant.id)))
+    .returning();
+  const updated = rows[0];
+  if (!updated) {
+    return err("INTERNAL", "Failed to remove photo.");
+  }
+  await forgetObject(current.data.imageKey);
+  return ok(updated);
 }
 
 /**

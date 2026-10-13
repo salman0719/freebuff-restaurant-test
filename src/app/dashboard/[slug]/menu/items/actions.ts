@@ -15,7 +15,14 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { getTenantContext, type TenantContext } from "@/lib/tenant-context";
-import { createTenantItem, deleteTenantItem, updateTenantItem } from "@/lib/tenant-data";
+import { isErr } from "@/lib/result";
+import {
+  clearTenantItemImage,
+  createTenantItem,
+  deleteTenantItem,
+  setTenantItemImage,
+  updateTenantItem,
+} from "@/lib/tenant-data";
 import { toCreateItemInput, toUpdateItemInput } from "./form";
 
 export interface ItemState {
@@ -123,6 +130,23 @@ export async function saveItem(_prevState: ItemState, formData: FormData): Promi
       return { status: "error", message: "You do not have access to this restaurant." };
     }
     return { status: "error", message: "Could not save the item. Try again." };
+  }
+  const photo = formData.get("photo");
+  const hasPhoto = typeof File !== "undefined" && photo instanceof File && photo.size > 0;
+  const removePhoto = formData.get("removePhoto") !== null;
+  if (hasPhoto || removePhoto) {
+    const imaged = removePhoto
+      ? await clearTenantItemImage(context, itemId)
+      : await setTenantItemImage(context, itemId, photo);
+    if (isErr(imaged)) {
+      const reason = imaged.error.fields?.["image"]?.[0] ?? "Could not use that photo.";
+      return {
+        status: "error",
+        message: `Item saved, but the photo was not updated: ${reason}`,
+        fields: imaged.error.fields,
+        values: echoValues(formData),
+      };
+    }
   }
   revalidatePath(itemsPath(context.tenant.slug));
   return { status: "saved", message: `Item “${saved.data.name}” saved.` };

@@ -10,6 +10,7 @@
  * the `iso_` slug namespace is touched.
  */
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { getObject } from "./storage";
 
 const TEST_URL = process.env.TEST_DATABASE_URL;
 const live = TEST_URL ? describe : describe.skip;
@@ -320,6 +321,84 @@ live("cross-tenant isolation (live database)", () => {
     expect(deleted.ok).toBe(true);
     const gone = await getTenantItem(ctx.data, created.data.id);
     expect(gone.ok).toBe(false);
+  });
+
+  it("stores uploads under server keys and refuses cross-tenant images", async () => {
+    const {
+      createTenantCategory,
+      createTenantItem,
+      deleteTenantItem,
+      updateTenantProfile,
+      setTenantLogo,
+      setTenantItemImage,
+      clearTenantItemImage,
+      getTenantContext,
+    } = await libs();
+    const { mkdtemp, rm } = await import("node:fs/promises");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const dir = await mkdtemp(join(tmpdir(), "iso-uploads-"));
+    process.env.STORAGE_DIR = dir;
+    try {
+      const ctx = await getTenantContext({ user: { id: userA, role: "owner" } }, slugA);
+      expect(ctx.ok).toBe(true);
+      if (!ctx.ok) return expect.unreachable();
+      const png = (fill: number): File =>
+        new File(
+          [new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, fill])],
+          "logo.png",
+          { type: "image/png" }
+        );
+      // Logos need a profile to link onto — the name field feeds it.
+      const profiled = await updateTenantProfile(ctx.data, { name: "Trattoria A" });
+      expect(profiled.ok).toBe(true);
+      const first = await setTenantLogo(ctx.data, png(1));
+      expect(first.ok).toBe(true);
+      if (!first.ok) return expect.unreachable();
+      const firstKey = first.data.logoImageKey;
+      expect(firstKey).toMatch(/^tenants\/.+\/logos\/.+\.png$/);
+      expect(await getObject(firstKey as string)).not.toBeNull();
+      // Replacing mints a new key and removes the old file.
+      const second = await setTenantLogo(ctx.data, png(2));
+      expect(second.ok).toBe(true);
+      if (!second.ok) return expect.unreachable();
+      expect(second.data.logoImageKey).not.toBe(firstKey);
+      expect(await getObject(firstKey as string)).toBeNull();
+      expect(await getObject(second.data.logoImageKey as string)).not.toBeNull();
+      // Item photos round-trip the same way, including removal.
+      const category = await createTenantCategory(ctx.data, { name: "Specials" });
+      expect(category.ok).toBe(true);
+      if (!category.ok) return expect.unreachable();
+      const item = await createTenantItem(ctx.data, { name: "Dish", priceCents: 100 });
+      expect(item.ok).toBe(true);
+      if (!item.ok) return expect.unreachable();
+      const photo = await setTenantItemImage(ctx.data, item.data.id, png(3));
+      expect(photo.ok).toBe(true);
+      if (!photo.ok) return expect.unreachable();
+      expect(await getObject(photo.data.imageKey as string)).not.toBeNull();
+      const cleared = await clearTenantItemImage(ctx.data, item.data.id);
+      expect(cleared.ok).toBe(true);
+      if (!cleared.ok) return expect.unreachable();
+      expect(cleared.data.imageKey).toBeNull();
+      expect(await getObject(photo.data.imageKey as string)).toBeNull();
+      // Another tenant's item refuses both photo paths.
+      const badPhoto = await setTenantItemImage(ctx.data, itemB, png(4));
+      expect(badPhoto.ok).toBe(false);
+      if (!badPhoto.ok) expect(badPhoto.error.code).toBe("FORBIDDEN");
+      const badClear = await clearTenantItemImage(ctx.data, itemB);
+      expect(badClear.ok).toBe(false);
+      if (!badClear.ok) expect(badClear.error.code).toBe("FORBIDDEN");
+      // Deleting an item removes its photo file too.
+      const relinked = await setTenantItemImage(ctx.data, item.data.id, png(5));
+      expect(relinked.ok).toBe(true);
+      if (!relinked.ok) return expect.unreachable();
+      const removed = await deleteTenantItem(ctx.data, item.data.id);
+      expect(removed.ok).toBe(true);
+      expect(await getObject(relinked.data.imageKey as string)).toBeNull();
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+      delete process.env.STORAGE_DIR;
+    }
   });
 
   it("scopes the owner view and the mutation to the context tenant", async () => {

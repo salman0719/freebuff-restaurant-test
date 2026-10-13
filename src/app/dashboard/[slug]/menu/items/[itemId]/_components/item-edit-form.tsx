@@ -9,12 +9,14 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { ErrorState } from "@/components/ui/feedback";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { imageUrlForKey } from "@/lib/image-url";
 import type { MenuCategory, MenuItem } from "@/lib/restaurant";
 import { formatPrice } from "@/themes/format";
 import { deleteItem, saveItem, type ItemState } from "../../actions";
@@ -99,6 +101,33 @@ export function ItemEditForm({
               </option>
             ))}
           </Select>
+        </Field>
+        <Field
+          label="Photo"
+          hint="JPEG, PNG, or WebP, at most 2 MB. Shown beside the item on the public menu."
+          error={fieldError(saveState.fields, "image")}
+        >
+          {item.imageKey ? (
+            <Image
+              src={imageUrlForKey(item.imageKey)}
+              alt=""
+              width={128}
+              height={128}
+              className="mb-2 rounded-lg border border-zinc-200 object-cover dark:border-zinc-800"
+            />
+          ) : null}
+          <Input name="photo" type="file" accept="image/jpeg,image/png,image/webp" />
+          {item.imageKey ? (
+            <label className="mt-2 flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
+              <input type="checkbox" name="removePhoto" className="h-4 w-4 accent-zinc-900" />
+              Remove the current photo
+            </label>
+          ) : null}
+          {fieldError(saveState.fields, "image") ? (
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">
+              Select the file again — browsers don&apos;t keep it after a failed save.
+            </p>
+          ) : null}
         </Field>
         <label className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
           <input

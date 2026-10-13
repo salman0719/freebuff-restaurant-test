@@ -28,6 +28,12 @@ http://localhost:8025, SMTP on `localhost:1025`. For local magic-link
 sign-in, uncomment `EMAIL_SERVER`/`EMAIL_FROM` in `.env.local` (values
 in `.env.example` match these defaults).
 
+Uploads (logos, item photos) store as files under `local/uploads`
+(git-ignored, dev only): JPEG/PNG/WebP, at most 2 MB, served back via
+`/api/images/…`. Production file storage is still open — the code is
+ready for the R2 adapter decided in `docs/decisions/0002-open-decisions.md`
+§5 (see `src/lib/storage.ts`).
+
 Optional browser database viewer (Adminer, profile-gated so the default
 `up -d` is unaffected):
 

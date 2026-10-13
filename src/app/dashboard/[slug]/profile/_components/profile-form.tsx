@@ -1,17 +1,21 @@
 /**
- * Profile editor form (Phase 3.2). Client component: owns the
+ * Profile editor form (Phase 3.2, logo in 3.6). Client component: owns the
  * `useActionState` round-trip so rejected saves keep typed input and
  * show field-level errors, and saves confirm via a `role="status"`
  * message. `slug` rides along as a hidden field for context lookup.
+ * A selected logo uploads with the save (JPEG/PNG/WebP, at most 2 MB);
+ * file inputs cannot be re-echoed, so a rejected save asks to reselect.
  */
 "use client";
 
 import { useActionState } from "react";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { ErrorState } from "@/components/ui/feedback";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { imageUrlForKey } from "@/lib/image-url";
 import type { RestaurantProfile } from "@/lib/restaurant";
 import { saveProfile, type ProfileState } from "../actions";
 
@@ -52,6 +56,27 @@ export function ProfileForm({
       ) : null}
       <Field label="Restaurant name" required error={fieldError(state.fields, "name")}>
         <Input name="name" required defaultValue={value("name")} autoComplete="organization" />
+      </Field>
+      <Field
+        label="Logo"
+        hint="JPEG, PNG, or WebP, at most 2 MB. Shown at the top of the public site."
+        error={fieldError(state.fields, "image")}
+      >
+        {profile?.logoImageKey ? (
+          <Image
+            src={imageUrlForKey(profile.logoImageKey)}
+            alt="Current restaurant logo"
+            width={96}
+            height={96}
+            className="mb-2 rounded-lg border border-zinc-200 object-contain dark:border-zinc-800"
+          />
+        ) : null}
+        <Input name="logo" type="file" accept="image/jpeg,image/png,image/webp" />
+        {fieldError(state.fields, "image") ? (
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">
+            Select the file again — browsers don&apos;t keep it after a failed save.
+          </p>
+        ) : null}
       </Field>
       <Field
         label="Description"

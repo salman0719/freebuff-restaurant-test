@@ -1,12 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
   assembleOwnerRestaurant,
+  clearTenantItemImage,
   createTenantCategory,
   createTenantItem,
   deleteTenantCategory,
   moveTenantCategory,
   ownsRow,
   deleteTenantItem,
+  setTenantItemImage,
+  setTenantLogo,
   updateTenantCategory,
   updateTenantHours,
   updateTenantItem,
@@ -203,6 +206,36 @@ describe("item mutations", () => {
       expect(result.ok).toBe(false);
       if (!result.ok) expect(result.error.code).toBe("FORBIDDEN");
     }
+  });
+});
+
+describe("image mutations", () => {
+  it("rejects a non-image logo without touching the database", async () => {
+    const result = await setTenantLogo(ctx, "not a file");
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.code).toBe("VALIDATION_FAILED");
+      expect(Object.keys(result.error.fields ?? {})).toEqual(["image"]);
+    }
+  });
+
+  it("rejects a non-image item photo without touching the database", async () => {
+    const result = await setTenantItemImage(
+      ctx,
+      "00000000-0000-0000-0000-000000000000",
+      "not a file"
+    );
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.code).toBe("VALIDATION_FAILED");
+      expect(Object.keys(result.error.fields ?? {})).toEqual(["image"]);
+    }
+  });
+
+  it("refuses photo removal on a malformed id before any query", async () => {
+    const result = await clearTenantItemImage(ctx, "not-a-uuid");
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error.code).toBe("FORBIDDEN");
   });
 });
 

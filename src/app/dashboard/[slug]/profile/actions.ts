@@ -1,16 +1,21 @@
 /**
- * Profile save action (Phase 3.2). Server-only: resolves the
+ * Profile save action (Phase 3.2, logo in 3.6). Server-only: resolves the
  * membership-gated context, then delegates to `updateTenantProfile`
  * (validate → scope → save). Form blanks arrive as `""` and are mapped
  * to `null` (clear) before validation; the data layer rejects a cleared
  * name because the database requires one.
+ *
+ * A selected logo file uploads after the fields save (fields-first, so a
+ * field failure changes nothing). A logo failure then reports honestly —
+ * "profile saved, logo not" — instead of claiming full success.
  */
 "use server";
 
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { getTenantContext } from "@/lib/tenant-context";
-import { updateTenantProfile } from "@/lib/tenant-data";
+import { isErr } from "@/lib/result";
+import { setTenantLogo, updateTenantProfile } from "@/lib/tenant-data";
 import { EDITABLE_KEYS, toProfileInput } from "./form";
 
 export interface ProfileState {
@@ -52,6 +57,22 @@ export async function saveProfile(
       };
     }
     return { status: "error", message: "Could not save the profile. Try again." };
+  }
+  const logo = formData.get("logo");
+  if (typeof File !== "undefined" && logo instanceof File && logo.size > 0) {
+    const linked = await setTenantLogo(context.data, logo);
+    if (isErr(linked)) {
+      const reason =
+        linked.error.fields?.["image"]?.[0] ??
+        linked.error.fields?.["name"]?.[0] ??
+        "Could not use that logo.";
+      return {
+        status: "error",
+        message: `Profile saved, but the logo was not updated: ${reason}`,
+        fields: linked.error.fields,
+        values: echoValues(formData),
+      };
+    }
   }
   revalidatePath(`/dashboard/${context.data.tenant.slug}`);
   return { status: "saved", message: "Profile saved." };
