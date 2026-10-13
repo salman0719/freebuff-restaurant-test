@@ -510,7 +510,7 @@ sorted with "Closed" for closed days, overnight ranges pass through).
 lint + typecheck green, build green with the hours route partial-
 prerendered like the other editors.
 
-## 3.4 Menu category management
+## 3.4 Menu category management — Done
 
 **Can be done independently:** Yes, after menu contracts are stable.
 
@@ -520,6 +520,25 @@ prerendered like the other editors.
 - Enforce tenant ownership on every operation.
 
 **Deliverable:** Category management flow.
+
+Done: `createTenantCategory` / `updateTenantCategory` /
+`deleteTenantCategory` / `moveTenantCategory` in `src/lib/tenant-data.ts`
+(validate → ownership-check → save, all scoped to the context tenant;
+duplicate names rejected with a field error, including a `23505` mapping
+for lost races; new categories go last, the server owns `sortOrder`;
+delete keeps items as uncategorised via the `SET NULL` FK and reports the
+count; move renumbers the whole list by index so shared `sortOrder`
+values never block reordering) behind the
+`src/app/dashboard/[slug]/menu` screens (ordered list with item counts,
+move up/down posts, per-category editor with rename/description/
+published toggle, two-step delete with an honest uncategorised warning
+and redirect). Pure form mapping lives in `form.ts` — `"use server"`
+modules may only export async functions (same lesson as 3.1–3.3). Live
+gated isolation suite covers create/duplicate/move/delete-
+uncategorised plus cross-tenant `FORBIDDEN` on update/delete/move
+(8/8 green against local Postgres 2026-10-13); 187/187 unit tests green
+without a database, lint + typecheck green, build green with both menu
+routes partial-prerendered.
 
 ## 3.5 Menu item management
 
