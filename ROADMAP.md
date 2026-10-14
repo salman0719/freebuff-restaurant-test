@@ -992,6 +992,84 @@ configured. - Domain configured. - Website published.
 
 ## 4.4 Operator integration and auditability
 
+**Status:** Done 2026-10-15. Every operator act that changes something now
+writes a row to `audit_events`, in the SAME transaction as the change, and
+each restaurant's page shows its own trail: who created it and who was
+granted access, with the acting account's address and the time. The
+vocabulary is closed ("tenant.created", "tenant.owner_granted") and lives in
+`db/constants.ts` with a CHECK behind it, so a new recorded action is a
+deliberate migration rather than something a caller can invent.
+
+Four things make it a trail rather than a log, and each is a place this
+could quietly have gone wrong. It is written inside the act's own
+transaction — the tenant, its profile, and the record of its creation commit
+together, so a restaurant cannot exist unrecorded. It records only what
+SUCCEEDED: a refused grant, a duplicate address, and a rejected form write
+nothing, because nothing changed. The actor's address is snapshotted from
+the account row, never from the request, so a tampered session claim cannot
+sign a wrong name into the history. And the detail payload is factual and
+small — a theme id, a publishing flag, an invited address — never the
+restaurant's name, menu, hours, or contact details: knowing who did what is
+the brief, and not copying tenant content into a second table is the same
+line 4.3's reads draw.
+
+It also survives what it describes, which is where it deliberately
+diverges from every other table here: `tenant_id` is `SET NULL` and the
+actor carries no foreign key, so deleting a restaurant or closing an
+account cannot delete the fact that someone created it. The snapshots
+(`tenant_slug`, `actor_email`) are what keep those rows readable afterwards.
+The consequence is stated rather than hidden: the console keys its read on
+the tenant id, so a deleted restaurant's history is evidence that no page
+currently shows — it stays in the table for a platform-wide view to pick
+up, not in the UI.
+
+On 4.4's other three bullets: the writes go through the one provisioning
+module that already owns cross-tenant authority, and the reads through the
+staff-gated modules 4.2/4.3 built, so nothing new was granted a way to
+reach tenant data; the trail read re-checks the staff role itself, exactly
+like `operator-tenants.ts`, because neither is scoped by a
+`TenantContext`; and the E2E proves an ordinary owner reaches neither the
+page nor the trail. "Avoid exposing private tenant data unnecessarily" is
+satisfied by the trail holding acts and not content.
+
+**Verification:** 17 unit tests pin the descriptions, the time format and
+the read gate (an owner, a near-miss role and no identity at all get
+FORBIDDEN without a read); 10 more pin when provisioning records and what it
+hands down, including that a creation's record never contains the
+restaurant's name. In `db-schema.test.ts`, the schema's own metadata is
+checked as well as the committed SQL: the table is append-only (`created_at`,
+no `updated_at`), its tenant reference is `SET NULL` rather than a cascade,
+no foreign key ties it to the actor, and the vocabulary the app ships is the
+vocabulary the CHECK allows. A live suite (`audit-live.test.ts`, opt-in on
+`TEST_DATABASE_URL` like the other live suites) runs the REAL store against a
+database and proves the four claims that matter: the creation is recorded and
+linked to the tenant that now exists, the staff-gated read returns it, the
+grant is recorded while the refused second grant is not, and both a deleted
+restaurant and a deleted operator account leave the rows standing —
+`tenant_id` null, the slug and the actor's address intact.
+`e2e/operator-provisioning.spec.ts` reads the trail through the browser after
+creating a restaurant and granting access (asserted inside the trail's own
+region, because the operator's address appears elsewhere on the page), and
+checks the refusal left exactly one grant. Whole suite green: 462 unit tests
+without a database, 487 with one including the 25 opt-in live tests, and 13
+E2E tests.
+
+**Found while doing this:** the E2E's own cleanup was leaving one orphan
+`tenant_id IS NULL` row per run, because the trail deliberately does not
+cascade from `tenants` — the helper now deletes a spec's audit rows by their
+slug snapshot before deleting the tenant, which is the only handle left
+afterwards.
+
+**Note for later:** nothing records an operator READING a restaurant — only
+what they changed — so the trail cannot answer "who looked at this", which
+is the question that matters if staff access to owner content ever widens
+beyond the setup facts it has today. Two smaller gaps the same table can
+absorb without changing shape: a platform-wide activity feed (the read
+would want an index on `created_at`, since today's indexes serve one
+restaurant and one actor), and platform-scoped acts such as granting the
+staff role itself, which is why `tenant_id` is nullable and the vocabulary
+is a closed set rather than a free string.
+
 **Can be done independently:** Partially.
 
 - Integrate the operator pages with the underlying tenant services.
