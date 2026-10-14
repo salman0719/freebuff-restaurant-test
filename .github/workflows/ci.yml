@@ -52,5 +52,21 @@ jobs:
       - run: npm run db:migrate
       - run: npm run test:run
       - run: npm run build
+      # Release gate: the only check that proves a request is actually
+      # *bounced* by the edge gate. A build that lists `ƒ Proxy (Middleware)`
+      # proves nothing on its own — emptying the matcher leaves that listing
+      # in place while four private routes answer 200. Sits before the browser
+      # install so the cheapest, highest-signal check fails first.
+      # Port 4031, not the E2E's 4030: in CI Playwright sets reuseExistingServer
+      # to false and would refuse to start beside a server already there. The
+      # server outlives this step by design (the runner is disposable, and
+      # nothing else in the job binds 4031); its log is kept for failures.
+      - name: Route smoke check (edge gate)
+        run: |
+          nohup npx next start -p 4031 > /tmp/smoke-server.log 2>&1 < /dev/null &
+          npm run smoke -- http://localhost:4031 --wait 60000
+      - name: Smoke check server log
+        if: failure()
+        run: cat /tmp/smoke-server.log
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
