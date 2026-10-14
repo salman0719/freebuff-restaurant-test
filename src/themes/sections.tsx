@@ -42,38 +42,41 @@ export interface AccentPalette {
 
 /** Static accent map — every class must appear literally for Tailwind. */
 export const ACCENTS: Record<string, AccentPalette> = {
+  // Café's trio is Modern Trattoria: three warm inks (espresso, terracotta,
+  // tomato) over the house cream. The old `forest` emerald was the one cool
+  // accent in the set and left with the refresh.
   espresso: {
     eyebrow: "text-amber-800 dark:text-amber-200",
     heading: "text-stone-900 dark:text-stone-50",
     surface: "bg-amber-50/70 dark:bg-stone-950",
-    band: "bg-amber-900",
+    band: "bg-amber-950",
     bandText: "text-amber-50",
     bandEyebrow: "text-amber-200",
     bandBody: "text-amber-100",
-    button: "bg-amber-700 text-white hover:bg-amber-800",
-    rule: "bg-amber-600",
-  },
-  forest: {
-    eyebrow: "text-emerald-800 dark:text-emerald-200",
-    heading: "text-stone-900 dark:text-stone-50",
-    surface: "bg-emerald-50/70 dark:bg-stone-950",
-    band: "bg-emerald-900",
-    bandText: "text-emerald-50",
-    bandEyebrow: "text-emerald-200",
-    bandBody: "text-emerald-100",
-    button: "bg-emerald-700 text-white hover:bg-emerald-800",
-    rule: "bg-emerald-600",
+    button: "bg-amber-800 text-white hover:bg-amber-900",
+    rule: "bg-amber-700",
   },
   terracotta: {
     eyebrow: "text-orange-800 dark:text-orange-200",
     heading: "text-stone-900 dark:text-stone-50",
     surface: "bg-orange-50/70 dark:bg-stone-950",
-    band: "bg-orange-800",
+    band: "bg-orange-950",
     bandText: "text-orange-50",
     bandEyebrow: "text-orange-200",
     bandBody: "text-orange-100",
-    button: "bg-orange-700 text-white hover:bg-orange-800",
-    rule: "bg-orange-600",
+    button: "bg-orange-800 text-white hover:bg-orange-900",
+    rule: "bg-orange-700",
+  },
+  tomato: {
+    eyebrow: "text-red-800 dark:text-red-200",
+    heading: "text-stone-900 dark:text-stone-50",
+    surface: "bg-red-50/70 dark:bg-stone-950",
+    band: "bg-red-900",
+    bandText: "text-red-50",
+    bandEyebrow: "text-red-200",
+    bandBody: "text-red-100",
+    button: "bg-red-700 text-white hover:bg-red-800",
+    rule: "bg-red-600",
   },
   chili: {
     eyebrow: "text-red-700 dark:text-red-300",
@@ -245,16 +248,19 @@ export function HeroSection({
   accent,
   align = "center",
   showDescription = true,
+  className,
 }: {
   restaurant: PublicRestaurant;
   kicker: string;
   accent: string;
   align?: "center" | "left";
   showDescription?: boolean;
+  /** Extra classes on the section, for tightening the hand-off to the menu. */
+  className?: string;
 }): React.ReactElement {
   const classes = accentClasses(accent);
   return (
-    <Section aria-label="Restaurant introduction">
+    <Section aria-label="Restaurant introduction" className={className}>
       <Stack className={align === "center" ? "items-center text-center" : "items-start text-left"}>
         {restaurant.logoImageKey ? (
           <Image

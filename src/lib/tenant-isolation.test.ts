@@ -491,14 +491,14 @@ live("cross-tenant isolation (live database)", () => {
     if (!ctx.ok) return expect.unreachable();
 
     const saved = await updateTenantThemeConfig(ctx.data, "cafe", {
-      accent: "forest",
+      accent: "tomato",
       menuLayout: "grid",
       showHours: false,
     });
     expect(saved.ok).toBe(true);
     if (saved.ok) {
       expect(saved.data.themeConfig).toEqual({
-        accent: "forest",
+        accent: "tomato",
         menuLayout: "grid",
         showHours: false,
       });
@@ -514,7 +514,7 @@ live("cross-tenant isolation (live database)", () => {
     const reloaded = await getTenantContext({ user: { id: userA, role: "owner" } }, slugA);
     expect(reloaded.ok).toBe(true);
     if (reloaded.ok) {
-      expect(reloaded.data.tenant.themeConfig.accent).toBe("forest");
+      expect(reloaded.data.tenant.themeConfig.accent).toBe("tomato");
     }
 
     // A stranger cannot reach another tenant's context at all.

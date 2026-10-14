@@ -14,7 +14,7 @@
 import { z } from "zod";
 import type { ThemeId } from "../../db/constants";
 
-export const CAFE_ACCENTS = ["espresso", "forest", "terracotta"] as const;
+export const CAFE_ACCENTS = ["espresso", "terracotta", "tomato"] as const;
 export const TAKEAWAY_ACCENTS = ["chili", "charcoal", "gold"] as const;
 export const BISTRO_ACCENTS = ["plum", "navy", "sage"] as const;
 export const DINER_ACCENTS = ["cherry", "butter", "cola"] as const;

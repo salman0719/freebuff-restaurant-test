@@ -24,9 +24,9 @@ import { saveThemeOptions, type ThemeOptionsState } from "../actions";
  * and diner accents were shipping.
  */
 const SWATCH: Record<string, string> = {
-  espresso: "bg-amber-900",
-  forest: "bg-emerald-900",
-  terracotta: "bg-orange-800",
+  espresso: "bg-amber-950",
+  terracotta: "bg-orange-950",
+  tomato: "bg-red-900",
   chili: "bg-red-800",
   charcoal: "bg-zinc-900",
   gold: "bg-yellow-800",

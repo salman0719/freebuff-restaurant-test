@@ -23,7 +23,7 @@ const REGISTRY: Record<ThemeId, ThemeDefinition> = {
   cafe: {
     id: "cafe",
     label: "Café",
-    blurb: "Warm and editorial — story first, then menu, then visit details.",
+    blurb: "Modern trattoria — a warm, left-aligned welcome that hands straight to the menu.",
     Component: CafeTheme,
   },
   takeaway: {

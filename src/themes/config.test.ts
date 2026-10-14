@@ -27,8 +27,8 @@ describe("resolveThemeConfig", () => {
   });
 
   it("keeps valid stored options and fills the rest from defaults", () => {
-    expect(resolveThemeConfig("cafe", { accent: "forest", showHours: false })).toEqual({
-      accent: "forest",
+    expect(resolveThemeConfig("cafe", { accent: "tomato", showHours: false })).toEqual({
+      accent: "tomato",
       menuLayout: "editorial",
       showHours: false,
     });
@@ -47,8 +47,8 @@ describe("resolveThemeConfig", () => {
       menuLayout: "editorial",
       showHours: true,
     });
-    expect(resolveThemeConfig("cafe", { accent: "forest", hacked: true })).toEqual({
-      accent: "forest",
+    expect(resolveThemeConfig("cafe", { accent: "tomato", hacked: true })).toEqual({
+      accent: "tomato",
       menuLayout: "editorial",
       showHours: true,
     });
@@ -72,7 +72,7 @@ describe("resolveThemeConfig", () => {
 
 describe("accentsFor", () => {
   it("returns each theme's own accent vocabulary", () => {
-    expect(accentsFor("cafe")).toEqual(["espresso", "forest", "terracotta"]);
+    expect(accentsFor("cafe")).toEqual(["espresso", "terracotta", "tomato"]);
     expect(accentsFor("takeaway")).toEqual(["chili", "charcoal", "gold"]);
     expect(accentsFor("bistro")).toEqual(["plum", "navy", "sage"]);
     expect(accentsFor("diner")).toEqual(["cherry", "butter", "cola"]);
