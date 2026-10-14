@@ -18,6 +18,7 @@ export const CAFE_ACCENTS = ["espresso", "forest", "terracotta"] as const;
 export const TAKEAWAY_ACCENTS = ["chili", "charcoal", "gold"] as const;
 export const BISTRO_ACCENTS = ["plum", "navy", "sage"] as const;
 export const DINER_ACCENTS = ["cherry", "butter", "cola"] as const;
+export const GARDEN_ACCENTS = ["fern", "brook", "celery"] as const;
 export const MENU_LAYOUTS = ["editorial", "compact", "grid"] as const;
 
 export type MenuLayout = (typeof MENU_LAYOUTS)[number];
@@ -46,18 +47,26 @@ const dinerConfigSchema = z.object({
   showHours: z.boolean().default(true),
 });
 
+const gardenConfigSchema = z.object({
+  accent: z.enum(GARDEN_ACCENTS).default("fern"),
+  menuLayout: z.enum(MENU_LAYOUTS).default("editorial"),
+  showHours: z.boolean().default(true),
+});
+
 const CONFIG_SCHEMAS = {
   cafe: cafeConfigSchema,
   takeaway: takeawayConfigSchema,
   bistro: bistroConfigSchema,
   diner: dinerConfigSchema,
+  garden: gardenConfigSchema,
 } satisfies Record<ThemeId, z.ZodTypeAny>;
 
 export type CafeConfig = z.infer<typeof cafeConfigSchema>;
 export type TakeawayConfig = z.infer<typeof takeawayConfigSchema>;
 export type BistroConfig = z.infer<typeof bistroConfigSchema>;
 export type DinerConfig = z.infer<typeof dinerConfigSchema>;
-export type ThemeConfig = CafeConfig | TakeawayConfig | BistroConfig | DinerConfig;
+export type GardenConfig = z.infer<typeof gardenConfigSchema>;
+export type ThemeConfig = CafeConfig | TakeawayConfig | BistroConfig | DinerConfig | GardenConfig;
 
 /**
  * The strict schema for a theme — no silent fallback, for write paths that
@@ -73,6 +82,7 @@ const THEME_ACCENTS: Record<ThemeId, readonly string[]> = {
   takeaway: TAKEAWAY_ACCENTS,
   bistro: BISTRO_ACCENTS,
   diner: DINER_ACCENTS,
+  garden: GARDEN_ACCENTS,
 };
 
 /** The accent vocabulary for a theme (used by the dashboard options form). */
@@ -95,6 +105,7 @@ export const THEME_TOGGLES = {
   },
   bistro: { name: "showHours", label: "Show opening hours on the site" },
   diner: { name: "showHours", label: "Show opening hours on the site" },
+  garden: { name: "showHours", label: "Show opening hours on the site" },
 } as const satisfies Record<ThemeId, { name: string; label: string }>;
 
 /** The toggle vocabulary for a theme (used by the dashboard options form). */

@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
 afterEach(cleanup);
@@ -43,19 +43,26 @@ const ACCENT_CASE = {
   takeaway: { accent: "gold", marker: "bg-yellow-800" },
   bistro: { accent: "sage", marker: "bg-lime-50/60" },
   diner: { accent: "butter", marker: "bg-butter-50/70" },
+  garden: { accent: "brook", marker: "bg-teal-50/70" },
 } as const;
 
 /** Themes with a tel: call CTA strip — takeaway's hero, diner's band. */
 const CALL_CTA_THEMES = ["takeaway", "diner"] as const;
 
-describe.each([["cafe"], ["takeaway"], ["bistro"], ["diner"]] as const)("theme %s", (id) => {
+/** Every shipped theme; kept as a one-liner so adding one stays a diff of one. */
+const THEME_CASES = ["cafe", "takeaway", "bistro", "diner", "garden"] as const;
+
+describe.each(THEME_CASES)("theme %s", (id) => {
   it("renders the same public content model", () => {
     const Component = getTheme(id);
     render(<Component restaurant={restaurant()} config={resolveThemeConfig(id, {})} />);
     expect(screen.getByRole("heading", { name: "Marios" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Pizza" })).toBeInTheDocument();
-    expect(screen.getByText(/Margherita/)).toBeInTheDocument();
-    expect(screen.getByText(/12\.99/)).toBeInTheDocument();
+    // Scoped to the menu landmark: garden repeats a featured item in its
+    // market module by design, and this asserts the menu itself renders it.
+    const menu = within(screen.getByRole("region", { name: "Menu" }));
+    expect(menu.getByText(/Margherita/)).toBeInTheDocument();
+    expect(menu.getByText(/12\.99/)).toBeInTheDocument();
     expect(screen.getByText(/Monday/)).toBeInTheDocument();
     // At least one rendering of the phone number — takeaway repeats it in
     // the call CTA and the contact block, which is intentional, not a bug.

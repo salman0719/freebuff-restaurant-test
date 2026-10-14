@@ -59,8 +59,11 @@ imports either.
 - `config.ts` — per-theme Zod schemas with defaults. **New options never
   need a migration**: stored JSON is validated defensively at render, so a
   missing or stale key yields a complete valid config.
-- `cafe.tsx`, `takeaway.tsx`, `bistro.tsx`, `diner.tsx` — the shipped
-  themes (see `docs/decisions/0004` for the appearance round).
+- `cafe.tsx`, `takeaway.tsx`, `bistro.tsx`, `diner.tsx`, `garden.tsx` —
+  the shipped themes (see `docs/decisions/0004` for the appearance round).
+  `garden` is Market Garden: the first cool-palette family (green/teal on
+  slate), an asymmetric hero and a two-column menu/visit split, plus the
+  `From the market this week` module derived from the tenant's own menu.
 
 ### Diner-specific assets
 
@@ -102,10 +105,15 @@ is never generated.
 
 ### Adding a theme
 
-1. Add the id to `THEME_IDS` in `db/constants.ts`.
+1. Add the id to `THEME_IDS` in `db/constants.ts`. `Record<ThemeId, …>`
+   then fails to compile until every consumer (config schemas, accent
+   lists, toggle, registry) knows the new id — that is the checklist.
 2. Widen the `tenants_theme_allowed` CHECK in `db/schema.ts`, then
    `npm run db:generate` and `npm run db:migrate`. This is the one theme
-   change that needs a migration.
+   change that needs a migration — and only if the id is not already in
+   the CHECK. Decision 0004 widened it once for `diner` _and_ `garden`, so
+   garden shipped with no migration at all; a CHECK is allowed to run
+   ahead of the app as long as the id eventually arrives.
 3. Add accents to `ACCENTS` in `sections.tsx` and a schema in `config.ts`.
 4. Write the component and register it in `registry.ts`.
 5. Extend the `describe.each` in `themes.test.tsx` — that suite asserts the

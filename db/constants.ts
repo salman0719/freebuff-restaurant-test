@@ -10,13 +10,15 @@
 /**
  * Public themes the platform ships. Café and takeaway were the agreed MVP
  * pair; `bistro` joined in Phase C once the theme system could express a
- * genuinely different look; `diner` is the first theme of the appearance
- * round (docs/decisions/0004). Adding one is a product decision, not a
- * refactor: it widens the `tenants_theme_allowed` CHECK, so it ships with a
+ * genuinely different look; `diner` and `garden` are the appearance round
+ * (docs/decisions/0004). Adding one is a product decision, not a refactor:
+ * it widens the `tenants_theme_allowed` CHECK, so it ships with a
  * migration, and every reader of `THEME_IDS` (validation, registry, tests)
- * picks the new id up from here.
+ * picks the new id up from here. `garden` used no migration — decision
+ * 0004 widened the CHECK for both ids in one step, so the database was
+ * already ahead of the app when the component landed.
  */
-export const THEME_IDS = ["cafe", "takeaway", "bistro", "diner"] as const;
+export const THEME_IDS = ["cafe", "takeaway", "bistro", "diner", "garden"] as const;
 export type ThemeId = (typeof THEME_IDS)[number];
 
 /**

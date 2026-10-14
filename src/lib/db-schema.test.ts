@@ -41,7 +41,7 @@ describe("MVP tables", () => {
   });
 
   it("locks the shipped theme set", () => {
-    expect([...THEME_IDS]).toEqual(["cafe", "takeaway", "bistro", "diner"]);
+    expect([...THEME_IDS]).toEqual(["cafe", "takeaway", "bistro", "diner", "garden"]);
   });
 
   it("supports owner and operator membership roles", () => {

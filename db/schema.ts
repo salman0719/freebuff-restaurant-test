@@ -82,9 +82,11 @@ export const tenants = pgTable(
     // Reserved subdomains (www, api, app, admin) and duplicate detection
     // are enforced at creation time in the app layer (Phase 1.2/1.4).
     check("tenants_slug_format", sql`${t.slug} ~ '^[a-z0-9]+(-[a-z0-9]+)*$'`),
-    // `diner` + `garden` widen together in ONE migration (0004: two new
-    // themes, one migration); `garden` enters the app vocabulary (THEME_IDS)
-    // only when its component ships — the CHECK may run ahead of the app.
+    // `diner` + `garden` widened together in ONE migration (0004: two new
+    // themes, one migration). The CHECK ran ahead of the app on purpose:
+    // `garden` entered THEME_IDS only when its component shipped, so the
+    // database accepted the id before the app did, and no second migration
+    // was needed. Keep this list a superset of THEME_IDS.
     check(
       "tenants_theme_allowed",
       sql`${t.theme} in ('cafe', 'takeaway', 'bistro', 'diner', 'garden')`

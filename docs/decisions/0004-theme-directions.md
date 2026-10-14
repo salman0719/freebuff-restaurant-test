@@ -59,6 +59,19 @@ one primary CTA stay reachable in every theme).
   scratch verifier: `local/check-diner-contrast.ts` (git-ignored). The
   three shipped accents also pass as reference pairs.
 
+**Update 2026-10-14 (garden shipped):** Market Garden landed with no
+migration, as planned — migration 0005 had already added `garden` to the
+CHECK, so the work was `THEME_IDS` → accents → schema → component →
+registry → `describe.each`. Its three accents (`fern`, `brook`, `celery`)
+are green/teal on slate, the first non-warm family on the platform;
+`celery` is the second light band under dark text. The theme's own module,
+`From the market this week`, features the first item of up to three
+categories — derived from the tenant's real menu, no new schema. Fixing
+the dashboard options form exposed in the same pass: the visibility
+toggle inferred its key from "is this café?", so bistro and diner were
+silently saving nothing (see the commit); it now reads a shared
+`themeToggle` map.
+
 **Update 2026-10-14:** the scratch verifier graduated to a committed unit
 test, `src/themes/contrast.test.ts`, so no accent (existing nine, diner's
 three, and every future one) can ship failing AA — CI now runs it. Widening

@@ -17,14 +17,28 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { saveThemeOptions, type ThemeOptionsState } from "../actions";
 
-/** Swatch colours, mirroring the palettes in `themes/sections.tsx`. */
+/**
+ * Swatch colours, mirroring each palette's band fill in
+ * `themes/sections.tsx`. Every accent a theme can select needs an entry —
+ * a missing one silently fell back to a grey dot, which is how the bistro
+ * and diner accents were shipping.
+ */
 const SWATCH: Record<string, string> = {
-  espresso: "bg-amber-700",
-  forest: "bg-emerald-700",
-  terracotta: "bg-orange-700",
-  chili: "bg-red-600",
-  charcoal: "bg-zinc-800",
-  gold: "bg-yellow-500",
+  espresso: "bg-amber-900",
+  forest: "bg-emerald-900",
+  terracotta: "bg-orange-800",
+  chili: "bg-red-800",
+  charcoal: "bg-zinc-900",
+  gold: "bg-yellow-800",
+  plum: "bg-purple-900",
+  navy: "bg-slate-900",
+  sage: "bg-lime-900",
+  cherry: "bg-cherry-700",
+  butter: "bg-butter-400",
+  cola: "bg-cola-900",
+  fern: "bg-green-900",
+  brook: "bg-teal-900",
+  celery: "bg-green-200",
 };
 
 export interface ThemeOptionsFormProps {

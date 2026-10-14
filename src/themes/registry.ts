@@ -13,6 +13,7 @@ import { themeSchema } from "../lib/validation";
 import { BistroTheme } from "./bistro";
 import { CafeTheme } from "./cafe";
 import { DinerTheme } from "./diner";
+import { GardenTheme } from "./garden";
 import { TakeawayTheme } from "./takeaway";
 import type { ThemeComponent, ThemeDefinition } from "./types";
 
@@ -42,6 +43,12 @@ const REGISTRY: Record<ThemeId, ThemeDefinition> = {
     label: "Diner",
     blurb: "Retro and playful — awning stripes, a framed menu board, and a call-to-order strip.",
     Component: DinerTheme,
+  },
+  garden: {
+    id: "garden",
+    label: "Garden",
+    blurb: "Cool and seasonal — a green-and-teal palette, an asymmetric split, and a market list.",
+    Component: GardenTheme,
   },
 };
 

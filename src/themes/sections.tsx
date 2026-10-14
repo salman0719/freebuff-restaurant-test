@@ -180,6 +180,42 @@ export const ACCENTS: Record<string, AccentPalette> = {
     button: "bg-cherry-600 text-white hover:bg-cherry-700",
     rule: "bg-cherry-500",
   },
+  // --- Market Garden (0004): the first cool family — green/teal on slate ---
+  fern: {
+    eyebrow: "text-green-800 dark:text-green-200",
+    heading: "text-slate-900 dark:text-slate-50",
+    surface: "bg-green-50/70 dark:bg-slate-950",
+    band: "bg-green-900",
+    bandText: "text-green-50",
+    bandEyebrow: "text-green-200",
+    bandBody: "text-green-100",
+    button: "bg-green-800 text-white hover:bg-green-900",
+    rule: "bg-green-600",
+  },
+  brook: {
+    eyebrow: "text-teal-800 dark:text-teal-200",
+    heading: "text-slate-900 dark:text-slate-50",
+    surface: "bg-teal-50/70 dark:bg-slate-950",
+    band: "bg-teal-900",
+    bandText: "text-teal-50",
+    bandEyebrow: "text-teal-200",
+    bandBody: "text-teal-100",
+    button: "bg-teal-800 text-white hover:bg-teal-900",
+    rule: "bg-teal-600",
+  },
+  celery: {
+    eyebrow: "text-teal-800 dark:text-teal-200",
+    heading: "text-slate-900 dark:text-slate-50",
+    surface: "bg-teal-50/60 dark:bg-slate-950",
+    // The second light band under dark text (butter was the first): a pale
+    // celery strip, which is how a market stall reads without going dark.
+    band: "bg-green-200",
+    bandText: "text-green-950",
+    bandEyebrow: "text-green-800",
+    bandBody: "text-green-900",
+    button: "bg-teal-800 text-white hover:bg-teal-900",
+    rule: "bg-teal-700",
+  },
   default: {
     eyebrow: "text-zinc-600 dark:text-zinc-300",
     heading: "text-zinc-950 dark:text-zinc-50",

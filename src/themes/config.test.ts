@@ -19,6 +19,11 @@ describe("resolveThemeConfig", () => {
       menuLayout: "compact",
       showHours: true,
     });
+    expect(resolveThemeConfig("garden", {})).toEqual({
+      accent: "fern",
+      menuLayout: "editorial",
+      showHours: true,
+    });
   });
 
   it("keeps valid stored options and fills the rest from defaults", () => {
@@ -71,6 +76,7 @@ describe("accentsFor", () => {
     expect(accentsFor("takeaway")).toEqual(["chili", "charcoal", "gold"]);
     expect(accentsFor("bistro")).toEqual(["plum", "navy", "sage"]);
     expect(accentsFor("diner")).toEqual(["cherry", "butter", "cola"]);
+    expect(accentsFor("garden")).toEqual(["fern", "brook", "celery"]);
   });
 
   it("gives every shipped theme a palette list", () => {
