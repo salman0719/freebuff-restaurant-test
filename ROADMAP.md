@@ -951,7 +951,23 @@ including that granting an owner turns "No owner assigned" into "1 person",
 so the status view is a live reading rather than a static description.
 Whole suite green: 426 unit tests, 13 E2E tests.
 
-**Found while testing this:** every authenticated partially-prerendered
+**Found and fixed while testing this:** every operator click from the console
+into a restaurant logged a Next 16 insight —
+`/operator/tenants/[slug]: Next.js encountered uncached data during
+prerendering or a navigation` — naming the session read. Nothing in the suite
+or in a hard load showed it, because it fires on the client navigation an
+operator actually performs: it took a browser, a fresh dev server and the
+click to see. The cause was this round's own page reading its address at the
+top. The App Shell shared by every link into `/operator/tenants/*` cannot
+carry a value that belongs to one link, so the route stopped painting and
+blocked on the server instead. The body now sits behind its own `<Suspense>`
+boundary with a fallback shaped like the page it stands in for — the fix the
+insight itself recommends, and what the sibling operator routes already get
+from `loading.tsx`. Verified by contrast on a fresh server, same click path
+both times: the stock page logs the insight twice per click-through, this one
+logs none, and the checklist, badges and owner card still render.
+
+**Found while testing this, left open:** every authenticated partially-prerendered
 route answers with a Next 16 warning — `crypto.getRandomValues()` while
 prerendering — and it names `/dashboard` as well as the operator paths, so
 it predates this round and is not caused by it. What happens is the safe
