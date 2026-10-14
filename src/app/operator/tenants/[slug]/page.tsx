@@ -10,9 +10,18 @@
  * until that access model is decided (4.4) — which is also why the owner step
  * below still means something.
  *
- * Gated by `requireOperatorPage`; an unknown slug is the same not-found page
+ * Gated by `requireOperatorPage`; an unknown slug gets the same not-found page
  * as anywhere else.
+ *
+ * The body sits behind its own `<Suspense>` boundary. The route's address is
+ * URL data, so the page it selects cannot be part of the App Shell that every
+ * link to `/operator/tenants/*` navigates into; without the boundary the whole
+ * route blocks on `params` and the session read (Next logs an
+ * "encountered uncached data" insight every time an operator clicks through).
+ * With it, navigation paints the shape below immediately and the restaurant
+ * streams in.
  */
+import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { auth } from "@/auth";
@@ -20,6 +29,7 @@ import { Badge } from "@/components/ui/badge";
 import { buttonClasses } from "@/components/ui/button";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { Container, Section, Stack } from "@/components/ui/container";
+import { Skeleton, Spinner } from "@/components/ui/feedback";
 import { PageHeader } from "@/components/ui/page-header";
 import { Heading, Text } from "@/components/ui/typography";
 import { requireOperatorPage } from "@/lib/operator-access";
@@ -27,7 +37,52 @@ import { getTenantSetup } from "@/lib/operator-tenants";
 import { outstandingOnboardingSteps } from "@/lib/onboarding";
 import { InviteOwnerForm } from "../../_components/invite-owner-form";
 
-export default async function OperatorTenantPage({
+export default function OperatorTenantPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): React.ReactElement {
+  return (
+    <Suspense fallback={<TenantSetupFallback />}>
+      <TenantSetup params={params} />
+    </Suspense>
+  );
+}
+
+/**
+ * The loading state for one restaurant, shaped like the page it stands in for
+ * — header, status badges, checklist — so arriving content does not move the
+ * page under the operator's cursor.
+ */
+function TenantSetupFallback(): React.ReactElement {
+  return (
+    <Container className="py-8">
+      <Section>
+        <Spinner label="Loading restaurant…" />
+        <div className="mt-4 flex flex-col gap-6">
+          <div className="flex flex-col gap-2">
+            <Skeleton className="h-3 w-20" />
+            <Skeleton className="h-9 w-64 max-w-full" />
+            <Skeleton className="h-4 w-40" />
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Skeleton className="h-6 w-20" />
+            <Skeleton className="h-6 w-28" />
+            <Skeleton className="h-6 w-32" />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Skeleton className="h-5 w-24" />
+            <Skeleton className="h-14 w-full max-w-2xl" />
+            <Skeleton className="h-14 w-full max-w-2xl" />
+            <Skeleton className="h-14 w-full max-w-2xl" />
+          </div>
+        </div>
+      </Section>
+    </Container>
+  );
+}
+
+async function TenantSetup({
   params,
 }: {
   params: Promise<{ slug: string }>;
@@ -35,7 +90,12 @@ export default async function OperatorTenantPage({
   const { slug } = await params;
   const staff = requireOperatorPage(await auth());
   const result = await getTenantSetup(staff, slug);
-  // A non-staff caller never reaches this line; an unknown slug is a 404.
+  // A non-staff caller is already gone — `requireOperatorPage` gives them the
+  // same not-found page as an unknown slug, and an unknown slug is that page
+  // too. It streams in behind the boundary above, so the response itself is a
+  // 200 shell rather than a 404; the operator sees the not-found page either
+  // way, and 4.1's "do not confirm the console exists" property is what the
+  // page says, not the status code.
   if (!result.ok || !result.data) {
     notFound();
   }
