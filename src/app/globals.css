@@ -9,6 +9,13 @@
 :root {
   color-scheme: light;
 
+  /*
+   * Display face (see `--font-display` below). Lives in :root so the
+   * utility resolves it per element: a theme wrapper can swap it (diner
+   * sets `--display-font: var(--font-caprasimo)`, docs/decisions/0004).
+   */
+  --display-font: var(--font-fraunces), ui-serif, Georgia, serif;
+
   /* Warm neutral surfaces */
   --background: #faf7f2;
   --foreground: #1c1917;
@@ -66,7 +73,7 @@
   --color-brand-950: var(--brand-950);
 
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-display: var(--font-fraunces), ui-serif, Georgia, serif;
+  --font-display: var(--display-font);
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 
   /* Warm-tinted elevation + softer radii for a premium, tactile feel. */
@@ -78,6 +85,48 @@
   --radius-lg: 0.625rem;
   --radius-xl: 0.875rem;
   --radius-2xl: 1.125rem;
+
+  /*
+   * Diner Revival theme ramps (docs/decisions/0004). Tailwind has no
+   * brown scale and its yellows read lemon, so cherry/butter/cola are
+   * authored in OKLCH and checked at AA by local/check-diner-contrast.ts
+   * before landing. Theme accents only — never used by app chrome.
+   */
+  --color-cherry-50: #ffe7e0;
+  --color-cherry-100: #ffd6cd;
+  --color-cherry-200: #ffb9ad;
+  --color-cherry-300: #ff9184;
+  --color-cherry-400: #ff665b;
+  --color-cherry-500: #e44740;
+  --color-cherry-600: #c32f2c;
+  --color-cherry-700: #9e1c1c;
+  --color-cherry-800: #791313;
+  --color-cherry-900: #580d0c;
+  --color-cherry-950: #310706;
+
+  --color-butter-50: #fff9d8;
+  --color-butter-100: #fff4c4;
+  --color-butter-200: #ffeca8;
+  --color-butter-300: #ffe18a;
+  --color-butter-400: #ffd36d;
+  --color-butter-500: #f2c65f;
+  --color-butter-600: #deb554;
+  --color-butter-700: #c39f4c;
+  --color-butter-800: #a28544;
+  --color-butter-900: #816c3c;
+  --color-butter-950: #5e5135;
+
+  --color-cola-50: #fff2e7;
+  --color-cola-100: #ffe7d7;
+  --color-cola-200: #f5d2bc;
+  --color-cola-300: #e1b599;
+  --color-cola-400: #c49474;
+  --color-cola-500: #aa7a5a;
+  --color-cola-600: #8f6346;
+  --color-cola-700: #724d33;
+  --color-cola-800: #573925;
+  --color-cola-900: #3e2819;
+  --color-cola-950: #22150c;
 }
 
 body {

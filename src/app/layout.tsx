@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Fraunces, Geist, Geist_Mono } from "next/font/google";
+import { Caprasimo, Fraunces, Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
 
@@ -20,6 +20,19 @@ const fraunces = Fraunces({
   display: "swap",
 });
 
+/**
+ * Retro display face for the Diner Revival theme (0004) — a Cooper-style
+ * serif based on Fraunces, so it harmonises with the house display face.
+ * Registered here once; only pages that reference `--font-caprasimo`
+ * (the diner theme wrapper) actually fetch it. Libre/OFL via Google Fonts.
+ */
+const caprasimo = Caprasimo({
+  variable: "--font-caprasimo",
+  weight: "400",
+  subsets: ["latin"],
+  display: "swap",
+});
+
 export const metadata: Metadata = {
   title: {
     default: "Restaurant App",
@@ -33,7 +46,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${geistSans.variable} ${geistMono.variable} ${fraunces.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${fraunces.variable} ${caprasimo.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col bg-background font-sans text-foreground">
         <ThemeProvider>
