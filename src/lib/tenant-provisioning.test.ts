@@ -9,6 +9,7 @@
  * the identity a caller would have to fake to get past it.
  */
 import { describe, expect, it, vi } from "vitest";
+import type { AuditEvent } from "./audit";
 import type { AuthenticatedUser } from "./permissions";
 import { inviteTenantOwner, provisionTenant, type ProvisioningStore } from "./tenant-provisioning";
 
@@ -144,6 +145,74 @@ describe("provisionTenant", () => {
     if (!result.ok) {
       expect(result.error.code).toBe("CONFLICT");
     }
+  });
+});
+
+describe("provisionTenant records the act (4.4)", () => {
+  function capturingStore(events: AuditEvent[], overrides: Partial<ProvisioningStore> = {}) {
+    return fakeStore({
+      createTenantWithProfile: async (input, event) => {
+        events.push(event);
+        return {
+          id: "tenant_new",
+          slug: input.slug,
+          theme: input.theme,
+          published: input.published,
+        };
+      },
+      ...overrides,
+    });
+  }
+
+  it("hands the store who created it and what it created", async () => {
+    const events: AuditEvent[] = [];
+    await provisionTenant(
+      staff,
+      { slug: "the-diner", name: "The Diner", theme: "takeaway", published: true },
+      capturingStore(events)
+    );
+    expect(events).toEqual([
+      {
+        action: "tenant.created",
+        actor: staff,
+        tenantSlug: "the-diner",
+        detail: { theme: "takeaway", published: true },
+      },
+    ]);
+  });
+
+  it("records facts about the act, never the restaurant's own content", async () => {
+    // A name is tenant content: it lives in the profile, it can change, and
+    // copying it here would turn the trail into a second source of it.
+    const events: AuditEvent[] = [];
+    await provisionTenant(staff, { slug: "the-diner", name: "The Diner" }, capturingStore(events));
+    expect(JSON.stringify(events[0])).not.toContain("The Diner");
+  });
+
+  it("passes no record when the address was already taken", async () => {
+    const events: AuditEvent[] = [];
+    const store = capturingStore(events, {
+      findTenantBySlug: async () => ({ id: "tenant_existing" }),
+    });
+    const result = await provisionTenant(staff, { slug: "taken", name: "Taken" }, store);
+    expect(result.ok).toBe(false);
+    expect(events).toEqual([]);
+  });
+
+  it("passes no record when the request was refused as invalid", async () => {
+    const events: AuditEvent[] = [];
+    const store = capturingStore(events);
+    const create = vi.spyOn(store, "createTenantWithProfile");
+    await provisionTenant(staff, { slug: "Not A Slug", name: "Nope" }, store);
+    expect(create).not.toHaveBeenCalled();
+    expect(events).toEqual([]);
+  });
+
+  it("passes no record when the caller is not platform staff", async () => {
+    const events: AuditEvent[] = [];
+    const store = capturingStore(events);
+    await provisionTenant(tenantOwner, { slug: "hostile", name: "Hostile" }, store);
+    expect(events).toEqual([]);
   });
 });
 
@@ -285,5 +354,92 @@ describe("inviteTenantOwner", () => {
       expect(result.error.code).toBe("CONFLICT");
       expect(result.error.fields?.email).toHaveLength(1);
     }
+  });
+});
+
+describe("inviteTenantOwner records the act (4.4)", () => {
+  function capturingStore(events: AuditEvent[], overrides: Partial<ProvisioningStore> = {}) {
+    return fakeStore({
+      findTenantBySlug: async () => ({ id: "tenant_a" }),
+      addMembership: async (_input, event) => {
+        events.push(event);
+        return "created";
+      },
+      ...overrides,
+    });
+  }
+
+  it("hands the store who granted access, to whom, and what it cost them", async () => {
+    const events: AuditEvent[] = [];
+    await inviteTenantOwner(
+      staff,
+      { slug: "the-diner", email: "owner@example.com" },
+      capturingStore(events)
+    );
+    expect(events).toEqual([
+      {
+        action: "tenant.owner_granted",
+        actor: staff,
+        tenantSlug: "the-diner",
+        // `invited: true` is the difference between "we created this person an
+        // account" and "they already had one", which only this call knows.
+        detail: { email: "owner@example.com", role: "owner", invited: true },
+      },
+    ]);
+  });
+
+  it("says an existing account was not an invite", async () => {
+    const events: AuditEvent[] = [];
+    await inviteTenantOwner(
+      staff,
+      { slug: "the-diner", email: "known@example.com" },
+      capturingStore(events, { findOrCreateUser: async () => ({ id: "u", created: false }) })
+    );
+    expect(events[0].detail.invited).toBe(false);
+  });
+
+  it("records the role that was actually granted", async () => {
+    const events: AuditEvent[] = [];
+    await inviteTenantOwner(
+      staff,
+      { slug: "the-diner", email: "support@example.com", role: "operator" },
+      capturingStore(events)
+    );
+    expect(events[0].detail.role).toBe("operator");
+  });
+
+  it("leaves the write-or-not decision to the store: a duplicate still reports nothing changed", async () => {
+    // The rules hand the event down; the durable store writes it only on the
+    // branch that actually inserted a membership. This test pins the seam so a
+    // future refactor cannot move an audit write ABOVE that branch, where a
+    // refused grant would be recorded as though it had happened.
+    const events: AuditEvent[] = [];
+    const store = capturingStore(events, {
+      addMembership: async (_input, event) => {
+        events.push(event);
+        return "duplicate";
+      },
+    });
+    const result = await inviteTenantOwner(
+      staff,
+      { slug: "the-diner", email: "owner@example.com" },
+      store
+    );
+    expect(result.ok).toBe(false);
+    // It did reach the store (the store is what discovers the duplicate), and
+    // the live suite proves the row is not written in that case.
+    expect(events).toHaveLength(1);
+  });
+
+  it("passes no record for a restaurant that does not exist", async () => {
+    const events: AuditEvent[] = [];
+    const store = capturingStore(events, { findTenantBySlug: async () => null });
+    const result = await inviteTenantOwner(
+      staff,
+      { slug: "no-such-place", email: "owner@example.com" },
+      store
+    );
+    expect(result.ok).toBe(false);
+    expect(events).toEqual([]);
   });
 });

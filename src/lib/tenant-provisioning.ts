@@ -40,6 +40,14 @@
  *   (the tripwire that fails if any other module under `src/` writes
  *   `users.role`).
  *
+ * - **Every act leaves a trail (Phase 4.4).** Each successful write records
+ *   WHO did it and what changed, in the same transaction as the change, so a
+ *   restaurant cannot exist without the record of its creation. Refusals
+ *   record nothing: nothing changed. The rules decide when an act is
+ *   recorded and what the record says (`./audit.ts`); the store is what
+ *   actually writes it, and it is handed the event so the decision stays
+ *   testable without a database.
+ *
  * The store is injected so the rules — who may provision, what is valid, how
  * duplicates resolve — are unit-tested without a database, exactly as
  * `tenant-context.ts` injects its finder.
@@ -48,6 +56,7 @@ import { eq } from "drizzle-orm";
 import { db } from "../../db";
 import type { MembershipRole, ThemeId } from "../../db/constants";
 import { memberships, restaurantProfiles, tenants, users } from "../../db/schema";
+import { ownerGrantedEvent, tenantCreatedEvent, writeAuditEvent, type AuditEvent } from "./audit";
 import { isUniqueViolation } from "./db-errors";
 import type { AuthenticatedUser } from "./permissions";
 import { err, ok, type ServiceResult } from "./result";
@@ -78,20 +87,35 @@ export interface ProvisionedOwner {
  */
 export interface ProvisioningStore {
   findTenantBySlug(slug: string): Promise<{ id: string } | null>;
-  /** `null` means the slug was taken (checked, or lost to a race). */
-  createTenantWithProfile(input: {
-    slug: string;
-    theme: ThemeId;
-    published: boolean;
-    name: string;
-  }): Promise<ProvisionedTenant | null>;
+  /**
+   * The tenant, its profile, and the record of the act in ONE transaction.
+   * `null` means the slug was taken (checked, or lost to a race) — and a lost
+   * race writes no audit row, because the insert rolled back.
+   */
+  createTenantWithProfile(
+    input: {
+      slug: string;
+      theme: ThemeId;
+      published: boolean;
+      name: string;
+    },
+    event: AuditEvent
+  ): Promise<ProvisionedTenant | null>;
   /** Finds the account for `email`, creating one (default role) if absent. */
   findOrCreateUser(email: string): Promise<{ id: string; created: boolean }>;
-  addMembership(input: {
-    userId: string;
-    tenantId: string;
-    role: MembershipRole;
-  }): Promise<"created" | "duplicate">;
+  /**
+   * The membership and the record of granting it, in one transaction. A
+   * duplicate writes neither — the trail describes changes, and there was
+   * none.
+   */
+  addMembership(
+    input: {
+      userId: string;
+      tenantId: string;
+      role: MembershipRole;
+    },
+    event: AuditEvent
+  ): Promise<"created" | "duplicate">;
 }
 
 function operatorOnly<T>(): ServiceResult<T> {
@@ -101,8 +125,12 @@ function operatorOnly<T>(): ServiceResult<T> {
 /**
  * The authorisation check, local to this module on purpose: it must hold
  * even for a caller that never went through `requireOperator`.
+ *
+ * A type predicate rather than a plain boolean, so the narrowed identity is
+ * the SAME one the audit row is attributed to: `act` cannot reach
+ * `tenantCreatedEvent` without having passed this check.
  */
-function isOperator(act: AuthenticatedUser | null | undefined): boolean {
+function isOperator(act: AuthenticatedUser | null | undefined): act is AuthenticatedUser {
   return act?.role === "operator";
 }
 
@@ -139,12 +167,19 @@ export async function provisionTenant(
   if (existing) {
     return slugTaken();
   }
-  const created = await store.createTenantWithProfile({
-    slug: parsed.data.slug,
-    theme: parsed.data.theme,
-    published: parsed.data.published,
-    name: parsed.data.name,
-  });
+  const created = await store.createTenantWithProfile(
+    {
+      slug: parsed.data.slug,
+      theme: parsed.data.theme,
+      published: parsed.data.published,
+      name: parsed.data.name,
+    },
+    tenantCreatedEvent(act, {
+      slug: parsed.data.slug,
+      theme: parsed.data.theme,
+      published: parsed.data.published,
+    })
+  );
   if (!created) {
     return slugTaken();
   }
@@ -183,11 +218,18 @@ export async function inviteTenantOwner(
     });
   }
   const user = await store.findOrCreateUser(parsed.data.email);
-  const membership = await store.addMembership({
-    userId: user.id,
-    tenantId: tenant.id,
-    role: parsed.data.role,
-  });
+  const membership = await store.addMembership(
+    {
+      userId: user.id,
+      tenantId: tenant.id,
+      role: parsed.data.role,
+    },
+    ownerGrantedEvent(
+      act,
+      { slug: parsed.data.slug },
+      { email: parsed.data.email, role: parsed.data.role, created: user.created }
+    )
+  );
   if (membership === "duplicate") {
     return err("CONFLICT", "That person already has access to this restaurant.", {
       email: ["Already has access to this restaurant."],
@@ -213,7 +255,7 @@ const defaultStore: ProvisioningStore = {
     return rows[0] ?? null;
   },
 
-  async createTenantWithProfile({ slug, theme, published, name }) {
+  async createTenantWithProfile({ slug, theme, published, name }, event) {
     try {
       return await db.transaction(async (tx) => {
         const inserted = await tx.insert(tenants).values({ slug, theme, published }).returning({
@@ -227,6 +269,7 @@ const defaultStore: ProvisioningStore = {
           throw new Error("Tenant insert returned no row.");
         }
         await tx.insert(restaurantProfiles).values({ tenantId: tenant.id, name });
+        await writeAuditEvent(tx, event, tenant.id);
         return { ...tenant, theme: tenant.theme as ThemeId };
       });
     } catch (error) {
@@ -275,9 +318,12 @@ const defaultStore: ProvisioningStore = {
     }
   },
 
-  async addMembership({ userId, tenantId, role }) {
+  async addMembership({ userId, tenantId, role }, event) {
     try {
-      await db.insert(memberships).values({ userId, tenantId, role });
+      await db.transaction(async (tx) => {
+        await tx.insert(memberships).values({ userId, tenantId, role });
+        await writeAuditEvent(tx, event, tenantId);
+      });
       return "created";
     } catch (error) {
       if (isUniqueViolation(error)) {
