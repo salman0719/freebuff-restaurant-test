@@ -38,7 +38,7 @@ describe("slugSchema", () => {
 });
 
 describe("themeSchema", () => {
-  it.each(["cafe", "takeaway"])("accepts theme %s", (theme) => {
+  it.each(["cafe", "takeaway", "bistro", "diner"])("accepts theme %s", (theme) => {
     expect(themeSchema.safeParse(theme).success).toBe(true);
   });
 

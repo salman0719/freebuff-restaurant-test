@@ -36,6 +36,13 @@
       "when": 1791895123386,
       "tag": "0004_many_thor",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791948929380,
+      "tag": "0005_awesome_tyrannus",
+      "breakpoints": true
     }
   ]
 }

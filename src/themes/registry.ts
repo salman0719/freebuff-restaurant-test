@@ -12,6 +12,7 @@ import { THEME_IDS, type ThemeId } from "../../db/constants";
 import { themeSchema } from "../lib/validation";
 import { BistroTheme } from "./bistro";
 import { CafeTheme } from "./cafe";
+import { DinerTheme } from "./diner";
 import { TakeawayTheme } from "./takeaway";
 import type { ThemeComponent, ThemeDefinition } from "./types";
 
@@ -35,6 +36,12 @@ const REGISTRY: Record<ThemeId, ThemeDefinition> = {
     label: "Bistro",
     blurb: "Refined and modern — a split hero and a card-style two-column menu.",
     Component: BistroTheme,
+  },
+  diner: {
+    id: "diner",
+    label: "Diner",
+    blurb: "Retro and playful — awning stripes, a framed menu board, and a call-to-order strip.",
+    Component: DinerTheme,
   },
 };
 

@@ -13,6 +13,11 @@ describe("resolveThemeConfig", () => {
       menuLayout: "compact",
       showDescription: true,
     });
+    expect(resolveThemeConfig("diner", {})).toEqual({
+      accent: "cherry",
+      menuLayout: "compact",
+      showHours: true,
+    });
   });
 
   it("keeps valid stored options and fills the rest from defaults", () => {
@@ -63,5 +68,6 @@ describe("accentsFor", () => {
   it("returns each theme's own accent vocabulary", () => {
     expect(accentsFor("cafe")).toEqual(["espresso", "forest", "terracotta"]);
     expect(accentsFor("takeaway")).toEqual(["chili", "charcoal", "gold"]);
+    expect(accentsFor("diner")).toEqual(["cherry", "butter", "cola"]);
   });
 });

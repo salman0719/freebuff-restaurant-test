@@ -17,6 +17,7 @@ import type { ThemeId } from "../../db/constants";
 export const CAFE_ACCENTS = ["espresso", "forest", "terracotta"] as const;
 export const TAKEAWAY_ACCENTS = ["chili", "charcoal", "gold"] as const;
 export const BISTRO_ACCENTS = ["plum", "navy", "sage"] as const;
+export const DINER_ACCENTS = ["cherry", "butter", "cola"] as const;
 export const MENU_LAYOUTS = ["editorial", "compact", "grid"] as const;
 
 export type MenuLayout = (typeof MENU_LAYOUTS)[number];
@@ -39,16 +40,24 @@ const bistroConfigSchema = z.object({
   showHours: z.boolean().default(true),
 });
 
+const dinerConfigSchema = z.object({
+  accent: z.enum(DINER_ACCENTS).default("cherry"),
+  menuLayout: z.enum(MENU_LAYOUTS).default("compact"),
+  showHours: z.boolean().default(true),
+});
+
 const CONFIG_SCHEMAS = {
   cafe: cafeConfigSchema,
   takeaway: takeawayConfigSchema,
   bistro: bistroConfigSchema,
+  diner: dinerConfigSchema,
 } satisfies Record<ThemeId, z.ZodTypeAny>;
 
 export type CafeConfig = z.infer<typeof cafeConfigSchema>;
 export type TakeawayConfig = z.infer<typeof takeawayConfigSchema>;
 export type BistroConfig = z.infer<typeof bistroConfigSchema>;
-export type ThemeConfig = CafeConfig | TakeawayConfig | BistroConfig;
+export type DinerConfig = z.infer<typeof dinerConfigSchema>;
+export type ThemeConfig = CafeConfig | TakeawayConfig | BistroConfig | DinerConfig;
 
 /**
  * The strict schema for a theme — no silent fallback, for write paths that
@@ -63,6 +72,7 @@ const THEME_ACCENTS: Record<ThemeId, readonly string[]> = {
   cafe: CAFE_ACCENTS,
   takeaway: TAKEAWAY_ACCENTS,
   bistro: BISTRO_ACCENTS,
+  diner: DINER_ACCENTS,
 };
 
 /** The accent vocabulary for a theme (used by the dashboard options form). */

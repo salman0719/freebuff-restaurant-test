@@ -41,7 +41,7 @@ describe("MVP tables", () => {
   });
 
   it("locks the shipped theme set", () => {
-    expect([...THEME_IDS]).toEqual(["cafe", "takeaway", "bistro"]);
+    expect([...THEME_IDS]).toEqual(["cafe", "takeaway", "bistro", "diner"]);
   });
 
   it("supports owner and operator membership roles", () => {
@@ -88,5 +88,9 @@ describe("committed migrations", () => {
 
   it("uses the shared SLUG_PATTERN in the slug CHECK", () => {
     expect(sql).toContain(SLUG_PATTERN);
+  });
+
+  it("widens the theme CHECK once to cover both new theme ids (0004)", () => {
+    expect(sql).toContain("in ('cafe', 'takeaway', 'bistro', 'diner', 'garden')");
   });
 });
