@@ -59,6 +59,20 @@ one primary CTA stay reachable in every theme).
   scratch verifier: `local/check-diner-contrast.ts` (git-ignored). The
   three shipped accents also pass as reference pairs.
 
+**Update 2026-10-14 (demos + visual QA):** the seed now publishes
+`rosies-diner` (diner, seeded with `butter` to show the light band) and
+`the-greenhouse` (garden) so every look from this round is inspectable in a
+real browser; it also gives Rosie one deliberately long item name and
+description for the long-content check. The round's visual pass replaced
+the computed-style sign-off that had been standing in for one: all five
+looks were driven through Chromium at 390 px and 1440 px, light and dark,
+with the rendered page asserting no horizontal overflow, no clipped text,
+no broken images, tap targets ≥ 24 px, one `h1` with no skipped levels, and
+rendered contrast ≥ 4.5:1; empty states were checked against a throwaway
+published tenant with no profile, hours, or menu. Everything passed as
+shipped — the pass found no new defects, and the method is now written
+down in `docs/design-system.md`.
+
 **Update 2026-10-14 (refreshes shipped):** both migration-free refreshes
 from the "split out" list landed. Café is **Modern Trattoria**: the accent
 trio is espresso/terracotta/tomato (the emerald `forest` was the set's one

@@ -144,3 +144,20 @@ curl -H "Host: <slug>.localhost" http://localhost:4030/
 
 `npm run db:seed` is idempotent and converges each demo tenant's look, so
 switch a tenant's theme for experiments and re-run the seed to restore it.
+It also seeds the appearance round's demos (`rosies-diner` for Diner
+Revival, `the-greenhouse` for Market Garden) so every look is inspectable
+in a real browser instead of through a preview harness.
+
+Appearance changes also get a **real-browser pass** before sign-off. Drive
+the seeded tenants through Chromium — Playwright is already a dependency —
+at mobile and desktop widths, in light and dark, and assert what the
+rendered page actually does: no horizontal overflow, no clipped text on
+long menu items, no broken or missing images, tap targets ≥ 24 px, one `h1`
+with no skipped heading levels, and rendered text contrast ≥ 4.5:1 from the
+_computed_ colours. Resolve those colours by painting them on a canvas:
+Chrome serialises this project's oklch palette as `lab(…)`, so a string
+parser that only understands `rgb()` will fall through to the wrong
+ancestor background and report false failures. Empty states get their own
+throwaway published tenant with no profile, hours, or menu — publishing
+before adding content is a real owner state, and every section must still
+render its empty copy.
