@@ -818,6 +818,18 @@ seeded straight into the database so the spec cannot race the owner
 journey's Mailpit purge, and the staff fixture is a `users.role` row — the
 same act 4.2's provisioning will perform.
 
+**Found and fixed while testing this:** `proxy.ts` — the edge first-pass
+gate from Phase 1.3 — had never run. Next only loads the file at the app
+directory's own level (`src/proxy.ts` for a `src/app` project), so the
+repository-root copy was inert; the move is proven by the redirect it now
+produces and by the owner journey still signing in and navigating (signed-in
+users are not blocked). The failure was quiet by construction: the
+page-level check still guarded every route, so an anonymous hit was merely
+_streamed_ a redirect inside a 200 shell rather than bounced with a real 302
+before rendering — which is why the missing 302, not a broken page, was the
+only evidence. Verified by contrast: with the matcher neutered, the same
+URLs answer 200.
+
 **Note for 4.2:** operator _actions_ still have no consumer. When one
 lands it needs the structured variant (`requireOperator` → an error state
 to return), not the navigating one: an action must fail closed with a
