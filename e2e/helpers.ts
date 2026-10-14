@@ -11,7 +11,7 @@ import { loadEnvConfig } from "@next/env";
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { memberships, sessions, tenants, users } from "../db/schema";
+import { auditEvents, memberships, sessions, tenants, users } from "../db/schema";
 
 loadEnvConfig(process.cwd());
 
@@ -106,10 +106,16 @@ export async function seedOperatorUser(email: string): Promise<string> {
  * Remove a tenant a spec created through the UI, along with everything it
  * owns (every child table cascades from `tenants`). Specs clean up after
  * themselves because global setup only resets the owner-journey fixture.
+ *
+ * Audit rows are removed here EXPLICITLY, by their slug snapshot (Phase 4.4):
+ * the trail deliberately does not cascade, so deleting the tenant would leave
+ * a `tenant_id IS NULL` row behind — evidence for a restaurant that no longer
+ * exists, and debris in every run's database.
  */
 export async function deleteTenantBySlug(slug: string): Promise<void> {
   const { db, close } = newDb();
   try {
+    await db.delete(auditEvents).where(eq(auditEvents.tenantSlug, slug));
     await db.delete(tenants).where(eq(tenants.slug, slug));
   } finally {
     await close();

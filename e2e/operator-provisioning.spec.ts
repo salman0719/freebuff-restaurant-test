@@ -3,9 +3,10 @@
  *
  * The unit suite proves the rules through an injected store; this proves the
  * journey an operator actually walks — create a restaurant from the form,
- * follow the link to its page, grant the owner access — and, just as
- * importantly, the refusals: a duplicate address, a second grant, an invalid
- * address, and an ordinary owner kept out of the whole surface.
+ * follow the link to its page, grant the owner access, and read back who did
+ * it (the audit trail, 4.4) — and, just as importantly, the refusals: a
+ * duplicate address, a second grant, an invalid address, and an ordinary
+ * owner kept out of the whole surface.
  *
  * Two habits this spec keeps, both learned the hard way:
  *
@@ -146,6 +147,18 @@ test("creates a restaurant, then assigns its owner", async ({ page, context, bro
   // provisioning could write a stronger one, this is where it would show.
   expect(await getGlobalRole(await findUserIdByEmail(OWNER_MAIN))).toBe("owner");
 
+  // The trail answers the one question the tenant rows cannot: who did this.
+  // Asserted in its own region, because the operator's address and the
+  // invited one both appear elsewhere on the page (the console link, the
+  // invite form) — a bare text match would prove nothing about the record.
+  await page.goto(`/operator/tenants/${SLUG_MAIN}`);
+  const activity = page.getByRole("region", { name: /activity/i });
+  await expect(activity).toContainText("Created the restaurant");
+  await expect(activity).toContainText("Started as a draft with the Takeaway theme");
+  await expect(activity).toContainText("Granted access");
+  await expect(activity).toContainText(`Invited ${OWNER_MAIN} as owner`);
+  await expect(activity).toContainText(OPERATOR_EMAIL);
+
   // The invited owner can actually open a dashboard listing this restaurant.
   // That is the whole point of granting access, and it proves the membership
   // is real rather than cosmetic — while the operator above has no membership
@@ -192,6 +205,13 @@ test("reports a second grant for the same person as a conflict", async ({ page, 
   await page.getByLabel(/owner's email/i).fill(OWNER_GRANT);
   await page.getByRole("button", { name: /grant owner access/i }).click();
   await expect(errorPanel(page, /already has access/i)).toBeVisible();
+
+  // The refusal changed nothing, so the trail records nothing: the trail
+  // describes what happened, not what was attempted. One grant, still.
+  await page.goto(`/operator/tenants/${SLUG_GRANT}`);
+  const activity = page.getByRole("region", { name: /activity/i });
+  await expect(activity.getByText("Granted access")).toHaveCount(1);
+  await expect(activity.getByText("Created the restaurant")).toHaveCount(1);
 });
 
 test("shows an operator what a new restaurant still needs", async ({ page, context }) => {
@@ -223,9 +243,11 @@ test("shows an operator what a new restaurant still needs", async ({ page, conte
 
 test("keeps a non-staff caller from learning about a restaurant", async ({ page, context }) => {
   // The same page as an unknown route: an owner learns neither that the
-  // console exists nor whether that restaurant does.
+  // console exists nor whether that restaurant does — nor what platform staff
+  // did to it, since the trail is a record of staff acts.
   await signInAs(context, ownerToken);
   await page.goto("/operator/tenants/no-such-restaurant-anywhere");
   await expect(page.getByRole("heading", { name: NOT_FOUND_HEADING })).toBeVisible();
   await expect(page.getByText(/owner access/i)).toHaveCount(0);
+  await expect(page.getByRole("region", { name: /activity/i })).toHaveCount(0);
 });

@@ -2,8 +2,9 @@
  * One restaurant, from the operator's side (Phase 4.2, checklist in 4.3).
  *
  * Shows what the platform knows about the tenant — its address, theme, and
- * whether it is live — the full setup checklist, and the one action an
- * operator takes here: granting someone owner access.
+ * whether it is live — the full setup checklist, the one action an operator
+ * takes here (granting someone owner access), and the record of who has
+ * already done what to this restaurant (4.4).
  *
  * It deliberately does NOT link into the owner's dashboard. Operators are not
  * members of the restaurants they provision, so there is no dashboard to open
@@ -32,6 +33,7 @@ import { Container, Section, Stack } from "@/components/ui/container";
 import { Skeleton, Spinner } from "@/components/ui/feedback";
 import { PageHeader } from "@/components/ui/page-header";
 import { Heading, Text } from "@/components/ui/typography";
+import { describeAuditEvent, formatAuditTime, listTenantActivity } from "@/lib/audit";
 import { requireOperatorPage } from "@/lib/operator-access";
 import { getTenantSetup } from "@/lib/operator-tenants";
 import { outstandingOnboardingSteps } from "@/lib/onboarding";
@@ -101,6 +103,11 @@ async function TenantSetup({
   }
   const tenant = result.data;
   const outstanding = outstandingOnboardingSteps(tenant.steps);
+  // The audit read re-checks the staff role itself; a refusal is not reachable
+  // through this page, so an empty history is the honest fallback (an absent
+  // trail is also what a restaurant created before 4.4 actually has).
+  const recorded = await listTenantActivity(staff, tenant.id);
+  const activity = recorded.ok ? recorded.data : [];
   return (
     <Container className="py-8">
       <Section>
@@ -178,6 +185,51 @@ async function TenantSetup({
               </div>
             </CardContent>
           </Card>
+
+          {/* The trail is the answer to the question the tenant rows cannot
+              answer: who put this here. Scoped to platform staff — it is a
+              record of staff acts, not something an owner is shown. */}
+          <section aria-label="Activity">
+            <Heading level={2} className="mb-1">
+              Activity
+            </Heading>
+            <Text size="sm" muted>
+              Platform actions on this restaurant, newest first.
+            </Text>
+            {activity.length === 0 ? (
+              <Text size="sm" muted className="mt-3">
+                Nothing recorded yet. This restaurant predates platform record-keeping, or was set
+                up before the act was logged.
+              </Text>
+            ) : (
+              <ul className="mt-3 flex flex-col gap-2">
+                {activity.map((event) => {
+                  const described = describeAuditEvent(event);
+                  return (
+                    <li
+                      key={event.id}
+                      className="flex flex-wrap items-baseline justify-between gap-2 rounded-lg border border-border px-4 py-3"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-sm text-foreground">{described.label}</p>
+                        <Text size="sm" muted>
+                          {described.detail}
+                        </Text>
+                      </div>
+                      <Text size="sm" muted>
+                        <time dateTime={event.createdAt.toISOString()}>
+                          {formatAuditTime(event.createdAt)}
+                        </time>
+                        <span className="sr-only"> by </span>
+                        <span aria-hidden="true"> · </span>
+                        {event.actorEmail ?? `staff ${event.actorUserId.slice(0, 8)}`}
+                      </Text>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </section>
 
           <Text size="sm" muted>
             Everything else is the owner&apos;s to finish, from their own dashboard. Platform
