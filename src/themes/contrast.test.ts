@@ -199,10 +199,18 @@ function pairsFor(palette: AccentPalette): ContrastPair[] {
     text("eyebrow on the page background", eyebrowLight, "bg-page"),
     text("heading on the tinted surface", headingLight, surfaceLight),
     text("heading on the page background", headingLight, "bg-page"),
+    // The rule is drawn on the tinted surface in café/garden and directly on
+    // the page background in takeaway, which does not use its surface class.
     {
       label: "accent rule on the tinted surface",
       fg: resolveUtility(utilityFor(palette.rule, "bg", false)),
       bg: resolveUtility(surfaceLight),
+      min: RULE_MIN,
+    },
+    {
+      label: "accent rule on the page background",
+      fg: resolveUtility(utilityFor(palette.rule, "bg", false)),
+      bg: PAGE_LIGHT,
       min: RULE_MIN,
     },
     text("band heading", utilityFor(palette.bandText, "text", false), band),
