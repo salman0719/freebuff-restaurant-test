@@ -59,6 +59,13 @@ one primary CTA stay reachable in every theme).
   scratch verifier: `local/check-diner-contrast.ts` (git-ignored). The
   three shipped accents also pass as reference pairs.
 
+**Update 2026-10-14:** the scratch verifier graduated to a committed unit
+test, `src/themes/contrast.test.ts`, so no accent (existing nine, diner's
+three, and every future one) can ship failing AA — CI now runs it. Widening
+it past the diner palettes caught a real shipped failure: the `gold`
+accent's band and button (yellow-600 under light text, 2.7–2.9:1) and its
+rule (1.8:1). Those steps moved darker; no other accent changed.
+
 ## Rules
 
 - One migration for both theme ids; build `diner` first, `garden` second

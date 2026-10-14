@@ -68,8 +68,7 @@ The Diner Revival theme (`diner`) owns three things no other theme uses:
 
 - **Ramps** — `--color-cherry-*`, `--color-butter-*`, `--color-cola-*` in
   `globals.css` (Tailwind has no brown scale). Authored in OKLCH, every
-  accent pair contrast-verified at AA before landing
-  (`local/check-diner-contrast.ts`, git-ignored scratch).
+  accent pair contrast-verified at AA before landing.
 - **Display face** — Caprasimo, registered once in the root layout as
   `--font-caprasimo`; the diner wrapper swaps `--display-font` to it
   (the `:root` token behind the `font-display` utility — swap the token,
@@ -80,6 +79,19 @@ The Diner Revival theme (`diner`) owns three things no other theme uses:
 
 An **accent is a whole palette**, not a text colour: it tints the page
 surface, paints the hero band, colours the CTA, and draws the accent rules.
+
+### Contrast guard
+
+`src/themes/contrast.test.ts` is the gate on colour. It resolves every
+palette in `ACCENTS` to real sRGB values — reading Tailwind's shipped
+palette and this project's `globals.css` ramps, i.e. the same files the
+browser reads — and asserts every foreground/background pair clears WCAG AA
+(4.5:1 for text, light and dark; 3:1 for the decorative rule).
+
+It is automatic: a new accent added to `ACCENTS` is covered with no test
+change, and a theme whose accent list names a palette that does not exist
+fails. Change a ramp or a band colour and run `npm run test:run` before
+believing an accent is fine by eye.
 
 ### Static class strings
 
@@ -99,6 +111,9 @@ is never generated.
 5. Extend the `describe.each` in `themes.test.tsx` — that suite asserts the
    shared content model, images, empty states, accent application, and menu
    layout for every theme.
+
+Palettes need no extra step: `contrast.test.ts` picks up new accents
+(and new themes' accent lists) from `ACCENTS` and `accentsFor` on its own.
 
 ## Verifying appearance changes
 

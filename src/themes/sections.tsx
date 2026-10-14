@@ -97,16 +97,19 @@ export const ACCENTS: Record<string, AccentPalette> = {
     button: "bg-zinc-800 text-white hover:bg-zinc-900",
     rule: "bg-zinc-700",
   },
+  // yellow-600 fills could not carry light text (2.7–2.9:1) nor a 3:1 rule;
+  // the band/button/rule steps moved darker so the palette clears AA, which
+  // the contrast guard now enforces (`contrast.test.ts`).
   gold: {
     eyebrow: "text-yellow-700 dark:text-yellow-300",
     heading: "text-zinc-950 dark:text-zinc-50",
     surface: "bg-yellow-50/70 dark:bg-zinc-950",
-    band: "bg-yellow-600",
+    band: "bg-yellow-800",
     bandText: "text-yellow-50",
     bandEyebrow: "text-yellow-100",
     bandBody: "text-yellow-50",
-    button: "bg-yellow-600 text-white hover:bg-yellow-700",
-    rule: "bg-yellow-500",
+    button: "bg-yellow-700 text-white hover:bg-yellow-800",
+    rule: "bg-yellow-700",
   },
   plum: {
     eyebrow: "text-purple-800 dark:text-purple-200",

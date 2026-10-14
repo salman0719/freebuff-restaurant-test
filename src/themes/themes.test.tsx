@@ -40,7 +40,7 @@ function restaurant(overrides: Partial<PublicRestaurant> = {}): PublicRestaurant
 /** One accent per theme, with the class that proves it reached the page. */
 const ACCENT_CASE = {
   cafe: { accent: "forest", marker: "bg-emerald-50/70" },
-  takeaway: { accent: "gold", marker: "bg-yellow-600" },
+  takeaway: { accent: "gold", marker: "bg-yellow-800" },
   bistro: { accent: "sage", marker: "bg-lime-50/60" },
   diner: { accent: "butter", marker: "bg-butter-50/70" },
 } as const;
