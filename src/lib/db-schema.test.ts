@@ -87,9 +87,11 @@ describe("the audit trail table (Phase 4.4)", () => {
     expect(AUDIT_ACTIONS.length).toBeGreaterThan(0);
   });
 
-  it("indexes the read the console actually makes", () => {
+  it("indexes the reads the console actually makes", () => {
     const indexes = config.indexes.map((index) => index.config.name);
+    // One restaurant's history, and the platform-wide feed across all of them.
     expect(indexes).toContain("audit_events_tenant_created_idx");
+    expect(indexes).toContain("audit_events_created_idx");
   });
 });
 
@@ -170,5 +172,10 @@ describe("committed migrations", () => {
       expect(auditSql).toContain(action);
     }
     expect(auditSql).toContain("audit_events_action_allowed");
+  });
+
+  it("deploys the index the platform-wide feed reads through", () => {
+    // Across every migration: the index ships in its own, after the table.
+    expect(sql).toContain("audit_events_created_idx");
   });
 });

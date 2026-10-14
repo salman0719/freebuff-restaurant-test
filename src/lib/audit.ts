@@ -39,11 +39,19 @@
  * A restaurant created in 4.2 has no "created" row, so the console shows an
  * empty history rather than inventing one; `tenants.created_at` remains the
  * honest answer to "when", just not to "by whom".
+ *
+ * Two reads sit on that table. `listTenantActivity` answers "who did this to
+ * ONE restaurant", for the page about it. `listRecentActivity` answers "what
+ * has staff been doing" across every restaurant, for the console — and it is
+ * the only place that can show an act whose restaurant no longer exists,
+ * because a deleted tenant leaves no page for its history to appear on. That
+ * is why the platform read joins the tenant rather than trusting it: it falls
+ * back to the slug snapshot instead of dropping the row.
  */
 import { desc, eq } from "drizzle-orm";
 import { db, type Db } from "../../db";
 import type { AuditAction, MembershipRole, ThemeId } from "../../db/constants";
-import { auditEvents, users } from "../../db/schema";
+import { auditEvents, restaurantProfiles, tenants, users } from "../../db/schema";
 import { getThemeDefinition } from "../themes/registry";
 import type { AuthenticatedUser } from "./permissions";
 import { err, ok, type ServiceResult } from "./result";
@@ -247,4 +255,83 @@ export async function listTenantActivity(
   }
   const events = await reader.listForTenant(tenantId, limit);
   return ok(events);
+}
+
+/** How many acts the console's platform-wide feed shows. */
+export const PLATFORM_ACTIVITY_LIMIT = 10;
+
+/** A platform-wide entry: the act, plus what its restaurant is called now. */
+export interface RecentActivityEntry extends AuditRecord {
+  /**
+   * The restaurant's CURRENT display name, when it still exists. Null for an
+   * act with no restaurant (a platform-scoped one) and for one whose
+   * restaurant has since been deleted — the slug snapshot covers that case.
+   */
+  tenantName: string | null;
+}
+
+/**
+ * Which restaurant an entry is about, for a reader who has to be told. The
+ * name if the restaurant is still there, the recorded address otherwise —
+ * never nothing, because a row whose subject cannot be named is exactly the
+ * evidence this table exists to keep.
+ */
+export function activitySubject(entry: RecentActivityEntry): string | null {
+  if (entry.tenantName?.trim()) {
+    return entry.tenantName;
+  }
+  return entry.tenantSlug ?? null;
+}
+
+/** The platform-wide read surface, injected for the same reason as the other. */
+export interface ActivityFeed {
+  /** Every restaurant's acts, newest first. */
+  listRecent(limit: number): Promise<RecentActivityEntry[]>;
+}
+
+const defaultFeed: ActivityFeed = {
+  async listRecent(limit) {
+    const rows = await db
+      .select({
+        id: auditEvents.id,
+        action: auditEvents.action,
+        actorUserId: auditEvents.actorUserId,
+        actorEmail: auditEvents.actorEmail,
+        tenantId: auditEvents.tenantId,
+        tenantSlug: auditEvents.tenantSlug,
+        detail: auditEvents.detail,
+        createdAt: auditEvents.createdAt,
+        tenantName: restaurantProfiles.name,
+      })
+      .from(auditEvents)
+      // LEFT joins on purpose: an act outlives its restaurant, and an INNER
+      // join would silently drop exactly the rows this feed is uniquely able
+      // to show.
+      .leftJoin(tenants, eq(tenants.id, auditEvents.tenantId))
+      .leftJoin(restaurantProfiles, eq(restaurantProfiles.tenantId, tenants.id))
+      .orderBy(desc(auditEvents.createdAt))
+      .limit(limit);
+    return rows.map((row) => ({ ...row, detail: row.detail as AuditDetail }));
+  },
+};
+
+/**
+ * What platform staff have been doing, across every restaurant, newest first.
+ * The console's feed — the same staff check as the per-restaurant read, for
+ * the same reason.
+ *
+ * Deliberately not paginated: the console shows the newest handful, and an
+ * operator who needs the rest reads the restaurant's own history. If the
+ * platform ever needs to scroll back, this becomes a keyset-paginated read
+ * (`created_at < cursor`) rather than a bigger `limit`.
+ */
+export async function listRecentActivity(
+  act: AuthenticatedUser | null | undefined,
+  limit: number = PLATFORM_ACTIVITY_LIMIT,
+  feed: ActivityFeed = defaultFeed
+): Promise<ServiceResult<RecentActivityEntry[]>> {
+  if (act?.role !== "operator") {
+    return err("FORBIDDEN", "Operator access required.");
+  }
+  return ok(await feed.listRecent(limit));
 }

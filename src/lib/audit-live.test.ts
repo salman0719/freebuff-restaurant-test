@@ -112,6 +112,17 @@ live("operator audit trail (live database)", () => {
     }
   });
 
+  it("shows the act in the platform-wide feed, named after its restaurant", async () => {
+    const { listRecentActivity } = await libs();
+    const result = await listRecentActivity(staff);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      const mine = result.data.find((event) => event.tenantSlug === slug);
+      expect(mine?.tenantName).toBe("Audit Live Kitchen");
+      expect(mine?.actorEmail).toBe(actorEmail);
+    }
+  });
+
   it("records the grant, and nothing for a grant that was refused", async () => {
     const { inviteTenantOwner } = await libs();
     const granted = await inviteTenantOwner(staff, { slug, email: ownerEmail });
@@ -143,6 +154,18 @@ live("operator audit trail (live database)", () => {
       expect(event.tenantId).toBeNull();
       expect(event.tenantSlug).toBe(slug);
       expect(event.actorEmail).toBe(actorEmail);
+    }
+
+    // The platform feed is the only surface left that can show these at all,
+    // and it shows them by address rather than dropping them.
+    const { listRecentActivity, activitySubject } = await libs();
+    const feed = await listRecentActivity(staff);
+    expect(feed.ok).toBe(true);
+    if (feed.ok) {
+      const mine = feed.data.find((event) => event.tenantSlug === slug);
+      expect(mine?.tenantId).toBeNull();
+      expect(mine?.tenantName).toBeNull();
+      expect(mine && activitySubject(mine)).toBe(slug);
     }
   });
 

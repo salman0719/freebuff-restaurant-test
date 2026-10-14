@@ -10,9 +10,16 @@
  * deliberately not one of them: the platform address works, and custom
  * domains are Phase 5.
  *
- * Access is decided by `requireOperatorPage` and nothing else. The data read
- * re-checks the same role itself, and hands back setup facts only — never a
- * restaurant's menu, hours, or contact details.
+ * Access is decided by `requireOperatorPage` and nothing else. The data reads
+ * re-check the same role themselves, and hand back setup facts and recorded
+ * acts — never a restaurant's menu, hours, or contact details.
+ *
+ * The platform-wide activity feed at the bottom (4.4) is the only view of the
+ * trail that spans restaurants, and the only one that can show an act whose
+ * restaurant no longer exists — a deleted restaurant has no page left for its
+ * history to appear on. It is deliberately the SECOND thing on the page: the
+ * console's job is what still needs doing, and the feed is the record of what
+ * was done.
  */
 import Link from "next/link";
 import { auth } from "@/auth";
@@ -24,9 +31,61 @@ import { EmptyState } from "@/components/ui/feedback";
 import { PageHeader } from "@/components/ui/page-header";
 import { Stat } from "@/components/ui/stat";
 import { Text } from "@/components/ui/typography";
+import {
+  activitySubject,
+  describeAuditEvent,
+  formatAuditTime,
+  listRecentActivity,
+  type RecentActivityEntry,
+} from "@/lib/audit";
 import { requireOperatorPage } from "@/lib/operator-access";
 import { listTenantSetups, type OperatorTenantSetup } from "@/lib/operator-tenants";
 import { outstandingOnboardingSteps } from "@/lib/onboarding";
+
+/**
+ * One line of the platform feed: what happened, to which restaurant, and by
+ * whom. The restaurant is a link when it still exists, and plain text when it
+ * does not — a deleted restaurant's record is the one thing this view shows
+ * that no restaurant page can.
+ */
+function ActivityLine({ entry }: { entry: RecentActivityEntry }): React.ReactElement {
+  const described = describeAuditEvent(entry);
+  const subject = activitySubject(entry);
+  return (
+    <li className="flex flex-wrap items-baseline justify-between gap-2 border-t border-border py-3 first:border-t-0 first:pt-0">
+      <div className="min-w-0">
+        <p className="text-sm text-foreground">
+          {described.label}
+          {subject ? (
+            entry.tenantId ? (
+              <>
+                {" · "}
+                <Link href={`/operator/tenants/${entry.tenantSlug}`} className="hover:underline">
+                  {subject}
+                </Link>
+              </>
+            ) : (
+              <span className="text-muted-foreground">
+                {" · "}
+                {subject}
+                <span className="sr-only"> (this restaurant no longer exists)</span>
+              </span>
+            )
+          ) : null}
+        </p>
+        <Text size="sm" muted>
+          {described.detail}
+        </Text>
+      </div>
+      <Text size="sm" muted>
+        <time dateTime={entry.createdAt.toISOString()}>{formatAuditTime(entry.createdAt)}</time>
+        <span className="sr-only"> by </span>
+        <span aria-hidden="true"> · </span>
+        {entry.actorEmail ?? `staff ${entry.actorUserId.slice(0, 8)}`}
+      </Text>
+    </li>
+  );
+}
 
 /** The blocking gaps, as a sentence an operator can act on. */
 function outstandingLabel(setup: OperatorTenantSetup): string {
@@ -44,6 +103,10 @@ export default async function OperatorPage(): Promise<React.ReactElement> {
   // The read re-checks the role itself; a refusal here is not reachable through
   // this page, so an empty list is the honest fallback for anything else.
   const tenants = listed.ok ? listed.data : [];
+  // Same gate, same fallback: an empty feed is what a platform with no
+  // recorded acts honestly has.
+  const recent = await listRecentActivity(staff);
+  const activity = recent.ok ? recent.data : [];
   const live = tenants.filter((tenant) => tenant.published).length;
   const needingWork = tenants.filter(
     (tenant) => outstandingOnboardingSteps(tenant.steps).length > 0
@@ -129,6 +192,25 @@ export default async function OperatorPage(): Promise<React.ReactElement> {
             </ul>
           </div>
         )}
+
+        {/* Rendered only when there is something to show: a brand-new platform
+            has no history, and an empty feed would be a box that says nothing
+            where the rest of the page already explains the state. */}
+        {activity.length > 0 ? (
+          <section aria-label="Recent activity" className="mt-8">
+            <Card>
+              <CardTitle>Recent activity</CardTitle>
+              <Text size="sm" muted className="mt-1">
+                What platform staff have done, across every restaurant, newest first.
+              </Text>
+              <ul className="mt-3 flex flex-col gap-3">
+                {activity.map((entry) => (
+                  <ActivityLine key={entry.id} entry={entry} />
+                ))}
+              </ul>
+            </Card>
+          </section>
+        ) : null}
       </Section>
     </Container>
   );

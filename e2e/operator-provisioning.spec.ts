@@ -225,6 +225,13 @@ test("shows an operator what a new restaurant still needs", async ({ page, conte
   await expect(card).toContainText("2/7 set");
   await expect(card).toContainText(/needs menu entered, opening hours, owner access/i);
 
+  // …and the platform-wide feed records the act itself, naming the restaurant
+  // it was about and the account that did it.
+  const feed = page.getByRole("region", { name: /recent activity/i });
+  await expect(feed).toContainText("Created the restaurant");
+  await expect(feed.getByRole("link", { name: "Checklist Kitchen" })).toBeVisible();
+  await expect(feed).toContainText(OPERATOR_EMAIL);
+
   // The detail view carries the full checklist, not just the blocking half.
   await card.getByRole("link", { name: "Checklist Kitchen" }).click();
   await expect(page).toHaveURL(new RegExp(`/operator/tenants/${SLUG_LIST}$`));

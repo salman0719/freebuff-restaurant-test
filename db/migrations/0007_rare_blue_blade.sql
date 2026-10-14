@@ -1,0 +1,1 @@
+CREATE INDEX "audit_events_created_idx" ON "audit_events" USING btree ("created_at");

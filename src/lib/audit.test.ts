@@ -7,11 +7,16 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   ACTIVITY_LIMIT,
+  PLATFORM_ACTIVITY_LIMIT,
+  activitySubject,
   describeAuditEvent,
   formatAuditTime,
+  listRecentActivity,
   listTenantActivity,
+  type ActivityFeed,
   type AuditReader,
   type AuditRecord,
+  type RecentActivityEntry,
 } from "./audit";
 import type { AuthenticatedUser } from "./permissions";
 
@@ -33,6 +38,14 @@ function record(overrides: Partial<AuditRecord> = {}): AuditRecord {
 
 function fakeReader(events: AuditRecord[] = []): AuditReader {
   return { listForTenant: vi.fn(async () => events) };
+}
+
+function entry(overrides: Partial<RecentActivityEntry> = {}): RecentActivityEntry {
+  return { ...record(), tenantName: "Mario's Pizza", ...overrides };
+}
+
+function fakeFeed(events: RecentActivityEntry[] = []): ActivityFeed {
+  return { listRecent: vi.fn(async () => events) };
 }
 
 describe("describeAuditEvent", () => {
@@ -153,6 +166,69 @@ describe("listTenantActivity", () => {
 
   it("reports a restaurant with no recorded acts as empty, not as an error", async () => {
     const result = await listTenantActivity(staff, "tenant_a", ACTIVITY_LIMIT, fakeReader([]));
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data).toEqual([]);
+    }
+  });
+});
+
+describe("activitySubject", () => {
+  it("names the restaurant as it is now called", () => {
+    expect(activitySubject(entry())).toBe("Mario's Pizza");
+  });
+
+  it("falls back to the recorded address once the restaurant is gone", () => {
+    // The case the platform feed exists for: no restaurant left to name.
+    expect(activitySubject(entry({ tenantName: null, tenantId: null }))).toBe("marios-pizza");
+    expect(activitySubject(entry({ tenantName: "   ", tenantId: null }))).toBe("marios-pizza");
+  });
+
+  it("reports no subject for an act about no restaurant", () => {
+    expect(
+      activitySubject(entry({ tenantName: null, tenantSlug: null, tenantId: null }))
+    ).toBeNull();
+  });
+});
+
+describe("listRecentActivity authorisation", () => {
+  const refused: [string, AuthenticatedUser | null | undefined][] = [
+    ["a restaurant owner", { userId: "user_owner", role: "owner" }],
+    ["a near-miss role", { userId: "user_x", role: "Operator" }],
+    ["no identity at all", null],
+    ["undefined", undefined],
+  ];
+
+  it.each(refused)("refuses %s without reading anything", async (_label, act) => {
+    const feed = fakeFeed([entry()]);
+    const result = await listRecentActivity(act, PLATFORM_ACTIVITY_LIMIT, feed);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.code).toBe("FORBIDDEN");
+    }
+    expect(feed.listRecent).not.toHaveBeenCalled();
+  });
+});
+
+describe("listRecentActivity", () => {
+  it("reads the platform feed for staff, newest first as the reader returns it", async () => {
+    const feed = fakeFeed([entry({ id: "newer" }), entry({ id: "older", tenantSlug: "old" })]);
+    const result = await listRecentActivity(staff, 5, feed);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.map((event) => event.id)).toEqual(["newer", "older"]);
+    }
+    expect(feed.listRecent).toHaveBeenCalledWith(5);
+  });
+
+  it("asks for its own default limit when the caller does not pick one", async () => {
+    const feed = fakeFeed();
+    await listRecentActivity(staff, undefined, feed);
+    expect(feed.listRecent).toHaveBeenCalledWith(PLATFORM_ACTIVITY_LIMIT);
+  });
+
+  it("reports a platform with no recorded acts as empty, not as an error", async () => {
+    const result = await listRecentActivity(staff, PLATFORM_ACTIVITY_LIMIT, fakeFeed([]));
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.data).toEqual([]);

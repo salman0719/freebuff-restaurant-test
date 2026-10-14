@@ -352,6 +352,10 @@ export const auditEvents = pgTable(
   (t) => [
     // The console reads one restaurant's history newest first.
     index("audit_events_tenant_created_idx").on(t.tenantId, t.createdAt),
+    // …and the platform-wide feed reads them all, newest first. Without this
+    // that read sorts the whole table every time the console renders.
+    index("audit_events_created_idx").on(t.createdAt),
+    // "What has this staff account done" — an audit question, not a UI one.
     index("audit_events_actor_idx").on(t.actorUserId),
     check(
       "audit_events_action_allowed",
