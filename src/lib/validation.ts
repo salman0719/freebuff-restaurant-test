@@ -187,6 +187,20 @@ export const assignMembershipSchema = z.object({
 
 export const inviteOwnerSchema = z.object({ email: emailSchema });
 
+/**
+ * Operator grants owner access to one restaurant by email (Phase 4.2).
+ *
+ * One operation covers both cases an operator actually has — assigning
+ * someone who has signed in before, and inviting someone who has not —
+ * because the operator never holds an internal user id, so email is the only
+ * identifier they can type. `slug` addresses the tenant; `role` defaults to
+ * `owner`.
+ */
+export const assignOwnerSchema = inviteOwnerSchema.extend({
+  slug: slugSchema,
+  role: membershipRoleSchema.default("owner"),
+});
+
 export type CreateTenantInput = z.infer<typeof createTenantSchema>;
 export type UpdateTenantInput = z.infer<typeof updateTenantSchema>;
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
@@ -199,6 +213,7 @@ export type CreateItemInput = z.infer<typeof createItemSchema>;
 export type UpdateItemInput = z.infer<typeof updateItemSchema>;
 export type AssignMembershipInput = z.infer<typeof assignMembershipSchema>;
 export type InviteOwnerInput = z.infer<typeof inviteOwnerSchema>;
+export type AssignOwnerInput = z.infer<typeof assignOwnerSchema>;
 
 /**
  * Map a Zod failure to field-keyed messages for `ServiceError.fields`

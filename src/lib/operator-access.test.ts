@@ -72,6 +72,18 @@ function collectSurfaces(dir: string): string[] {
   return walk(dir).filter((file) => /(^|[\\/])(page|layout|route|actions)\.(ts|tsx)$/.test(file));
 }
 
+/**
+ * Modules permitted to touch `users.role`.
+ *
+ * Phase 4.2's provisioning module creates an invited owner's account, and it
+ * creates it with the platform DEFAULT role — the same row a first magic-link
+ * sign-in would produce. Nothing here grants an elevated role, and it is the
+ * only entry. The guard stays exactly as strong as it was: any OTHER path
+ * that starts assigning roles fails this test, which is why 4.2 added an
+ * allowlist here instead of deleting the check.
+ */
+const ROLE_WRITERS = ["src/lib/tenant-provisioning.ts"] as const;
+
 const GUARD_NAMES = ["requireOperatorPage", "operatorGate", "requireOperator"];
 const OPERATOR_DIR = join(process.cwd(), "src", "app", "operator");
 
@@ -122,20 +134,20 @@ describe("operator surface convention", () => {
     expect(usesGate("export default function Page() { return null; }")).toBe(false);
   });
 
-  it("has no application path that assigns the global role", () => {
-    // Promotion to platform staff is an operator-only act, and Phase 4.2 owns
-    // the module that performs it. Until then nothing under `src/` may write
-    // `users.role`: the role a session carries comes from the database, and
-    // from nowhere a caller can reach. When 4.2 lands, add that one
-    // provisioning module to an allowlist here instead of deleting the guard.
+  it("assigns the global role only from the operator provisioning module", () => {
+    // The role a session carries comes from the database, and from nowhere a
+    // caller can reach. Creating accounts belongs to operator provisioning
+    // (4.2) and to nothing else, so the only module allowed to write here is
+    // named in `ROLE_WRITERS` above. A second one appearing is the signal
+    // this guard exists to raise.
     const writers = sourceFiles(join(process.cwd(), "src")).filter((file) => {
       const source = readFileSync(file, "utf8");
       return /(insert|update)\(\s*users\s*\)/.test(source) && /role\s*:/.test(source);
     });
     expect(
-      writers.map(relative),
+      writers.map(relative).sort(),
       "assigning users.role belongs to operator provisioning (4.2)"
-    ).toEqual([]);
+    ).toEqual([...ROLE_WRITERS].sort());
   });
 
   it("keeps the gate itself out of client bundles", () => {
