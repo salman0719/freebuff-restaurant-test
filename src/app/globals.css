@@ -89,8 +89,9 @@
   /*
    * Diner Revival theme ramps (docs/decisions/0004). Tailwind has no
    * brown scale and its yellows read lemon, so cherry/butter/cola are
-   * authored in OKLCH and checked at AA by local/check-diner-contrast.ts
-   * before landing. Theme accents only — never used by app chrome.
+   * authored in OKLCH and every use of them is checked at AA by
+   * src/themes/contrast.test.ts, which reads these very values. Theme
+   * accents only — never used by app chrome.
    */
   --color-cherry-50: #ffe7e0;
   --color-cherry-100: #ffd6cd;
