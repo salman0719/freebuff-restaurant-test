@@ -20,6 +20,7 @@ import {
   accentsFor,
   MENU_LAYOUTS,
   resolveThemeConfig,
+  themeToggle,
   type CafeConfig,
   type TakeawayConfig,
 } from "@/themes/config";
@@ -40,7 +41,7 @@ export default async function ThemePage({
   const tenantSlug = context.data.tenant.slug;
   const current = context.data.tenant.theme;
   const config = resolveThemeConfig(current, context.data.tenant.themeConfig);
-  const isCafe = current === "cafe";
+  const toggle = themeToggle(current);
   return (
     <div className="flex flex-col gap-8">
       <div className="flex flex-col gap-4">
@@ -108,13 +109,14 @@ export default async function ThemePage({
           current={{
             accent: config.accent,
             menuLayout: config.menuLayout,
-            toggleName: isCafe ? "showHours" : "showDescription",
-            toggleLabel: isCafe
-              ? "Show opening hours on the site"
-              : "Show the description in the hero band",
-            toggleChecked: isCafe
-              ? (config as CafeConfig).showHours
-              : (config as TakeawayConfig).showDescription,
+            toggleName: toggle.name,
+            toggleLabel: toggle.label,
+            // The two option shapes are the only ones with a visibility
+            // toggle; this map is what keeps the name and the read in sync.
+            toggleChecked:
+              toggle.name === "showHours"
+                ? (config as CafeConfig).showHours
+                : (config as TakeawayConfig).showDescription,
           }}
         />
       </section>

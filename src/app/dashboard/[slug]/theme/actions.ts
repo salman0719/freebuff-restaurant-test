@@ -14,6 +14,7 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { getTenantContext } from "@/lib/tenant-context";
 import { updateTenantSettings, updateTenantThemeConfig } from "@/lib/tenant-data";
+import { themeToggle } from "@/themes/config";
 
 export async function saveTheme(formData: FormData): Promise<void> {
   const session = await auth();
@@ -52,15 +53,15 @@ export async function saveThemeOptions(
   };
   // Only the current theme's own toggle is submitted — the other theme's
   // option would be stripped anyway, but sending it would be misleading.
+  // `themeToggle` is the shared source of truth for the key, so the form and
+  // this write can never disagree again — before, every non-café theme read
+  // the wrong field and its own schema stripped the value silently.
+  const toggleName = themeToggle(themeId).name;
   const input: Record<string, unknown> = {
     accent: text("accent"),
     menuLayout: text("menuLayout"),
+    [toggleName]: formData.get(toggleName) === "on",
   };
-  if (themeId === "cafe") {
-    input.showHours = formData.get("showHours") === "on";
-  } else {
-    input.showDescription = formData.get("showDescription") === "on";
-  }
   const saved = await updateTenantThemeConfig(context.data, themeId, input);
   if (!saved.ok) {
     return { status: "error", message: "Check the options and try again." };

@@ -81,6 +81,28 @@ export function accentsFor(themeId: ThemeId): readonly string[] {
 }
 
 /**
+ * The one visibility toggle each theme exposes in the dashboard. Themes
+ * differ here (`showHours` vs `showDescription`), so the options page AND
+ * its server action both read this map: inferring the key from "is this
+ * café?" made every other theme submit the wrong field, which the theme's
+ * own schema then stripped — the checkbox silently did nothing.
+ */
+export const THEME_TOGGLES = {
+  cafe: { name: "showHours", label: "Show opening hours on the site" },
+  takeaway: {
+    name: "showDescription",
+    label: "Show the description in the hero band",
+  },
+  bistro: { name: "showHours", label: "Show opening hours on the site" },
+  diner: { name: "showHours", label: "Show opening hours on the site" },
+} as const satisfies Record<ThemeId, { name: string; label: string }>;
+
+/** The toggle vocabulary for a theme (used by the dashboard options form). */
+export function themeToggle(themeId: ThemeId): (typeof THEME_TOGGLES)[ThemeId] {
+  return THEME_TOGGLES[themeId] ?? THEME_TOGGLES.cafe;
+}
+
+/**
  * Validate stored JSON for `themeId`, filling defaults for missing keys
  * and falling back to full defaults for anything unparseable. Unknown keys
  * are stripped (`.strip()` is Zod's default for objects).

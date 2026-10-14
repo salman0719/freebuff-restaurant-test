@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { accentsFor, resolveThemeConfig } from "./config";
+import { THEME_IDS } from "../../db/constants";
+import { accentsFor, resolveThemeConfig, themeToggle } from "./config";
 
 describe("resolveThemeConfig", () => {
   it("fills defaults for missing keys", () => {
@@ -68,6 +69,24 @@ describe("accentsFor", () => {
   it("returns each theme's own accent vocabulary", () => {
     expect(accentsFor("cafe")).toEqual(["espresso", "forest", "terracotta"]);
     expect(accentsFor("takeaway")).toEqual(["chili", "charcoal", "gold"]);
+    expect(accentsFor("bistro")).toEqual(["plum", "navy", "sage"]);
     expect(accentsFor("diner")).toEqual(["cherry", "butter", "cola"]);
+  });
+
+  it("gives every shipped theme a palette list", () => {
+    for (const id of THEME_IDS) expect(accentsFor(id).length).toBeGreaterThan(0);
+  });
+});
+
+describe("themeToggle", () => {
+  // Regression guard: the dashboard used to infer the toggle key from
+  // "is this café?", so bistro and diner posted `showDescription` to a schema
+  // that only has `showHours` — a checkbox that saved nothing.
+  it("names a toggle that exists on that theme's own config", () => {
+    for (const id of THEME_IDS) {
+      const toggle = themeToggle(id);
+      expect(Object.keys(resolveThemeConfig(id, {}))).toContain(toggle.name);
+      expect(toggle.label.length).toBeGreaterThan(0);
+    }
   });
 });
