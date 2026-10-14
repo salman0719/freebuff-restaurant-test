@@ -835,6 +835,26 @@ run also confirmed the redirect cannot be steered by a forged `Host`
 header: the target follows the configured auth origin, so the gate is not
 an open redirect.
 
+**Regression guard for that failure:** `npm run smoke` (`scripts/smoke.ts`,
+rules in the pure `src/lib/route-smoke.ts`) points at any origin and asserts
+what the platform promises — every private path bounces with the edge gate's
+own 302 to `/login?next=<path>`, every public path stays open with a 200. The
+status code is the assertion, not the body: a protected path answering 200
+(streamed redirect inside a shell) or 307 (a page-level `redirect()`
+covering for the gate) is a failure, so the exact way the gate went missing
+cannot pass again. Tested three ways against a production server: it passes
+as shipped; with the matcher emptied, four protected routes answer 200 — the
+exact original signature — and it exits 1; and with `/login` added to the
+matcher, the two public routes are flagged as an over-broad gate while the
+protected half still passes, so the two failure modes are distinguishable.
+It works against a deployed origin, where a build listing `ƒ Proxy
+(Middleware)` proved nothing either way on its own. CI runs it as a release
+gate on every push: the production build is started on 4031 (the E2E owns
+4030 and, with `reuseExistingServer` off in CI, refuses to start beside an
+existing server), `--wait` covers the boot instead of a fixed sleep, and a
+non-zero exit fails the job — so the gate going silently inert now breaks the
+build rather than reaching a deploy.
+
 **Note for 4.2:** operator _actions_ still have no consumer. When one
 lands it needs the structured variant (`requireOperator` → an error state
 to return), not the navigating one: an action must fail closed with a

@@ -58,6 +58,7 @@ Adminer login: system `PostgreSQL`, server `db` (pre-filled), username
 | `npm run test:run`                | Vitest single run (unit + component)    |
 | `npm run test:coverage`           | Vitest with V8 coverage                 |
 | `npm run test:e2e`                | Playwright E2E (Chromium)               |
+| `npm run smoke`                   | Route smoke check against a running app |
 | `npm run check`                   | lint + typecheck + format:check         |
 | `npx tsx <file.ts>`               | Run one-off TypeScript scripts          |
 
@@ -70,7 +71,33 @@ and magic-link env in `.env.local` (`AUTH_SECRET`, `AUTH_URL`,
 `EMAIL_SERVER`/`EMAIL_FROM` — see `.env.example`). Then `npm run build
 && npm run test:e2e`; the suite seeds and cleans up its own tenant, so
 re-runs are deterministic. CI (`.github/workflows/ci.yml`) runs check +
-unit (with live-DB suites) + migrate + build + E2E on every push and PR.
+unit (with live-DB suites) + migrate + build + route smoke + E2E on every
+push and PR.
+
+`npm run smoke` is the cheap release check for route protection. Point it
+at any running origin (default `http://localhost:4030`, or `SMOKE_ORIGIN`):
+
+```bash
+npm run build && npm run start &
+npm run smoke                        # then: npm run smoke -- https://staging.example.com
+npm run smoke -- http://localhost:4031 --wait 60000   # waits for a booting app
+```
+
+It asserts that every private path answers with the edge gate's own 302 to
+`/login?next=<path>`, and that the public paths stay open with a 200. The
+status code is the assertion, deliberately: a protected path answering 200
+(a redirect streamed inside a rendered shell) or 307 (a page-level
+`redirect()`) means the edge gate did not run, which is exactly how it once
+went missing without failing anything. It checks every route, prints each
+verdict, and exits non-zero with the failures listed; authenticated
+journeys stay with the E2E suite.
+
+`--wait <ms>` polls until the origin answers at all (a 404 or 500 still means
+"up") instead of failing fast, so it can be pointed at an app that is still
+starting; CI uses it rather than a fixed sleep, which would be either too
+short on a cold runner or wasted time on a warm one. CI starts the production
+build and runs exactly this, so a gate that stops bouncing requests fails the
+job instead of reaching a deploy.
 
 ## Conventions
 
