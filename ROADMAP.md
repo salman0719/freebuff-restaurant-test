@@ -1017,20 +1017,32 @@ It also survives what it describes, which is where it deliberately
 diverges from every other table here: `tenant_id` is `SET NULL` and the
 actor carries no foreign key, so deleting a restaurant or closing an
 account cannot delete the fact that someone created it. The snapshots
-(`tenant_slug`, `actor_email`) are what keep those rows readable afterwards.
-The consequence is stated rather than hidden: the console keys its read on
-the tenant id, so a deleted restaurant's history is evidence that no page
-currently shows — it stays in the table for a platform-wide view to pick
-up, not in the UI.
+(`tenant_slug`, `actor_email`) are what keep those rows readable afterwards,
+and the console's platform-wide feed is the one surface that can show a
+record whose restaurant is gone — a deleted restaurant has no page left for
+its history to appear on. That read joins the tenant with a LEFT join and
+falls back to the recorded address, so the row is reported rather than
+silently dropped.
 
 On 4.4's other three bullets: the writes go through the one provisioning
 module that already owns cross-tenant authority, and the reads through the
 staff-gated modules 4.2/4.3 built, so nothing new was granted a way to
-reach tenant data; the trail read re-checks the staff role itself, exactly
-like `operator-tenants.ts`, because neither is scoped by a
+reach tenant data; the trail reads re-check the staff role themselves,
+exactly like `operator-tenants.ts`, because none of them is scoped by a
 `TenantContext`; and the E2E proves an ordinary owner reaches neither the
 page nor the trail. "Avoid exposing private tenant data unnecessarily" is
 satisfied by the trail holding acts and not content.
+
+The console also carries a platform-wide feed: what staff have been doing,
+newest first, each line naming the restaurant it was about and linking to it.
+It is the second thing on the page on purpose — the console's job is what
+still needs doing, and the feed is the record of what was done. It reads
+across every restaurant in one query, which is what the shipped
+`audit_events_created_idx` serves: without it the feed sorts the whole table
+on every render. It shows the newest handful and is deliberately not
+paginated; an operator who needs more reads that restaurant's own history,
+and scrolling further back would be a keyset read (`created_at < cursor`)
+rather than a bigger limit.
 
 **Verification:** 17 unit tests pin the descriptions, the time format and
 the read gate (an owner, a near-miss role and no identity at all get
@@ -1049,10 +1061,15 @@ restaurant and a deleted operator account leave the rows standing —
 `tenant_id` null, the slug and the actor's address intact.
 `e2e/operator-provisioning.spec.ts` reads the trail through the browser after
 creating a restaurant and granting access (asserted inside the trail's own
-region, because the operator's address appears elsewhere on the page), and
-checks the refusal left exactly one grant. Whole suite green: 462 unit tests
-without a database, 487 with one including the 25 opt-in live tests, and 13
-E2E tests.
+region, because the operator's address appears elsewhere on the page), checks
+the refusal left exactly one grant, and reads the console's feed for the
+creation itself. The feed's own coverage: 10 unit tests pin its gate (the
+same refusals, without a read) and how an entry's restaurant is named, and
+the live suite proves it still shows a record whose restaurant has since been
+deleted — by its address, rather than not at all. Whole suite green: 473 unit
+tests without a database, 499 with one including the 26 opt-in live tests,
+and 13 E2E tests; the route smoke check passes against a production server
+on all 9 routes.
 
 **Found while doing this:** the E2E's own cleanup was leaving one orphan
 `tenant_id IS NULL` row per run, because the trail deliberately does not
@@ -1060,15 +1077,25 @@ cascade from `tenants` — the helper now deletes a spec's audit rows by their
 slug snapshot before deleting the tenant, which is the only handle left
 afterwards.
 
+**Found while verifying the feed:** the console's "New restaurant" link was
+a blocking route — navigating to it client-side logged Next's "encountered
+uncached data" insight, exactly as `/operator/tenants/[slug]` did before
+this round fixed that one. It hid from the suite and from hard loads for the
+same reason as before: it fires only on the client navigation an operator
+actually performs. `/operator/tenants/new` now keeps its header and its way
+back in the App Shell and puts the session-gated form behind the same kind
+of boundary, so both operator destinations an operator clicks into paint
+immediately. The `dashboard` routes log the same insight and were NOT
+touched: that is a platform-wide sweep of its own, the pass the crypto
+warning above also needs.
+
 **Note for later:** nothing records an operator READING a restaurant — only
 what they changed — so the trail cannot answer "who looked at this", which
 is the question that matters if staff access to owner content ever widens
-beyond the setup facts it has today. Two smaller gaps the same table can
-absorb without changing shape: a platform-wide activity feed (the read
-would want an index on `created_at`, since today's indexes serve one
-restaurant and one actor), and platform-scoped acts such as granting the
-staff role itself, which is why `tenant_id` is nullable and the vocabulary
-is a closed set rather than a free string.
+beyond the setup facts it has today. One gap the same table can still absorb
+without changing shape: platform-scoped acts such as granting the staff role
+itself, which is why `tenant_id` is nullable and the vocabulary is a closed
+set rather than a free string.
 
 **Can be done independently:** Partially.
 
