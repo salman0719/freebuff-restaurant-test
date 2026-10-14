@@ -11,37 +11,111 @@ import { loadEnvConfig } from "@next/env";
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { memberships, tenants, users } from "../db/schema";
+import { memberships, sessions, tenants, users } from "../db/schema";
 
 loadEnvConfig(process.cwd());
 
 export const E2E_EMAIL = "owner-e2e@example.com";
 export const E2E_SLUG = "e2e-bistro";
 export const E2E_NAME = "E2E Bistro";
+/** Platform-staff fixture (Phase 4.1) — a global `operator` role. */
+export const E2E_OPERATOR_EMAIL = "staff-e2e@example.com";
+
+/** The session cookie NextAuth writes for an http origin (no `__Secure-`). */
+export const SESSION_COOKIE = "authjs.session-token";
 
 export function mailpitBase(): string {
   return process.env.MAILPIT_URL ?? "http://localhost:8025";
 }
 
-function seedDb() {
+/** One short-lived client per call, always closed — leaked pools outlive the run. */
+function newDb() {
   const url = process.env.DATABASE_URL;
   if (!url) {
     throw new Error("DATABASE_URL is not set. Start Postgres (`docker compose up -d`) first.");
   }
-  return drizzle(postgres(url, { max: 1 }));
+  const client = postgres(url, { max: 1 });
+  return { db: drizzle(client), close: () => client.end() };
 }
 
 /** Reset the journey tenant to a fresh draft owned by the journey user. */
 export async function seedOwnerJourney(): Promise<void> {
-  const db = seedDb();
-  await db.delete(tenants).where(eq(tenants.slug, E2E_SLUG));
-  await db.delete(users).where(eq(users.email, E2E_EMAIL));
-  const [user] = await db.insert(users).values({ email: E2E_EMAIL }).returning({ id: users.id });
-  const [tenant] = await db
-    .insert(tenants)
-    .values({ slug: E2E_SLUG })
-    .returning({ id: tenants.id });
-  await db.insert(memberships).values({ userId: user.id, tenantId: tenant.id, role: "owner" });
+  const { db, close } = newDb();
+  try {
+    await db.delete(tenants).where(eq(tenants.slug, E2E_SLUG));
+    await db.delete(users).where(eq(users.email, E2E_EMAIL));
+    const [user] = await db.insert(users).values({ email: E2E_EMAIL }).returning({ id: users.id });
+    const [tenant] = await db
+      .insert(tenants)
+      .values({ slug: E2E_SLUG })
+      .returning({ id: tenants.id });
+    await db.insert(memberships).values({ userId: user.id, tenantId: tenant.id, role: "owner" });
+  } finally {
+    await close();
+  }
+}
+
+/**
+ * The journey owner's user id. Read-only: global setup owns that fixture, and
+ * a spec that re-seeded it would race the journey when Playwright runs files
+ * in parallel.
+ */
+export async function findUserIdByEmail(email: string): Promise<string> {
+  const { db, close } = newDb();
+  try {
+    const rows = await db.select({ id: users.id }).from(users).where(eq(users.email, email));
+    if (!rows[0]) throw new Error(`No seeded user for ${email} — did global setup run?`);
+    return rows[0].id;
+  } finally {
+    await close();
+  }
+}
+
+/**
+ * Platform-staff fixture: the global `operator` role. Assigning that role is
+ * Phase 4.2's provisioning UI; the test writes the same row production will,
+ * rather than inventing a second way to become staff.
+ */
+export async function seedOperator(): Promise<string> {
+  const { db, close } = newDb();
+  try {
+    await db.delete(users).where(eq(users.email, E2E_OPERATOR_EMAIL));
+    const [user] = await db
+      .insert(users)
+      .values({ email: E2E_OPERATOR_EMAIL, role: "operator" })
+      .returning({ id: users.id });
+    return user.id;
+  } finally {
+    await close();
+  }
+}
+
+/**
+ * A real database session for `userId`, so a spec can be signed in without
+ * the email round trip. Returns the token to set as the session cookie.
+ */
+export async function createSession(userId: string): Promise<string> {
+  const { db, close } = newDb();
+  try {
+    const token = `e2e-${crypto.randomUUID()}`;
+    await db
+      .insert(sessions)
+      .values({ sessionToken: token, userId, expires: new Date(Date.now() + 60 * 60 * 1000) });
+    return token;
+  } finally {
+    await close();
+  }
+}
+
+/** The stored GLOBAL role for a user — the authority nothing may escalate. */
+export async function getGlobalRole(userId: string): Promise<string> {
+  const { db, close } = newDb();
+  try {
+    const rows = await db.select({ role: users.role }).from(users).where(eq(users.id, userId));
+    return rows[0]?.role ?? "(missing)";
+  } finally {
+    await close();
+  }
 }
 
 /** Empty the Mailpit inbox so the journey always consumes its own link. */

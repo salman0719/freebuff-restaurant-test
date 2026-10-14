@@ -793,6 +793,36 @@ choose a theme, and inspect its setup status.
 
 ## 4.1 Operator access and role protection
 
+**Status:** Done 2026-10-14. One gate owns operator access
+(`src/lib/operator-access.ts`): a pure decision (`operatorGate`) plus
+`requireOperatorPage` for pages. `/operator` routes through it — anonymous
+visitors go to `/login?next=/operator`, and a signed-in owner sees the same
+not-found page as an unknown route, so the console's existence is never
+confirmed to them.
+
+The role authority is `users.role` as loaded from the database by the
+Auth.js adapter; nothing request-supplied is consulted. Three guards keep
+it that way: a structural test requires every `page`/`layout`/`route`/
+`actions` file under `src/app/operator` (at any depth) to call the gate; a
+tripwire fails if any module under `src/` assigns `users.role` (the 4.2
+provisioning module goes on an allowlist there rather than removing the
+guard); and the gate must stay off client bundles.
+
+**Verification:** 18 unit tests across `operator-access.test.ts` and the
+near-miss role cases in `permissions.test.ts`; new `e2e/operator-access.spec.ts`
+proves the deployed behaviour — anonymous redirect, owner 404, promotion
+attempts via query string leaving the stored role `owner`, forged staff
+headers refused, and platform staff reaching the console (previously
+untested: no operator user had ever existed in the suite). E2E sessions are
+seeded straight into the database so the spec cannot race the owner
+journey's Mailpit purge, and the staff fixture is a `users.role` row — the
+same act 4.2's provisioning will perform.
+
+**Note for 4.2:** operator _actions_ still have no consumer. When one
+lands it needs the structured variant (`requireOperator` → an error state
+to return), not the navigating one: an action must fail closed with a
+result rather than redirect.
+
 **Can be done independently:** Yes, after the role model is stable.
 
 - Protect operator-only routes and actions on the server.
