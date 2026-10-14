@@ -72,6 +72,16 @@ export const SMOKE_ROUTES: readonly SmokeRoute[] = [
     reason: "tenant editor section (deepest protected shape)",
   },
   { path: "/operator", kind: "protected", reason: "operator console" },
+  {
+    path: "/operator/tenants/new",
+    kind: "protected",
+    reason: "operator setup flow (4.2)",
+  },
+  {
+    path: "/operator/tenants/smoke-tenant",
+    kind: "protected",
+    reason: "operator tenant detail (4.2) — a slug the gate must bounce without resolving",
+  },
   { path: SIGN_IN_PATH, kind: "public", reason: "sign-in page — the redirect target" },
   {
     path: `${SIGN_IN_PATH}?next=/dashboard`,
