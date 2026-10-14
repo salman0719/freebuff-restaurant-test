@@ -25,6 +25,7 @@ import {
   tenants,
 } from "../../db/schema";
 import { themeConfigSchema } from "../themes/config";
+import { isUniqueViolation } from "./db-errors";
 import { err, isErr, ok, type ServiceResult } from "./result";
 import type {
   MenuCategory,
@@ -277,16 +278,6 @@ export async function updateTenantHours(
   const saved = await getTenantHours(ctx);
   if (isErr(saved)) return saved;
   return ok(saved.data);
-}
-
-/** Postgres unique-violation code — maps a lost name race to a field error. */
-function isUniqueViolation(error: unknown): boolean {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    "code" in error &&
-    (error as { code: unknown }).code === "23505"
-  );
 }
 
 function duplicateName<T>(): ServiceResult<T> {
