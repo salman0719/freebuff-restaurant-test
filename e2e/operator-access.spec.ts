@@ -32,6 +32,14 @@ import {
 const APP = "http://localhost:4030";
 const CONSOLE_HEADING = /operator console/i;
 const NOT_FOUND_HEADING = /couldn't find that page/i;
+/**
+ * The console's own entry point (Phase 4.2), used as the marker that the real
+ * console rendered. It is asserted by role and name rather than by copy: 4.3
+ * replaced the placeholder description this spec first looked for, and the
+ * point of the check is that the surface is there, not how it is worded.
+ * `.first()` because the empty state offers the same link as the header does.
+ */
+const NEW_RESTAURANT_LINK = { role: "link", name: /new restaurant/i } as const;
 
 let ownerId = "";
 let ownerToken = "";
@@ -62,7 +70,9 @@ test("a signed-in owner gets the not-found page, not the console", async ({ page
   await page.goto("/operator");
   await expect(page.getByRole("heading", { name: NOT_FOUND_HEADING })).toBeVisible();
   await expect(page.getByRole("heading", { name: CONSOLE_HEADING })).toHaveCount(0);
-  await expect(page.getByText(/signed in as platform staff/i)).toHaveCount(0);
+  await expect(
+    page.getByRole(NEW_RESTAURANT_LINK.role, { name: NEW_RESTAURANT_LINK.name })
+  ).toHaveCount(0);
 });
 
 test("an owner cannot promote themselves with request data", async ({ page, context }) => {
@@ -96,6 +106,8 @@ test("platform staff reach the console", async ({ page, context }) => {
   await signInAs(context, operatorToken);
   await page.goto("/operator");
   await expect(page.getByRole("heading", { name: CONSOLE_HEADING })).toBeVisible();
-  await expect(page.getByText(/signed in as platform staff/i)).toBeVisible();
+  await expect(
+    page.getByRole(NEW_RESTAURANT_LINK.role, { name: NEW_RESTAURANT_LINK.name }).first()
+  ).toBeVisible();
   await expect(page.getByRole("heading", { name: NOT_FOUND_HEADING })).toHaveCount(0);
 });
