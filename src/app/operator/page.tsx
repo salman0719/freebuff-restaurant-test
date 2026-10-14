@@ -1,19 +1,23 @@
 /**
- * Operator console placeholder (Phase 3.1; gated by the Phase 4.1 gate). The
- * full console — tenant provisioning, platform status — arrives in 4.2–4.4;
- * this stub reserves the `/operator` target the dashboard nav links to so
- * global operators never hit a dead end.
+ * Operator console (Phase 3.1; gated by the Phase 4.1 gate).
+ *
+ * 4.2 gave the console something real to do, so the placeholder is replaced
+ * by the setup entry point. The tenant list with each restaurant's onboarding
+ * status arrives with 4.3; until then this points at the flow rather than
+ * promising a console that is not there.
  *
  * Access is decided by `requireOperatorPage` and nothing else: anonymous
  * visitors land on `/login?next=/operator`, and a signed-in owner sees the
  * same not-found page as an unknown route (the console's existence is never
  * confirmed to them).
  */
-import { Construction } from "lucide-react";
+import Link from "next/link";
 import { auth } from "@/auth";
-import { Container, Section } from "@/components/ui/container";
-import { EmptyState } from "@/components/ui/feedback";
+import { buttonClasses } from "@/components/ui/button";
+import { Card, CardContent, CardTitle } from "@/components/ui/card";
+import { Container, Section, Stack } from "@/components/ui/container";
 import { PageHeader } from "@/components/ui/page-header";
+import { Text } from "@/components/ui/typography";
 import { requireOperatorPage } from "@/lib/operator-access";
 
 export default async function OperatorPage(): Promise<React.ReactElement> {
@@ -28,11 +32,23 @@ export default async function OperatorPage(): Promise<React.ReactElement> {
           description="Signed in as platform staff."
           className="mb-6"
         />
-        <EmptyState
-          icon={<Construction className="size-6" />}
-          title="Console arrives in Phase 4"
-          description="Tenant provisioning, onboarding review, and platform status will live here."
-        />
+        <Stack className="max-w-2xl">
+          <Card>
+            <CardTitle>Set up a restaurant</CardTitle>
+            <CardContent>
+              <Text size="sm" muted>
+                Create the tenant with its address and default theme, then invite the person who
+                will run it. That person gets access through a membership; you do not, which is why
+                the owner step matters.
+              </Text>
+              <div>
+                <Link href="/operator/tenants/new" className={buttonClasses({ size: "sm" })}>
+                  New restaurant
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+        </Stack>
       </Section>
     </Container>
   );

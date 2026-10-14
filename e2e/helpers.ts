@@ -75,16 +75,52 @@ export async function findUserIdByEmail(email: string): Promise<string> {
  * Platform-staff fixture: the global `operator` role. Assigning that role is
  * Phase 4.2's provisioning UI; the test writes the same row production will,
  * rather than inventing a second way to become staff.
+ *
+ * Uses the shared staff address. A spec that needs its own must call
+ * `seedOperatorUser` instead — this function deletes and re-inserts the row,
+ * so two files sharing an address would delete each other's staff mid-run.
  */
 export async function seedOperator(): Promise<string> {
+  return seedOperatorUser(E2E_OPERATOR_EMAIL);
+}
+
+/**
+ * Platform-staff fixture at a caller-chosen address, for a spec that must not
+ * share the staff row with another file running in parallel.
+ */
+export async function seedOperatorUser(email: string): Promise<string> {
   const { db, close } = newDb();
   try {
-    await db.delete(users).where(eq(users.email, E2E_OPERATOR_EMAIL));
+    await db.delete(users).where(eq(users.email, email));
     const [user] = await db
       .insert(users)
-      .values({ email: E2E_OPERATOR_EMAIL, role: "operator" })
+      .values({ email, role: "operator" })
       .returning({ id: users.id });
     return user.id;
+  } finally {
+    await close();
+  }
+}
+
+/**
+ * Remove a tenant a spec created through the UI, along with everything it
+ * owns (every child table cascades from `tenants`). Specs clean up after
+ * themselves because global setup only resets the owner-journey fixture.
+ */
+export async function deleteTenantBySlug(slug: string): Promise<void> {
+  const { db, close } = newDb();
+  try {
+    await db.delete(tenants).where(eq(tenants.slug, slug));
+  } finally {
+    await close();
+  }
+}
+
+/** Remove an account a spec created through the UI. */
+export async function deleteUserByEmail(email: string): Promise<void> {
+  const { db, close } = newDb();
+  try {
+    await db.delete(users).where(eq(users.email, email));
   } finally {
     await close();
   }
