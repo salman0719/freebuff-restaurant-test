@@ -9,11 +9,14 @@
  * `requireOperator` gets `FORBIDDEN` rather than rows.
  *
  * These reads hand back setup FACTS and never tenant content: which theme a
- * restaurant chose, whether its menu is published, how many people can open
- * it — never the menu itself, the hours, or the contact details. An operator
- * needs to know whether a restaurant is ready, not to read its unpublished
- * drafts; wider staff access is a Phase 4.4 decision, not something this
- * module settles by accident.
+ * restaurant chose, whether anything on its menu is visible, whether a week
+ * of hours is entered, how many people can open it — never the menu itself,
+ * the values behind those hours, or the contact details. The hours rows are
+ * loaded only because "a week is entered" is a predicate over them, and
+ * nothing but that judgement reaches a page. An operator needs to know
+ * whether a restaurant is ready, not to read its unpublished drafts; wider
+ * staff access is a Phase 4.4 decision, not something this module settles by
+ * accident.
  *
  * Scope note: the console loads every tenant's facts in one pass per table
  * rather than one query per tenant. That is the right shape for an operator
