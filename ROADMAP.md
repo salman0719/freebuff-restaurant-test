@@ -352,6 +352,13 @@ interface is stable.
 
 ## 2.5 Theme C: optional additional style
 
+**Status:** Done. The optional third style shipped as `bistro` (split
+hero, card menu, deeper accent palettes) in Phase C. The later
+appearance round added two more fully distinct looks — `diner` and
+`garden` — plus migration-free refreshes of `café` and `takeaway`; see
+"Appearance round" below and `docs/decisions/0004-theme-directions.md`.
+Five themes ship.
+
 **Can be done independently:** Yes, in parallel with other theme work if
 time and quality permit.
 
@@ -713,6 +720,66 @@ accessibility checks.
 Keep draft/publish and theme preview coordinated with the public data
 service. Avoid parallel changes to the same form components or domain
 schemas.
+
+---
+
+# Appearance round (detour between Phase 3 and Phase 4) — Done
+
+**Status:** Done 2026-10-14, on `appearance-enhancement-exploration`
+(commits `974f259`…`786e93f`). Directions and the reasoning behind them:
+`docs/decisions/0004-theme-directions.md`. How to change appearance safely:
+`docs/design-system.md`.
+
+**Why:** Phase 3 closed with a working dashboard over three themes that
+shared one warm cast, display face, and section rhythm; the roadmap allows
+a bounded visual detour while the theme pipeline is still cheap to change.
+Directions were researched and owner-approved before building (0004).
+
+**What shipped**
+
+- **Diner Revival (`diner`)** — retro comfort food: cherry/butter/cola
+  ramps authored in OKLCH, the platform's first light hero band under dark
+  text, a Caprasimo display face, an awning crown, a framed menu board, and
+  a call-to-order strip.
+- **Market Garden (`garden`)** — the first cool-palette family (green/teal
+  on slate), an asymmetric hero, a two-column menu/visit split, and a
+  `From the market this week` module derived from the tenant's own menu.
+  Shipped with **no migration**: 0004 had already widened the theme CHECK
+  for both new ids in one step (migration 0005), so the database was ahead
+  of the app by design.
+- **Migration-free refreshes** — café is Modern Trattoria (warm
+  espresso/terracotta/tomato inks, a hero that hands straight to the menu)
+  and takeaway is Night Market (near-black bands, one call to action, hours
+  folded into a single visit block, answering the round's research notes on
+  competing CTAs and scanability).
+- **Hardening the round exposed** — the accent-contrast guard became a
+  committed unit test (`src/themes/contrast.test.ts`), which immediately
+  caught a real shipped failure in the `gold` accent (band/button
+  2.7–2.9:1, rule 1.8:1); the dashboard accent swatches were missing six
+  palettes; and the theme visibility toggle silently saved nothing for
+  every non-café theme.
+- **Demos** — `db/seed.ts` publishes `rosies-diner` and `the-greenhouse`
+  (plus one deliberately long menu item) so every look is inspectable in a
+  real browser, and is ready for Phase 7 demos.
+
+**Verification:** `npm run check`, 311 unit tests including the live
+database suites, `npm run build`, and the owner-journey E2E, all green. The
+round's visual pass drove all seeded looks through real Chromium at 390 px
+and 1440 px, light and dark, asserting rendered overflow, clipped text,
+broken images, tap targets, heading structure, empty states, and computed
+contrast: 20/20 combinations clean. That replaced the computed-style
+sign-off the earlier diner round had to settle for.
+
+**Scope note:** the MVP scope agreed two themes (0.2). Five now ship — a
+product decision recorded in 0004, not scope drift; journeys, the data
+model, and the acceptance criteria in `docs/product-scope.md` are
+unchanged.
+
+**Deferred:** Counter Culture (brutalist/grotesk) stays unbuilt until the
+add-a-theme pipeline has run more than once; per-tenant typography presets
+would be a config-schema change on the existing `--display-font`
+mechanism and are not scheduled. Bistro has no public demo tenant — it is
+reachable through the dashboard theme picker and preview.
 
 ---
 

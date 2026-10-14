@@ -32,12 +32,17 @@ Derived from `ROADMAP.md` Phase 0.2. Status: confirmed by owner
 
 Ordering, **reservations (confirmed post-MVP, see Phase 8)**, payments,
 and POS/delivery integrations. Also deferred: menu import, QR-code pages,
-analytics, SEO structured data, special/holiday hours, i18n, extra themes.
+analytics, SEO structured data, special/holiday hours, i18n, and further
+themes beyond the five now shipped.
 
 ## Sign-off decisions (owner, 2026-10-12)
 
 - 5 journeys approved as written; out-of-scope list approved as written.
-- Two public themes in MVP (café + takeaway).
+- Two public themes in MVP (café + takeaway) — the original sign-off.
+  _Amended 2026-10-14:_ the appearance round grew the shipped set to five
+  (café, takeaway, bistro, diner, garden) by product decision, recorded in
+  `docs/decisions/0004-theme-directions.md`. The MVP journeys, data model,
+  and acceptance criteria above are unchanged.
 - Platform subdomains only; custom-domain onboarding deferred.
 - Menu item and logo images included in MVP.
 - Owner sign-in via email magic link / invite (no passwords).
