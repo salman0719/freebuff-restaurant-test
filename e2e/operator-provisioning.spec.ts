@@ -41,8 +41,8 @@ const OWNER_GRANT = "provisioned-grant-e2e@example.com";
 const NOT_FOUND_HEADING = /couldn't find that page/i;
 
 /** Slugs this spec creates, all removed in `afterAll`. */
-const SLUGS = ["e2e-prov-main", "e2e-prov-dup", "e2e-prov-grant"] as const;
-const [SLUG_MAIN, SLUG_DUP, SLUG_GRANT] = SLUGS;
+const SLUGS = ["e2e-prov-main", "e2e-prov-dup", "e2e-prov-grant", "e2e-prov-list"] as const;
+const [SLUG_MAIN, SLUG_DUP, SLUG_GRANT, SLUG_LIST] = SLUGS;
 
 let operatorToken = "";
 let ownerToken = "";
@@ -132,9 +132,11 @@ test("creates a restaurant, then assigns its owner", async ({ page, context, bro
   // so the assertions below cannot read the previous page's leftovers.
   await expect(page.getByLabel(/owner's email/i)).toBeVisible();
   await expect(page.getByRole("heading", { name: "E2E Provisioned Kitchen" })).toBeVisible();
-  // The chosen theme travelled with it, and it is still a draft.
-  await expect(page.getByText("Takeaway theme", { exact: true })).toBeVisible();
-  await expect(page.getByText("Draft", { exact: true })).toBeVisible();
+  // The chosen theme travelled with it, and it is still a draft. Scoped to the
+  // status badges: the checklist below reports "Draft" for publishing too.
+  const status = page.getByRole("group", { name: /restaurant status/i });
+  await expect(status).toContainText("Takeaway theme");
+  await expect(status).toContainText("Draft");
 
   await page.getByLabel(/owner's email/i).fill(OWNER_MAIN);
   await page.getByRole("button", { name: /grant owner access/i }).click();
@@ -180,9 +182,43 @@ test("reports a second grant for the same person as a conflict", async ({ page, 
   await page.getByRole("button", { name: /grant owner access/i }).click();
   await expect(page.getByRole("status")).toContainText(`Invited ${OWNER_GRANT}`);
 
+  // The checklist reflects it: a granted owner clears that step, which is what
+  // makes the status view worth reading rather than a static description.
+  await page.goto(`/operator/tenants/${SLUG_GRANT}`);
+  const setup = page.getByRole("region", { name: /setup status/i });
+  await expect(setup).toContainText("1 person");
+  await expect(setup).not.toContainText("No owner assigned");
+
   await page.getByLabel(/owner's email/i).fill(OWNER_GRANT);
   await page.getByRole("button", { name: /grant owner access/i }).click();
   await expect(errorPanel(page, /already has access/i)).toBeVisible();
+});
+
+test("shows an operator what a new restaurant still needs", async ({ page, context }) => {
+  await signInAs(context, operatorToken);
+  await createRestaurant(page, SLUG_LIST, "Checklist Kitchen");
+  await expect(page.getByRole("status")).toContainText(`Created ${SLUG_LIST}`);
+
+  // The console lists it, with the gaps that actually block a usable site.
+  await page.goto("/operator");
+  const card = page.locator("li", { hasText: SLUG_LIST }).first();
+  await expect(card).toContainText("2/7 set");
+  await expect(card).toContainText(/needs menu entered, opening hours, owner access/i);
+
+  // The detail view carries the full checklist, not just the blocking half.
+  await card.getByRole("link", { name: "Checklist Kitchen" }).click();
+  await expect(page).toHaveURL(new RegExp(`/operator/tenants/${SLUG_LIST}$`));
+  const setup = page.getByRole("region", { name: /setup status/i });
+  await expect(setup).toContainText("4 required steps still outstanding");
+  await expect(setup).toContainText("Nothing visible to visitors yet");
+  await expect(setup).toContainText("Not entered");
+  await expect(setup).toContainText("No owner assigned");
+  // A theme is reported, and a custom domain is optional — neither blocks.
+  await expect(setup).toContainText("Café");
+  await expect(setup).toContainText("Platform address only");
+  await expect(setup).toContainText("(optional)");
+  // The domain is reported as recorded, never as live: verification is Phase 5.
+  await expect(setup).not.toContainText(/domain (is )?(live|verified|active)/i);
 });
 
 test("keeps a non-staff caller from learning about a restaurant", async ({ page, context }) => {
