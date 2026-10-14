@@ -59,7 +59,24 @@ imports either.
 - `config.ts` — per-theme Zod schemas with defaults. **New options never
   need a migration**: stored JSON is validated defensively at render, so a
   missing or stale key yields a complete valid config.
-- `cafe.tsx`, `takeaway.tsx`, `bistro.tsx` — the shipped themes.
+- `cafe.tsx`, `takeaway.tsx`, `bistro.tsx`, `diner.tsx` — the shipped
+  themes (see `docs/decisions/0004` for the appearance round).
+
+### Diner-specific assets
+
+The Diner Revival theme (`diner`) owns three things no other theme uses:
+
+- **Ramps** — `--color-cherry-*`, `--color-butter-*`, `--color-cola-*` in
+  `globals.css` (Tailwind has no brown scale). Authored in OKLCH, every
+  accent pair contrast-verified at AA before landing
+  (`local/check-diner-contrast.ts`, git-ignored scratch).
+- **Display face** — Caprasimo, registered once in the root layout as
+  `--font-caprasimo`; the diner wrapper swaps `--display-font` to it
+  (the `:root` token behind the `font-display` utility — swap the token,
+  not the utility class). Themes pick display faces by overriding
+  `--display-font`, never by loading fonts themselves.
+- **Awning crown** — `cherry-700`/`butter-400` stripes at the top of the
+  page, accent-independent diner identity.
 
 An **accent is a whole palette**, not a text colour: it tints the page
 surface, paints the hero band, colours the CTA, and draws the accent rules.

@@ -141,6 +141,42 @@ export const ACCENTS: Record<string, AccentPalette> = {
     button: "bg-lime-800 text-white hover:bg-lime-900",
     rule: "bg-lime-700",
   },
+  // --- Diner Revival (0004): cherry/butter/cola ramps from globals.css ---
+  cherry: {
+    eyebrow: "text-cherry-800 dark:text-cherry-200",
+    heading: "text-stone-900 dark:text-stone-50",
+    surface: "bg-cherry-50/70 dark:bg-stone-950",
+    band: "bg-cherry-700",
+    bandText: "text-cherry-50",
+    bandEyebrow: "text-cherry-200",
+    bandBody: "text-cherry-100",
+    button: "bg-cherry-600 text-white hover:bg-cherry-700",
+    rule: "bg-cherry-600",
+  },
+  butter: {
+    eyebrow: "text-cherry-700 dark:text-butter-300",
+    heading: "text-stone-900 dark:text-stone-50",
+    surface: "bg-butter-50/70 dark:bg-stone-950",
+    // Light band under dark text — the first of its kind in ACCENTS and
+    // the diner signature move (contrast verified, see 0004).
+    band: "bg-butter-400",
+    bandText: "text-cola-950",
+    bandEyebrow: "text-cola-700",
+    bandBody: "text-cola-800",
+    button: "bg-cherry-600 text-white hover:bg-cherry-700",
+    rule: "bg-cherry-500",
+  },
+  cola: {
+    eyebrow: "text-cola-700 dark:text-butter-300",
+    heading: "text-stone-900 dark:text-stone-50",
+    surface: "bg-cola-50/70 dark:bg-cola-950",
+    band: "bg-cola-900",
+    bandText: "text-cola-50",
+    bandEyebrow: "text-butter-300",
+    bandBody: "text-cola-100",
+    button: "bg-cherry-600 text-white hover:bg-cherry-700",
+    rule: "bg-cherry-500",
+  },
   default: {
     eyebrow: "text-zinc-600 dark:text-zinc-300",
     heading: "text-zinc-950 dark:text-zinc-50",

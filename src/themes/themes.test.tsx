@@ -42,9 +42,13 @@ const ACCENT_CASE = {
   cafe: { accent: "forest", marker: "bg-emerald-50/70" },
   takeaway: { accent: "gold", marker: "bg-yellow-600" },
   bistro: { accent: "sage", marker: "bg-lime-50/60" },
+  diner: { accent: "butter", marker: "bg-butter-50/70" },
 } as const;
 
-describe.each([["cafe"], ["takeaway"], ["bistro"]] as const)("theme %s", (id) => {
+/** Themes with a tel: call CTA strip — takeaway's hero, diner's band. */
+const CALL_CTA_THEMES = ["takeaway", "diner"] as const;
+
+describe.each([["cafe"], ["takeaway"], ["bistro"], ["diner"]] as const)("theme %s", (id) => {
   it("renders the same public content model", () => {
     const Component = getTheme(id);
     render(<Component restaurant={restaurant()} config={resolveThemeConfig(id, {})} />);
@@ -59,14 +63,14 @@ describe.each([["cafe"], ["takeaway"], ["bistro"]] as const)("theme %s", (id) =>
   });
 
   it("offers a call CTA when a phone number exists", () => {
-    if (id !== "takeaway") return;
+    if (!(CALL_CTA_THEMES as readonly string[]).includes(id)) return;
     const Component = getTheme(id);
     render(<Component restaurant={restaurant()} config={resolveThemeConfig(id, {})} />);
     expect(screen.getByRole("link", { name: /call 0123/i })).toHaveAttribute("href", "tel:0123");
   });
 
   it("omits the call CTA without a phone number", () => {
-    if (id !== "takeaway") return;
+    if (!(CALL_CTA_THEMES as readonly string[]).includes(id)) return;
     const Component = getTheme(id);
     const withoutPhone = restaurant();
     withoutPhone.contact.phone = null;
@@ -131,7 +135,8 @@ describe.each([["cafe"], ["takeaway"], ["bistro"]] as const)("theme %s", (id) =>
     const { accent, marker } = ACCENT_CASE[id];
     const config = resolveThemeConfig(id, { accent });
     const { container } = render(<Component restaurant={restaurant()} config={config} />);
-    // Café and bistro tint their page surface; takeaway paints its hero band.
+    // Café, bistro, and diner tint their page surface; takeaway paints its
+    // hero band.
     expect(container.innerHTML).toContain(marker);
   });
 
