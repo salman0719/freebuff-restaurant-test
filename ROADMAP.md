@@ -828,7 +828,12 @@ page-level check still guarded every route, so an anonymous hit was merely
 _streamed_ a redirect inside a 200 shell rather than bounced with a real 302
 before rendering — which is why the missing 302, not a broken page, was the
 only evidence. Verified by contrast: with the matcher neutered, the same
-URLs answer 200.
+URLs answer 200. The fix was then re-checked against a real production
+server (`next start`), since dev-server behaviour and a build that merely
+lists `ƒ Proxy (Middleware)` prove neither that a request is bounced. That
+run also confirmed the redirect cannot be steered by a forged `Host`
+header: the target follows the configured auth origin, so the gate is not
+an open redirect.
 
 **Note for 4.2:** operator _actions_ still have no consumer. When one
 lands it needs the structured variant (`requireOperator` → an error state

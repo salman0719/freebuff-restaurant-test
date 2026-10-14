@@ -22,6 +22,13 @@
  * resolution itself stays in the data layer (see 0003). Proxy runs on the
  * Node.js runtime in Next 16, so the session lookup here can reach the
  * database.
+ *
+ * The redirect target is built from the configured auth origin, not from
+ * request input, so a forged `Host` header cannot send a visitor to an
+ * attacker's copy of the sign-in page (verified against a production
+ * server: `Host: evil.example` still answered with the platform origin).
+ * Keep it that way — deriving this from the request would be an open
+ * redirect, and this platform deliberately accepts hostnames as data.
  */
 import { auth } from "@/auth";
 
