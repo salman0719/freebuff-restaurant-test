@@ -871,6 +871,43 @@ result rather than redirect.
 
 ## 4.2 Restaurant creation and configuration
 
+**Status:** Done 2026-10-14. An operator creates a restaurant from
+`/operator/tenants/new` — address, display name, default theme, and whether
+it starts published — then follows the link to its page and grants the
+person who will run it access by email. The privileged work lives in
+`src/lib/tenant-provisioning.ts`, and the server actions in
+`src/app/operator/actions.ts` only resolve the caller and map the result,
+which is what 4.1's note asked for: they call the structured
+`requireOperator` and fail closed with a result, because an action cannot
+`redirect()` — it would either throw or answer with a 200 the browser
+ignores.
+
+Two silences are deliberate and load-bearing. Creating a tenant does NOT
+make the operator a member of it, so the onboarding check "owner access
+configured" still means something the moment a restaurant exists. And
+provisioning never writes an elevated role: an invited owner's account is
+created on the platform DEFAULT, the same row a first magic-link sign-in
+produces, so the invite path cannot promote anyone to platform staff. The
+tripwire in `operator-access.test.ts` keeps it that way — that one module
+is named as the only code allowed to write `users.role`.
+
+The tenant and its profile are written in one transaction. Two sequential
+inserts would leave a nameless tenant behind when the second failed, and
+that half-created row is quiet: it reports as "profile not started" rather
+than as the failure it is. Invalid and duplicate identifiers are refused
+before anything is written — the address is validated as a slug, and a
+duplicate is recognised through Drizzle's error wrapper instead of by
+matching a driver's message.
+
+**Verification:** 26 unit tests in `tenant-provisioning.test.ts` (the
+transaction, the duplicate, and the never-writes-a-role cases among them);
+`e2e/operator-provisioning.spec.ts` drives the real form and every refusal
+— invalid address, duplicate address, a second grant, and an ordinary owner
+who must learn nothing about the console or the restaurant — then signs the
+invited owner in to prove the membership really opens a dashboard rather
+than merely existing as a row. `npm run smoke` claims both new private
+paths and verifies each bounces with the edge gate's own 302 (9 routes).
+
 **Can be done independently:** Yes, after tenant schema and auth
 contracts are stable.
 
@@ -883,6 +920,50 @@ contracts are stable.
 **Deliverable:** Operator tenant setup flow.
 
 ## 4.3 Onboarding checklist and status
+
+**Status:** Done 2026-10-14. The rules are pure and live in
+`src/lib/onboarding.ts`; `/operator` lists every restaurant newest first
+with the gaps that actually block a usable site, and each restaurant's page
+carries the full seven-step checklist — profile, menu, hours, theme, owner,
+domain, published.
+
+Three things the steps deliberately do not do. They do not re-invent the
+owner's rules: profile, menu, and hours ask through `lib/readiness.ts`, the
+same predicates the owner's publishing checklist uses, so the two surfaces
+cannot contradict each other. They do not treat a custom domain as a
+blocker — the platform address works and custom domains are Phase 5 — so it
+is marked optional and reported as RECORDED, never as live, because 5.3 is
+explicit that a domain must not be called live before routing and TLS do.
+And they do not pretend to know which theme was CHOSEN: `tenants.theme` is
+NOT NULL with a platform default and 4.2 writes an explicit value at
+creation, so nothing records whether a decision was made and the step
+reports which theme instead of gating on it.
+
+`required` is stated once and read by both views: the console's counts and
+each restaurant's checklist come from the same function, so a gap can never
+be a blocker on one page and merely unset on the other.
+
+**Verification:** 20 unit tests pin the rules — including exactly what a
+just-provisioned restaurant looks like (2 of 7 set, blocked on menu, hours,
+owner, and publishing) — and 21 pin the read's authorisation and mapping.
+`e2e/operator-provisioning.spec.ts` reads both views through the browser,
+including that granting an owner turns "No owner assigned" into "1 person",
+so the status view is a live reading rather than a static description.
+Whole suite green: 426 unit tests, 13 E2E tests.
+
+**Found while testing this:** every authenticated partially-prerendered
+route answers with a Next 16 warning — `crypto.getRandomValues()` while
+prerendering — and it names `/dashboard` as well as the operator paths, so
+it predates this round and is not caused by it. What happens is the safe
+fallback (the route renders at request time), but a platform-wide warning
+deserves its own pass rather than becoming a permanent fixture in every
+run's output.
+
+**Note for 4.4:** nothing records that an operator created a restaurant or
+invited its owner — the provisioning path writes no audit row, and 4.4's
+"record important operator actions" is where that belongs. The reads
+already hand back setup facts rather than tenant content, which 4.4 can
+widen deliberately or keep as it is.
 
 **Can be done independently:** Yes, after the required setup states are
 agreed.
