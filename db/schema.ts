@@ -11,7 +11,8 @@
  *   claim — see 0003).
  * - Every tenant-owned row carries `tenant_id` with `ON DELETE CASCADE`,
  *   so deleting a tenant removes its content but nothing else.
- * - `created_at` / `updated_at` on every table.
+ * - `created_at` / `updated_at` on every table — except the append-only
+ *   `audit_events`, which carries only `created_at` (see its own note).
  * - Money uses integer `price_cents` (never float).
  * - Images store a provider-neutral R2 object key (see 0002 §5), never a
  *   provider URL.
@@ -39,8 +40,8 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 
-export { MEMBERSHIP_ROLES, SLUG_PATTERN, THEME_IDS } from "./constants";
-export type { MembershipRole, ThemeId } from "./constants";
+export { AUDIT_ACTIONS, MEMBERSHIP_ROLES, SLUG_PATTERN, THEME_IDS } from "./constants";
+export type { AuditAction, MembershipRole, ThemeId } from "./constants";
 
 function timestamps() {
   return {
@@ -308,12 +309,64 @@ export const verificationTokens = pgTable(
   (t) => [primaryKey({ columns: [t.identifier, t.token] })]
 );
 
+/**
+ * Operator audit trail (Phase 4.4). Append-only and deliberately unlike
+ * every other table here:
+ *
+ * - **No `updated_at`.** A record of what happened is not edited; the
+ *   missing column is the enforcement, since there is nothing to update it
+ *   with. Every other table in this file carries both timestamps.
+ * - **It survives what it describes.** `tenant_id` is `SET NULL` and
+ *   `actor_user_id` carries no FK at all, so deleting a restaurant or an
+ *   account cannot delete the fact that someone created it. Every
+ *   tenant-owned table above cascades instead, because for content the
+ *   cascade IS the correct behaviour.
+ * - **It snapshots names.** `tenant_slug` and `actor_email` are copied at
+ *   write time, so the trail still reads after a slug is retired or an
+ *   address changes. The email is read from the account row, never from a
+ *   request — a caller cannot sign a wrong name into the history.
+ * - **It stores no content.** `detail` holds the few facts an action
+ *   changed (a theme, a publishing flag, an invited address), never a
+ *   restaurant's menu, hours, or contact details. An operator needs to know
+ *   who did what, not to read the owner's drafts — the same line
+ *   `operator-tenants.ts` draws for its reads.
+ *
+ * `tenant_id` is nullable because a future platform-wide act (granting the
+ * staff role itself, say) has no restaurant as its subject.
+ */
+export const auditEvents = pgTable(
+  "audit_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    action: text("action").notNull(),
+    /** The staff account that acted. No FK: the trail outlives accounts. */
+    actorUserId: text("actor_user_id").notNull(),
+    /** Snapshot of the actor's address at the time of the act. */
+    actorEmail: text("actor_email"),
+    tenantId: uuid("tenant_id").references(() => tenants.id, { onDelete: "set null" }),
+    /** Snapshot of the restaurant's address at the time of the act. */
+    tenantSlug: text("tenant_slug"),
+    detail: jsonb("detail").notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    // The console reads one restaurant's history newest first.
+    index("audit_events_tenant_created_idx").on(t.tenantId, t.createdAt),
+    index("audit_events_actor_idx").on(t.actorUserId),
+    check(
+      "audit_events_action_allowed",
+      sql`${t.action} in ('tenant.created', 'tenant.owner_granted')`
+    ),
+  ]
+);
+
 export const tenantsRelations = relations(tenants, ({ many, one }) => ({
   memberships: many(memberships),
   profile: one(restaurantProfiles),
   hours: many(openingHours),
   categories: many(menuCategories),
   items: many(menuItems),
+  auditEvents: many(auditEvents),
 }));
 
 export const membershipsRelations = relations(memberships, ({ one }) => ({
@@ -353,5 +406,12 @@ export const menuItemsRelations = relations(menuItems, ({ one }) => ({
   category: one(menuCategories, {
     fields: [menuItems.categoryId],
     references: [menuCategories.id],
+  }),
+}));
+
+export const auditEventsRelations = relations(auditEvents, ({ one }) => ({
+  tenant: one(tenants, {
+    fields: [auditEvents.tenantId],
+    references: [tenants.id],
   }),
 }));

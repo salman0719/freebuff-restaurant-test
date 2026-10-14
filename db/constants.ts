@@ -30,6 +30,20 @@ export const MEMBERSHIP_ROLES = ["owner", "operator"] as const;
 export type MembershipRole = (typeof MEMBERSHIP_ROLES)[number];
 
 /**
+ * Operator actions the platform records (Phase 4.4).
+ *
+ * The vocabulary is closed on purpose: an audit trail is only worth reading
+ * if the set of things it can say is small, spelled the same way every time,
+ * and decided in one place. Adding a member here is a deliberate act — it
+ * widens the `audit_events_action_allowed` CHECK, so it ships with a
+ * migration, and `src/lib/audit.ts` must learn to describe it (an unknown
+ * action renders as its raw key rather than crashing, so a row written by a
+ * newer deploy still shows up).
+ */
+export const AUDIT_ACTIONS = ["tenant.created", "tenant.owner_granted"] as const;
+export type AuditAction = (typeof AUDIT_ACTIONS)[number];
+
+/**
  * Tenant slug format: lowercase alphanumerics joined with single hyphens.
  * Must stay identical to the `tenants_slug_format` CHECK in `./schema.ts`
  * (which inlines the same pattern in SQL) — `src/lib/db-schema.test.ts`

@@ -6,12 +6,15 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { getTableName } from "drizzle-orm";
+import { getTableConfig } from "drizzle-orm/pg-core";
 import { describe, expect, it } from "vitest";
 import {
+  AUDIT_ACTIONS,
   MEMBERSHIP_ROLES,
   SLUG_PATTERN,
   THEME_IDS,
   accounts,
+  auditEvents,
   memberships,
   menuCategories,
   menuItems,
@@ -49,6 +52,47 @@ describe("MVP tables", () => {
   });
 });
 
+describe("the audit trail table (Phase 4.4)", () => {
+  const config = getTableConfig(auditEvents);
+
+  it("is an append-only table: a record of what happened is not edited", () => {
+    expect(config.name).toBe("audit_events");
+    const names = config.columns.map((column) => column.name);
+    expect(names).toContain("created_at");
+    // Every other table in the schema carries both timestamps. The missing
+    // column here is the enforcement, not an oversight.
+    expect(names).not.toContain("updated_at");
+  });
+
+  it("outlives the rows it describes", () => {
+    // A deleted restaurant must not erase the fact that someone created it —
+    // unlike every tenant-owned table, which cascades on purpose.
+    expect(config.foreignKeys).toHaveLength(1);
+    const tenantFk = config.foreignKeys[0];
+    expect(tenantFk.onDelete).toBe("set null");
+    // The actor carries no foreign key at all, so closing an account cannot
+    // delete its history either.
+    const actorFk = config.foreignKeys.find((fk) =>
+      fk.reference().columns.some((column) => column.name === "actor_user_id")
+    );
+    expect(actorFk).toBeUndefined();
+  });
+
+  it("constrains the action to a closed vocabulary", () => {
+    // The vocabulary's CONTENT is asserted against the committed SQL below,
+    // where it is a plain string; here the point is that a CHECK exists at
+    // all, so an action cannot be anything a caller invents.
+    const check = config.checks.find((entry) => entry.name === "audit_events_action_allowed");
+    expect(check).toBeDefined();
+    expect(AUDIT_ACTIONS.length).toBeGreaterThan(0);
+  });
+
+  it("indexes the read the console actually makes", () => {
+    const indexes = config.indexes.map((index) => index.config.name);
+    expect(indexes).toContain("audit_events_tenant_created_idx");
+  });
+});
+
 describe("committed migrations", () => {
   const dir = join(process.cwd(), "db", "migrations");
   const sqlFiles = readdirSync(dir).filter((f) => f.endsWith(".sql"));
@@ -69,6 +113,7 @@ describe("committed migrations", () => {
     "accounts",
     "sessions",
     "verification_tokens",
+    "audit_events",
   ])("creates table %s", (table) => {
     expect(sql).toContain(`create table`);
     expect(sql).toContain(`"${table}"`);
@@ -92,5 +137,38 @@ describe("committed migrations", () => {
 
   it("widens the theme CHECK once to cover both new theme ids (0004)", () => {
     expect(sql).toContain("in ('cafe', 'takeaway', 'bistro', 'diner', 'garden')");
+  });
+
+  // The audit migration alone, so an assertion about the trail cannot be
+  // satisfied by some other table's row.
+  const auditMigration = sqlFiles.find((file) =>
+    readFileSync(join(dir, file), "utf8").toLowerCase().includes('create table "audit_events"')
+  );
+  const auditSql = auditMigration
+    ? readFileSync(join(dir, auditMigration), "utf8").toLowerCase()
+    : "";
+
+  it("ships the audit trail in its own migration", () => {
+    expect(auditMigration).toBeDefined();
+    expect(auditSql).toContain("audit_events_tenant_id_tenants_id_fk");
+  });
+
+  it("makes the deployed audit trail survive a deleted restaurant", () => {
+    expect(auditSql).toContain("on delete set null");
+    // Nothing in this migration cascades: the migration is the last word on
+    // what the live database does with these rows.
+    expect(auditSql).not.toContain("cascade");
+  });
+
+  it("deploys the trail as append-only", () => {
+    expect(auditSql).toContain("created_at");
+    expect(auditSql).not.toContain("updated_at");
+  });
+
+  it("deploys the action vocabulary the app ships", () => {
+    for (const action of AUDIT_ACTIONS) {
+      expect(auditSql).toContain(action);
+    }
+    expect(auditSql).toContain("audit_events_action_allowed");
   });
 });

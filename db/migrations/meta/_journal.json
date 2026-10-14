@@ -43,6 +43,13 @@
       "when": 1791948929380,
       "tag": "0005_awesome_tyrannus",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791985464851,
+      "tag": "0006_furry_cassandra_nova",
+      "breakpoints": true
     }
   ]
 }
