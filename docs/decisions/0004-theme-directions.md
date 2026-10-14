@@ -59,6 +59,18 @@ one primary CTA stay reachable in every theme).
   scratch verifier: `local/check-diner-contrast.ts` (git-ignored). The
   three shipped accents also pass as reference pairs.
 
+**Update 2026-10-14 (refreshes shipped):** both migration-free refreshes
+from the "split out" list landed. Café is **Modern Trattoria**: the accent
+trio is espresso/terracotta/tomato (the emerald `forest` was the set's one
+cool ink and left), the inks deepened a step, and the hero is now
+left-aligned with almost no break before the menu. Takeaway is **Night
+Market**: every band dropped a step or two toward near-black, and the
+standalone "Open now? Check the hours" block folded into the single "Find
+us" block, leaving one call to action and two blocks after the hero
+instead of three — the competing-CTA/scanability finding from the round's
+research. Both are palette and rhythm edits inside the existing
+components; no schema or migration moved.
+
 **Update 2026-10-14 (garden shipped):** Market Garden landed with no
 migration, as planned — migration 0005 had already added `garden` to the
 CHECK, so the work was `THEME_IDS` → accents → schema → component →

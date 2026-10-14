@@ -78,11 +78,14 @@ export const ACCENTS: Record<string, AccentPalette> = {
     button: "bg-red-700 text-white hover:bg-red-800",
     rule: "bg-red-600",
   },
+  // Takeaway's trio is Night Market: deep, near-black bands with the accent
+  // doing the work of stall light. Every band dropped a step or two so the
+  // page reads after dark while the light text gains contrast.
   chili: {
     eyebrow: "text-red-700 dark:text-red-300",
     heading: "text-zinc-950 dark:text-zinc-50",
     surface: "bg-red-50/60 dark:bg-zinc-950",
-    band: "bg-red-800",
+    band: "bg-red-950",
     bandText: "text-red-50",
     bandEyebrow: "text-red-200",
     bandBody: "text-red-100",
@@ -93,12 +96,12 @@ export const ACCENTS: Record<string, AccentPalette> = {
     eyebrow: "text-zinc-600 dark:text-zinc-300",
     heading: "text-zinc-950 dark:text-zinc-50",
     surface: "bg-zinc-50 dark:bg-zinc-950",
-    band: "bg-zinc-900",
+    band: "bg-zinc-950",
     bandText: "text-zinc-50",
     bandEyebrow: "text-zinc-300",
     bandBody: "text-zinc-300",
     button: "bg-zinc-800 text-white hover:bg-zinc-900",
-    rule: "bg-zinc-700",
+    rule: "bg-zinc-600",
   },
   // yellow-600 fills could not carry light text (2.7–2.9:1) nor a 3:1 rule;
   // the band/button/rule steps moved darker so the palette clears AA, which
@@ -107,9 +110,9 @@ export const ACCENTS: Record<string, AccentPalette> = {
     eyebrow: "text-yellow-700 dark:text-yellow-300",
     heading: "text-zinc-950 dark:text-zinc-50",
     surface: "bg-yellow-50/70 dark:bg-zinc-950",
-    band: "bg-yellow-800",
+    band: "bg-yellow-900",
     bandText: "text-yellow-50",
-    bandEyebrow: "text-yellow-100",
+    bandEyebrow: "text-yellow-200",
     bandBody: "text-yellow-50",
     button: "bg-yellow-700 text-white hover:bg-yellow-800",
     rule: "bg-yellow-700",

@@ -29,7 +29,8 @@ const REGISTRY: Record<ThemeId, ThemeDefinition> = {
   takeaway: {
     id: "takeaway",
     label: "Takeaway",
-    blurb: "Bold and direct — an accent hero band, menu leads, details follow in one pass.",
+    blurb:
+      "Night market — one loud call to order, a dark accent band, and a dense dotted-leader menu.",
     Component: TakeawayTheme,
   },
   bistro: {

@@ -61,9 +61,13 @@ imports either.
   missing or stale key yields a complete valid config.
 - `cafe.tsx`, `takeaway.tsx`, `bistro.tsx`, `diner.tsx`, `garden.tsx` —
   the shipped themes (see `docs/decisions/0004` for the appearance round).
-  `garden` is Market Garden: the first cool-palette family (green/teal on
-  slate), an asymmetric hero and a two-column menu/visit split, plus the
-  `From the market this week` module derived from the tenant's own menu.
+  Each has a direction name: café is **Modern Trattoria** (warm inks, and
+  a left-aligned hero that hands straight to the menu), takeaway is
+  **Night Market** (near-black bands, one call to order, a dense menu),
+  diner is **Diner Revival**, and `garden` is **Market Garden** — the
+  first cool-palette family (green/teal on slate), an asymmetric hero and
+  a two-column menu/visit split, plus the `From the market this week`
+  module derived from the tenant's own menu.
 
 ### Diner-specific assets
 
