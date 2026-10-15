@@ -5,6 +5,9 @@ A restaurant's owner connects a domain they own from
 ownership; it does NOT make the address live (routing + HTTPS are
 Phase 5.3 — see the roadmap).
 
+Support view of every state, the reassignment steps, and triage:
+[domain-lifecycle.md](domain-lifecycle.md).
+
 ## Owner flow
 
 1. **Record the domain** (e.g. `shop.example.com`) — the platform stores

@@ -1,6 +1,8 @@
 # Platform subdomains (Phase 5.1)
 
-Canonical format: `{slug}.{PLATFORM_BASE_DOMAIN}`.
+Canonical format: `{slug}.{PLATFORM_BASE_DOMAIN}`. The support view of
+every address state (platform, claimed, verified, live) and what to tell
+a customer: [domain-lifecycle.md](domain-lifecycle.md).
 
 - `PLATFORM_BASE_DOMAIN` unset means `localhost`, so
   `marios-pizza.localhost:4030` resolves slug `marios-pizza`.
