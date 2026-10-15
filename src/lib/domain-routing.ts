@@ -24,7 +24,7 @@
  * (the actual security boundary) stops honoring the domain the moment
  * the claim is gone.
  */
-import { err, ok, type ServiceResult } from "./result";
+import { ok, type ServiceResult } from "./result";
 import {
   getProjectDomain,
   removeProjectDomain,

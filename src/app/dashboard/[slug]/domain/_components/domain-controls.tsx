@@ -23,7 +23,13 @@ import { ErrorState } from "@/components/ui/feedback";
 import { FormActions } from "@/components/ui/form-actions";
 import { Input } from "@/components/ui/input";
 import type { DomainClaim } from "@/lib/domain-claim";
-import { clearDomain, submitDomain, verifyDomain, type DomainState } from "../actions";
+import {
+  checkRouting,
+  clearDomain,
+  submitDomain,
+  verifyDomain,
+  type DomainState,
+} from "../actions";
 
 function fieldError(fields: Record<string, string[]> | undefined, key: string): string | undefined {
   return fields?.[key]?.[0];
@@ -53,7 +59,17 @@ export function DomainControls({ slug, claim }: { slug: string; claim: DomainCla
     clearDomain,
     { status: "idle" }
   );
+  const [routingState, routingAction, routingPending] = useActionState<DomainState, FormData>(
+    checkRouting,
+    { status: "idle" }
+  );
   const [confirming, setConfirming] = useState(false);
+
+  const routingTone = {
+    live: "border-green-300 bg-green-50 text-green-800",
+    pending: "border-amber-300 bg-amber-50 text-amber-900",
+    detached: "border-border bg-muted text-foreground/80",
+  } as const;
 
   const domainInput = (
     <Field
@@ -150,6 +166,33 @@ export function DomainControls({ slug, claim }: { slug: string; claim: DomainCla
             </p>
           ) : null}
           <ErrorMessage state={checkState} />
+        </section>
+      ) : null}
+
+      {claim.status === "verified" ? (
+        <section aria-label="Routing" className="flex flex-col gap-4">
+          <form action={routingAction}>
+            <input type="hidden" name="slug" value={slug} />
+            <Button type="submit" variant="outline" loading={routingPending}>
+              {routingPending ? "Checking routing…" : "Check routing status"}
+            </Button>
+          </form>
+          {routingState.routing ? (
+            <p
+              role="status"
+              className={`rounded-lg border px-4 py-3 text-sm ${routingTone[routingState.routing.status]}`}
+            >
+              {routingState.routing.message}
+            </p>
+          ) : routingState.status === "error" ? (
+            <ErrorMessage state={routingState} />
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Routing connects automatically after verification. This check reads the
+              platform&apos;s attach state and probes the address over HTTPS — both can take a few
+              minutes after DNS starts pointing here.
+            </p>
+          )}
         </section>
       ) : null}
 

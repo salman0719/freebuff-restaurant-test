@@ -78,9 +78,11 @@ async function DomainView({ params }: Props): Promise<React.ReactElement> {
           role="status"
           className="rounded-lg border border-green-300 bg-green-50 px-4 py-3 text-sm text-green-800"
         >
+          {" "}
           <strong>{data.domain}</strong> is verified — we have confirmed the domain is yours.
-          Visitors start being sent here once platform routing and HTTPS are switched on for it (the
-          final SSL step); until then this address stays offline.
+          Routing connects to the platform edge automatically; use the status check below to watch
+          DNS validation and HTTPS come online. The address stays offline until that check reports
+          it live.
         </div>
       ) : null}
       <DomainControls slug={context.data.tenant.slug} claim={data} />
