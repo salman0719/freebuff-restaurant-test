@@ -8,10 +8,11 @@
  * Next's env loading (the app server under test loads it itself).
  */
 import { loadEnvConfig } from "@next/env";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { auditEvents, memberships, sessions, tenants, users } from "../db/schema";
+import type { RateLimitScope } from "../src/lib/signin-rate-limit";
+import { auditEvents, memberships, sessions, signinRateLimits, tenants, users } from "../db/schema";
 
 loadEnvConfig(process.cwd());
 
@@ -40,6 +41,9 @@ function newDb() {
 
 /** Reset the journey tenant to a fresh draft owned by the journey user. */
 export async function seedOwnerJourney(): Promise<void> {
+  // Sign-in rate limiting (Phase 6.1, F3) is app state, not fixture state, so
+  // the suite starts it clean — see `resetAllSigninRateLimits`.
+  await resetAllSigninRateLimits();
   const { db, close } = newDb();
   try {
     await db.delete(tenants).where(eq(tenants.slug, E2E_SLUG));
@@ -152,8 +156,72 @@ export async function deleteUserByEmail(email: string): Promise<void> {
 }
 
 /**
+ * Clear EVERY sign-in rate-limit counter (Phase 6.1, F3), from global setup.
+ *
+ * Wholesale on purpose, because two things spend the budget on a developer
+ * machine and neither belongs to one spec: the journey address, and the SOURCE
+ * dimension — a header-less local stack derives one bucket from loopback, so
+ * every spec in every run shares it (20 per window; the suite alone spends 9).
+ * Left alone, the fourth `npm run test:e2e` inside one window would refuse the
+ * journey's sign-in and look like a broken email path. Global setup runs once
+ * before any worker, so wiping here cannot race a running spec.
+ *
+ * A spec's OWN addresses are a different matter: see `resetSigninRateLimit`.
+ */
+export async function resetAllSigninRateLimits(): Promise<void> {
+  const { db, close } = newDb();
+  try {
+    await db.delete(signinRateLimits);
+  } finally {
+    await close();
+  }
+}
+
+/**
+ * Clear one value's sign-in rate-limit counter (Phase 6.1, F3), so a spec can
+ * start from a fresh budget — for its own disposable addresses, and so a
+ * Playwright retry of the same run starts clean too.
+ *
+ * Scope-aware because the two dimensions are keyed differently (`ip` values
+ * are not lowercased/normalised the way addresses are).
+ *
+ * The reset must derive the same HMAC key the app derives, so it uses the
+ * limiter's own functions rather than repeating the derivation. They are
+ * imported dynamically INSIDE the function because `db/index.ts` fixes its
+ * client at module load: a top-level import would build the placeholder pool
+ * before `loadEnvConfig` above has run. `newDb()` runs first for the same
+ * reason — it fails with a clear "start Postgres" message.
+ */
+export async function resetSigninRateLimit(
+  value: string,
+  scopes: RateLimitScope[] = ["email"]
+): Promise<void> {
+  const { db, close } = newDb();
+  try {
+    const { hashRateLimitKey, normalizeRateLimitKey } =
+      await import("../src/lib/signin-rate-limit");
+    const secret = process.env.SIGNIN_RATE_LIMIT_SECRET ?? process.env.AUTH_SECRET ?? "";
+    for (const scope of scopes) {
+      await db
+        .delete(signinRateLimits)
+        .where(
+          and(
+            eq(signinRateLimits.scope, scope),
+            eq(
+              signinRateLimits.keyHash,
+              hashRateLimitKey(secret, normalizeRateLimitKey(scope, value))
+            )
+          )
+        );
+    }
+  } finally {
+    await close();
+  }
+}
+
+/**
  * A real database session for `userId`, so a spec can be signed in without
- * the email round trip. Returns the token to set as the session cookie.
+ * the email round trip. Returns the token to set the session cookie.
  */
 export async function createSession(userId: string): Promise<string> {
   const { db, close } = newDb();
@@ -179,9 +247,20 @@ export async function getGlobalRole(userId: string): Promise<string> {
   }
 }
 
-/** Empty the Mailpit inbox so the journey always consumes its own link. */
-export async function purgeMailpit(): Promise<void> {
-  const response = await fetch(`${mailpitBase()}/api/v1/messages`, { method: "DELETE" });
+/**
+ * Delete the inbox's messages addressed to `email`, and nothing else.
+ *
+ * Deliberately NOT `DELETE /api/v1/messages`, which empties the whole inbox:
+ * Playwright runs spec files in parallel, so a spec that carpet-bombed Mailpit
+ * would delete a sibling spec's sign-in mail mid-flight. Deleting by recipient
+ * (the search API's `to:` operator) keeps each spec to its own addresses, so
+ * the sign-in journey and the rate-limit spec can run side by side.
+ */
+export async function purgeMailpitFor(email: string): Promise<void> {
+  const query = encodeURIComponent(`to:${email}`);
+  const response = await fetch(`${mailpitBase()}/api/v1/search?query=${query}`, {
+    method: "DELETE",
+  });
   if (!response.ok) {
     throw new Error(`Mailpit purge failed (${response.status}). Is Mailpit running?`);
   }
@@ -190,6 +269,22 @@ export async function purgeMailpit(): Promise<void> {
 interface MailpitMessage {
   ID: string;
   To?: { Address: string }[];
+}
+
+/**
+ * How many inbox messages are addressed to `email`. Mailpit counts only what
+ * it holds, so a spec that cares about exact numbers purges first — which is
+ * what makes "the refused attempt sent nothing" observable.
+ */
+export async function countMessagesTo(email: string): Promise<number> {
+  const list = await fetch(`${mailpitBase()}/api/v1/messages?limit=100`);
+  if (!list.ok) {
+    throw new Error(`Mailpit unreachable (${list.status}). Is Mailpit running?`);
+  }
+  const body = (await list.json()) as { messages: MailpitMessage[] };
+  return body.messages.filter((message) =>
+    message.To?.some((recipient) => recipient.Address === email)
+  ).length;
 }
 
 /**

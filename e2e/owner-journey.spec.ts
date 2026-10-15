@@ -10,7 +10,7 @@
  * unpublish cleanup.
  */
 import { expect, test } from "@playwright/test";
-import { E2E_EMAIL, E2E_NAME, E2E_SLUG, fetchSignInLink, purgeMailpit } from "./helpers";
+import { E2E_EMAIL, E2E_NAME, E2E_SLUG, fetchSignInLink, purgeMailpitFor } from "./helpers";
 
 const dashboard = `/dashboard/${E2E_SLUG}`;
 const publicSite = `http://${E2E_SLUG}.localhost:4030/`;
@@ -22,7 +22,7 @@ const ACTION_TIMEOUT = 30_000;
 test.setTimeout(240_000);
 
 test.beforeAll(async () => {
-  await purgeMailpit();
+  await purgeMailpitFor(E2E_EMAIL);
 });
 
 test("owner signs in, edits, and publishes the restaurant site", async ({ page }) => {
