@@ -3,9 +3,12 @@
  *
  * Implements `docs/decisions/0003-tenant-identification.md`:
  * 1. Normalise the hostname (lowercase, strip port).
- * 2. Exact match on `custom_domain` → tenant. Custom-domain *verification*
- *    and onboarding stay a separate step (Phase 5.2) — this module only
- *    honors rows already present.
+ * 2. Exact match on a VERIFIED `custom_domain` → tenant (Phase 5.2).
+ *    A claimed-but-unverified domain resolves to nothing: the claim flow
+ *    (`src/lib/domain-claim.ts`) flips the row to 'verified' only after
+ *    the TXT token is seen, so an unverified domain can never serve a
+ *    tenant — the whole point of 5.2's "prevent an unverified domain
+ *    from being attached to an arbitrary tenant".
  * 3. Else `{slug}.platform` subdomain → tenant by slug.
  * 4. Else not-found — never fall through to another tenant.
  *
@@ -23,7 +26,7 @@
  *   to 127.0.0.1 without any DNS setup). Canonical format and production
  *   setup: `docs/runbooks/platform-subdomains.md` (Phase 5.1).
  */
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "../../db";
 import { tenants } from "../../db/schema";
 import { normalizeHostname, subdomainOf } from "./tenant-host";
@@ -57,7 +60,9 @@ export async function resolveTenantByHost(
   const byDomain = await db
     .select({ id: tenants.id, slug: tenants.slug })
     .from(tenants)
-    .where(eq(tenants.customDomain, hostname))
+    .where(
+      and(eq(tenants.customDomain, hostname), eq(tenants.customDomainStatus, "verified"))
+    )
     .limit(1);
   if (byDomain[0]) {
     return { found: true, tenant: byDomain[0] };
