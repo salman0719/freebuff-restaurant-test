@@ -20,7 +20,8 @@
  *   need (and must never cache personalised output across tenants).
  * - Local development: `PLATFORM_BASE_DOMAIN` unset means `localhost`, so
  *   `marios.localhost:4000` resolves slug `marios` (`*.localhost` resolves
- *   to 127.0.0.1 without any DNS setup).
+ *   to 127.0.0.1 without any DNS setup). Canonical format and production
+ *   setup: `docs/runbooks/platform-subdomains.md` (Phase 5.1).
  */
 import { eq } from "drizzle-orm";
 import { db } from "../../db";
