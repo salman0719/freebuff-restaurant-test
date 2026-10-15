@@ -31,48 +31,72 @@ Anything not verified says so below.
 | 6   | Domain verification                    | DNS TXT token proves ownership; the resolver honours a `custom_domain` row only when `verified`; the unique index refuses a takeover; removal clears domain, state and token together; routing fails closed without `VERCEL_*`                                                                                            | No findings (5.2–5.4 suites).                                                                                          |
 | 7   | Secrets & environment configuration    | No `.env*` file is tracked (only `.env.example`, placeholders); `VERCEL_TOKEN` is read server-side only and never appears in a message (asserted in 5.3 tests); all SQL is parameterised — no `sql.raw`, no `db.execute`, no interpolated queries                                                                         | Fixed: the app previously sent no security headers at all (F8).                                                        |
 | 8   | Dependency warnings                    | `npm audit`: 13 advisories (9 high, 4 moderate, 0 critical), split into production-reachable and dev-only; per-advisory reachability assessed against our usage                                                                                                                                                           | No reachable advisory found; upgrade path recorded (F4, F5).                                                           |
-| 9   | Abuse controls                         | Searched for rate limiting on the unauthenticated magic-link request: none exists                                                                                                                                                                                                                                         | **Open — needs a decision (F3). Highest-impact item found.**                                                           |
+| 9   | Abuse controls                         | The unauthenticated magic-link request is the only action with an outbound side effect; it now runs a durable fixed-window limiter on two dimensions _before_ `signIn`, and both the refusal and the absent mail were observed against a real server                                                                      | **Fixed (F3)** — Postgres-backed, no new service. Residual limits stated in F3 below.                                  |
 
 ## Issues and resolutions
 
-| ID  | Severity   | Issue                                                                                                                                                                                                                       | Resolution                                                                                                                                                                                                 |
-| --- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| F1  | Low        | `emailSchema` had no length bound and accepted a 200,013-character address on the unauthenticated login form                                                                                                                | **Fixed** (`837c867`): bounded at 254 (RFC 5321 maximum). Boundary tests on both sides.                                                                                                                    |
-| F2  | Low        | The route serving tenant-uploaded bytes sent no security headers                                                                                                                                                            | **Fixed** (`665ed67`): `X-Content-Type-Options: nosniff` + `Content-Security-Policy: default-src 'none'; sandbox`. The route had no test at all; it now has three, covering refusals as well as promises.  |
-| F3  | **Medium** | **No rate limiting or abuse control on the magic-link endpoint.** Anyone can make the platform send unlimited sign-in emails to arbitrary addresses, and write unlimited `verification_tokens` rows, with no authentication | **Open — needs an infrastructure decision.** See "Open item F3" below.                                                                                                                                     |
-| F4  | Low        | Dev-only advisories (`eslint-config-next` → `braces`/`micromatch`/`fast-glob`; `drizzle-kit` → `esbuild`)                                                                                                                   | **Accepted.** Build- and migration-time only; neither ships in the production bundle. `npm audit fix --force` would downgrade `eslint-config-next` to a v14 major, which is not a real fix.                |
-| F5  | Low        | 12 advisories on `nodemailer@7.0.12`, which **is** the copy Auth.js sends with (single deduped install)                                                                                                                     | **Accepted with an upgrade trigger.** No advisory is reachable through a surface this app exposes (analysis below). The fix version is blocked by `@auth/core`'s peer range — revisit at pilot onboarding. |
-| F6  | Info       | Could a forged `Host` header steer the auth redirect (open redirect)?                                                                                                                                                       | **Verified safe, no change needed.** Tested against a production server, two configurations, eight variants. The proxy comment's claim now has evidence.                                                   |
-| F7  | Low        | `assignMembershipSchema.userId` has no length bound — and no production caller at all                                                                                                                                       | **Open (low).** Dead schema; if it is ever adopted, bound it the way `emailSchema` now is.                                                                                                                 |
-| F8  | Low        | The app sent no baseline security headers (no HSTS, no framing protection, no referrer policy)                                                                                                                              | **Fixed** (`2cc7e55`): four headers on every response, values in a unit-tested pure module, verified against a production server.                                                                          |
-| F9  | Info       | Uploads are capability URLs: anyone holding a key can fetch the object, including an unpublished restaurant's logo, and the response caches immutably for a year                                                            | **Accepted by design.** Keys are random UUIDs generated server-side, learnable only from a tenant's own pages. Revisit if images ever become private (signed URLs / R2 prefix policy).                     |
+| ID  | Severity   | Issue                                                                                                                                                                                                                         | Resolution                                                                                                                                                                                                 |
+| --- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| F1  | Low        | `emailSchema` had no length bound and accepted a 200,013-character address on the unauthenticated login form                                                                                                                  | **Fixed** (`837c867`): bounded at 254 (RFC 5321 maximum). Boundary tests on both sides.                                                                                                                    |
+| F2  | Low        | The route serving tenant-uploaded bytes sent no security headers                                                                                                                                                              | **Fixed** (`665ed67`): `X-Content-Type-Options: nosniff` + `Content-Security-Policy: default-src 'none'; sandbox`. The route had no test at all; it now has three, covering refusals as well as promises.  |
+| F3  | **Medium** | **No rate limiting or abuse control on the magic-link endpoint.** Anyone could make the platform send unlimited sign-in emails to arbitrary addresses, and write unlimited `verification_tokens` rows, with no authentication | **Fixed** (`48154f9`, `9dbc36e`, `9c95d91`): durable fixed-window limiter, per address and per source, checked before `signIn` — proven end to end in `96eaa76`. Residual limits stated in F3 below.       |
+| F4  | Low        | Dev-only advisories (`eslint-config-next` → `braces`/`micromatch`/`fast-glob`; `drizzle-kit` → `esbuild`)                                                                                                                     | **Accepted.** Build- and migration-time only; neither ships in the production bundle. `npm audit fix --force` would downgrade `eslint-config-next` to a v14 major, which is not a real fix.                |
+| F5  | Low        | 12 advisories on `nodemailer@7.0.12`, which **is** the copy Auth.js sends with (single deduped install)                                                                                                                       | **Accepted with an upgrade trigger.** No advisory is reachable through a surface this app exposes (analysis below). The fix version is blocked by `@auth/core`'s peer range — revisit at pilot onboarding. |
+| F6  | Info       | Could a forged `Host` header steer the auth redirect (open redirect)?                                                                                                                                                         | **Verified safe, no change needed.** Tested against a production server, two configurations, eight variants. The proxy comment's claim now has evidence.                                                   |
+| F7  | Low        | `assignMembershipSchema.userId` has no length bound — and no production caller at all                                                                                                                                         | **Open (low).** Dead schema; if it is ever adopted, bound it the way `emailSchema` now is.                                                                                                                 |
+| F8  | Low        | The app sent no baseline security headers (no HSTS, no framing protection, no referrer policy)                                                                                                                                | **Fixed** (`2cc7e55`): four headers on every response, values in a unit-tested pure module, verified against a production server.                                                                          |
+| F9  | Info       | Uploads are capability URLs: anyone holding a key can fetch the object, including an unpublished restaurant's logo, and the response caches immutably for a year                                                              | **Accepted by design.** Keys are random UUIDs generated server-side, learnable only from a tenant's own pages. Revisit if images ever become private (signed URLs / R2 prefix policy).                     |
 
-### Open item F3 — abuse control on sign-in
+### F3 — abuse control on sign-in (fixed)
 
-This is the one finding I could not resolve inside this review, and the
-highest-impact one, so it is stated plainly rather than buried.
+What existed when the review ran: `requestMagicLink` validated the address
+and called `signIn("nodemailer", …)` unconditionally. There was no rate
+limit, no captcha, and no per-address or per-IP throttle anywhere in `src/`.
+An unauthenticated caller could therefore make the platform send mail to
+arbitrary addresses (SMTP quota, deliverability and domain reputation),
+write one `verification_tokens` row per request, and spend database work per
+request.
 
-What exists today: `requestMagicLink` validates the address and calls
-`signIn("nodemailer", …)` unconditionally. There is no rate limit, no
-captcha, and no per-address or per-IP throttle anywhere in `src/` (searched
-for `rate.?limit|throttle|too many|429`).
+It is now a durable fixed-window limiter, checked **before** the send, on
+two dimensions: the **address** (the durable guarantee — a caller cannot
+forge it, since mail-bombing a victim means spending the victim's bucket,
+and it holds even when the source is unknown or rotates) and the **source
+IP** (defence in depth for one host working through many addresses,
+deliberately the looser limit because a venue shares one connection, and
+skipped entirely when no plausible address is available rather than bucketed
+under a shared "unknown" that could lock everyone out).
 
-Impact: an unauthenticated caller can (a) make the platform send mail to
-arbitrary addresses — SMTP quota, deliverability and domain-reputation
-damage, and the platform looks like a spam source; (b) write one
-`verification_tokens` row per request; (c) spend CPU and database work per
-request. Existing mitigations are partial only: tokens are single-use and
-expire, and the address is now length-bounded (F1).
+It needed no new dependency or service, which is what the earlier
+recommendation was really solving for: Postgres is already required for
+sign-in, so it is the durable store. One atomic upsert per dimension, so
+concurrent attempts cannot both read a stale count; the count is incremented
+and _then_ judged, so a blocked caller keeps the window blocked; stale
+windows are pruned as new ones begin, so the table stays the size of "what
+is happening now"; keys are HMACs, so the table cannot be read as a list of
+who tried to sign in; and an erroring store **fails closed** with a "try
+again shortly" message, because the database is required for sign-in
+anyway. Defaults live in one place: 3 attempts per address and 20 per source
+per 15-minute window.
 
-Why it is not fixed here: a correct limiter needs a durable store. An
-in-process counter is close to useless on serverless (each invocation may be
-a fresh isolate), and the project's standing rule is not to add a dependency
-or service without asking. The recommended resolution is therefore
-infrastructure rather than code: a rate-limit rule at the edge (for
-example, a hosting-provider WAF rule) keyed on IP and path, with an
-application-level limiter backed by a store only if that proves
-insufficient. **This needs your decision, and it belongs on the pilot
-checklist before real customers are onboarded.**
+What it deliberately does not cover — so this is a fixed finding with known
+edges, not a solved problem:
+
+- **No global ceiling.** A caller working through many addresses from many
+  sources is bounded per bucket, not in total. An edge rule keyed on the
+  sign-in path (a hosting-provider WAF rule) is still the right outer layer,
+  and it stays on the before-onboarding checklist.
+- **No captcha**, so a determined distributed caller pays in cost and noise
+  rather than being stopped.
+- **Fixed windows** permit a burst at a boundary (at most 2x the limit in a
+  moment) — irrelevant next to the cost of sending mail, and the price of
+  one row per key per window instead of one per attempt.
+- **The source dimension is only as trustworthy as the proxy that sets
+  `x-forwarded-for`.** On the target hosting that is the platform's own
+  proxy, which is why the dimension is kept loose; behind a bare Node server
+  the header is spoofable, and the address dimension is what holds there.
+- **Counters are per environment and platform-wide.** Correct for sign-in
+  (there is no tenant to scope them to), but it also means they are not a
+  per-restaurant budget.
 
 ### F5 — the nodemailer advisory set, assessed against our usage
 
@@ -143,6 +167,28 @@ permissive fails three of the four tests, and turning a missing row into
 `NOT_FOUND` fails exactly the no-oracle test — the property no other suite
 covered before.
 
+### What proves the sign-in limit (F3)
+
+Four layers, each pinning what the one below cannot:
+
+1. `src/lib/signin-rate-limit.test.ts` — the decision, the window
+   arithmetic, the key derivation and the fail-closed path, against an
+   injected store, so the boundary is asserted without a database.
+2. `src/lib/signin-rate-limit-live.test.ts` — the real upsert: an atomic
+   concurrent burst, the pruning of stale windows, and that only hashes are
+   ever stored.
+3. `src/app/login/actions.test.ts` — that the check runs _before_ `signIn`,
+   that a refusal sends nothing, and that an unavailable limiter is an error
+   rather than a silent send.
+4. `e2e/signin-rate-limit.spec.ts` — the real form in a real browser until
+   it is refused: the inline message, the absent redirect to
+   "check your email", exactly three messages in Mailpit, no fourth, and
+   that a spent address does not lock out another.
+
+Mutation-checked in both layers: disabling the window comparison fails both
+E2E specs, an always-allowing decision fails the boundary test, and an
+upsert that stops incrementing fails four of the six live tests.
+
 ## Verification log (2026-10-15)
 
 | Check                                         | Result                                                                                       |
@@ -156,9 +202,37 @@ covered before.
 | Production server, forged `Host` (8 variants) | redirect pinned to the configured origin, or relative — never the forged host                |
 | `npm audit`                                   | 13 advisories, triaged; none reachable (F4, F5)                                              |
 
+## Verification log — F3 fix (2026-10-16)
+
+| Check                                       | Result                                                                                            |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `npx vitest run` with `TEST_DATABASE_URL`   | **620 passed / 51 files** (was 593 / 49)                                                          |
+| `npx vitest run` without a database         | **568 passed, 52 skipped** — the live suites opt out rather than silently passing                 |
+| `npm run check`                             | green (lint, strict typecheck, format)                                                            |
+| `npm run build`                             | green                                                                                             |
+| `npx playwright test`                       | **17/17 passed**, twice back to back inside one rate-limit window                                 |
+| Refusal, on the running server              | 4th attempt: inline error, no redirect, and Mailpit holds exactly 3 messages — the send never ran |
+| Mutation: window comparison disabled        | both E2E specs fail                                                                               |
+| Mutation: refusal branch disabled           | exactly the two refusal unit tests fail                                                           |
+| Mutation: upsert stops incrementing         | four of the six live tests fail                                                                   |
+| `db:generate` after formatting the metadata | zero schema drift; `db:migrate` unaffected                                                        |
+
+One harness fact worth recording, because it will recur:
+running the **whole** E2E suite (not the new spec alone) exposed that the
+source-IP dimension is a single bucket shared by every spec and every run
+from one developer machine — 20 per window against the suite's 9 — so the
+fourth `npm run test:e2e` inside a window refused the owner journey's own
+sign-in and looked like a broken email path. Global setup now clears the
+counters, since they are app state rather than fixture state, and the purge
+of Mailpit is scoped to a spec's own recipients so parallel specs cannot
+delete each other's mail.
+
 ## Before onboarding a pilot customer
 
-- [ ] Decide and implement F3 (edge rate limiting on sign-in).
+- [ ] Add the outer edge rule for sign-in (a hosting-provider WAF rule on the
+      path) if the deployment offers one: the in-app limiter (F3) bounds each
+      address and each source, but there is no global ceiling, and a captcha
+      is out of scope for the pilot.
 - [ ] Set `AUTH_URL` in the deployed environment so redirects, callbacks and
       `__Secure-` cookies are deterministic over HTTPS; keep `AUTH_TRUST_HOST`
       only where the host cannot be forged.

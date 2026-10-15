@@ -1295,14 +1295,18 @@ real customers.
 
 **Exit criteria:** Core journeys work in the target environment,
 important security boundaries are tested, and the operator can support
-the pilot.## 6.1 Security review
+the pilot.
+
+## 6.1 Security review
 
 **Status:** Done 2026-10-15 (`phase6`). The deliverable is
 `docs/security-review.md`: nine areas checked with a verdict each, a
 findings register with severities and resolutions, and the verification
 log. Started by decision with 5.1's hosted half still open — that ordering
 is deliberate rather than an oversight: 5.1 waits on a base domain and DNS
-access, and nothing in this review depended on either.
+access, and nothing in this review depended on either. Its one open finding
+(F3, the unchecked magic-link endpoint) was closed the next day — the review
+records it as fixed, with the limits that remain.
 
 **Method, because the verdicts are only worth their evidence:** the input
 bound and the mail parser's cost were probed directly instead of assumed
@@ -1343,13 +1347,26 @@ that range. The rest are dev-only (`eslint-config-next` tooling,
 `drizzle-kit`'s dev server). `npm audit fix --force` must not be used — it
 proposes a `next-auth` major downgrade off the v5 beta.
 
-**Open and flagged, not buried:** there is no rate limiting on the
-magic-link endpoint, so an unauthenticated caller can make the platform
-send unlimited mail and write unlimited verification rows. It is the
-highest-impact item found and it needs an infrastructure decision (an edge
-rate-limit rule is the recommended fix; a durable-store limiter would mean
-a new dependency, which this project does not add unasked). It sits on the
-review's before-onboarding checklist rather than being quietly deferred.
+**The one open finding, closed the next day rather than deferred:** there
+was no rate limiting on the magic-link endpoint, so an unauthenticated
+caller could make the platform send unlimited mail and write unlimited
+verification rows. It is now a durable fixed-window limiter — per address
+(the guarantee: mailing a victim spends the victim's bucket, and it holds
+even when the caller's source is unknown or rotates) and per source IP
+(defence in depth, deliberately the looser limit because a venue shares one
+connection) — checked **before** `signIn`, because a limit applied after the
+send still spends the SMTP quota and the reputation the finding is about.
+Postgres is already required for sign-in, so this needed no new service and
+no new dependency, which is what the earlier recommendation was really
+solving for: the choice was never "edge rule or code", it was "durable store
+or nothing".
+
+**What the limit does not do, stated rather than implied:** there is no
+global ceiling, so a caller working through many addresses from many sources
+is bounded per bucket and not in total, and there is no captcha. An edge
+rule keyed on the sign-in path is still worth adding at pilot onboarding and
+remains on the review's checklist, as the outer layer rather than the only
+one.
 
 **Tests for "unauthorised access by changing resource IDs"**, which the
 roadmap asks to be tested rather than reviewed:
@@ -1362,12 +1379,24 @@ a membership row. Mutation-checked: a permissive `ownsRow` fails three of
 four, and `NOT_FOUND` for a missing row fails exactly the no-oracle test —
 the property no earlier suite covered.
 
-**Verification:** 593 tests across 49 files with `TEST_DATABASE_URL` (547
-pass / 46 skip without one), `npm run check` green, `npm run build` green,
-and **15/15 E2E** — the whole journey suite, not one spec, because the
-headers land on every response. Headers and the redirect were additionally
-confirmed against a production server (200 HTML, the gate's 302, a 404, and
-a real stored upload).
+**Verification:** 620 tests across 51 files with `TEST_DATABASE_URL` (568
+pass / 52 skip without one), `npm run check` green, `npm run build` green,
+and **17/17 E2E** — the whole suite, not one spec. Headers and the redirect
+were additionally confirmed against a production server (200 HTML, the
+gate's 302, a 404, and a real stored upload), and the limiter's refusal was
+watched rather than inferred: three mail items in Mailpit, a fourth attempt
+refused inline, and no fourth mail. Mutation-checked in both layers —
+disabling the window comparison fails both new E2E specs, an always-allowing
+decision fails the boundary test, and an upsert that stops incrementing
+fails four of the six live tests.
+
+**A finding from running the whole suite:** the limiter's source dimension
+is one bucket per window, shared by every spec and every run from a
+developer machine, so the fourth `npm run test:e2e` inside a window refused
+the owner journey's own sign-in and looked like a broken email path. Global
+setup now clears the counters — they are app state, not fixture state — and
+the Mailpit purge is scoped to a spec's own recipients so parallel specs
+cannot delete each other's mail.
 
 **Remaining in Phase 6:** 6.2 reliability and error handling, 6.3
 performance and accessibility, 6.4 end-to-end regression, 6.5 deployment
