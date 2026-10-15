@@ -15,6 +15,7 @@
  */
 import { Suspense } from "react";
 import Link from "next/link";
+import { connection } from "next/server";
 import { auth } from "@/auth";
 import { buttonClasses } from "@/components/ui/button";
 import { Container, Section } from "@/components/ui/container";
@@ -66,6 +67,10 @@ function NewTenantFallback(): React.ReactElement {
  * page holds no work nobody has been allowed to see.
  */
 async function GatedCreateTenantForm(): Promise<React.ReactElement> {
+  // Request-time before the gate: Auth.js reads random bytes while it builds
+  // its CSRF token, which `cacheComponents` treats as IO, so a prerender pass
+  // that reaches `auth()` reports the unstable-value insight for this route.
+  await connection();
   requireOperatorPage(await auth());
   const themes = listThemes().map((theme) => ({ id: theme.id, label: theme.label }));
   return <CreateTenantForm themes={themes} />;

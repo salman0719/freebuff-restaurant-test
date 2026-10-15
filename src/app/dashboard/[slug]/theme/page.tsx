@@ -8,9 +8,17 @@
  * layout, and its own visibility toggle. Options are validated against the
  * CURRENT theme's schema on the server, so switching themes falls back to
  * that theme's defaults rather than carrying incompatible values across.
+ *
+ * The sync default export exists so the page's own read — `params`, then the
+ * session, then the theme rows — starts inside a `<Suspense>` boundary:
+ * without it Next reports "encountered uncached data" and the client
+ * navigation blocks on the data instead of painting the skeleton (Phase 4.5
+ * sweep).
  */
+import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { connection } from "next/server";
 import { auth } from "@/auth";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonClasses } from "@/components/ui/button";
@@ -25,14 +33,25 @@ import {
   type TakeawayConfig,
 } from "@/themes/config";
 import { listThemes } from "@/themes/registry";
+import { PageSkeleton } from "../../_components/page-skeleton";
 import { saveTheme } from "./actions";
 import { ThemeOptionsForm } from "./_components/theme-options-form";
 
-export default async function ThemePage({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}): Promise<React.ReactElement> {
+type Props = { params: Promise<{ slug: string }> };
+
+export default function ThemePage({ params }: Props): React.ReactElement {
+  return (
+    <Suspense fallback={<PageSkeleton label="Loading theme…" />}>
+      <ThemePicker params={params} />
+    </Suspense>
+  );
+}
+
+async function ThemePicker({ params }: Props): Promise<React.ReactElement> {
+  // Request-time before anything else: Auth.js reads random bytes building
+  // its CSRF token, which `cacheComponents` treats as IO. Without this the
+  // prerender pass reaches `auth()` and reports the crypto insight.
+  await connection();
   const { slug } = await params;
   const context = await getTenantContext(await auth(), slug);
   if (!context.ok) {

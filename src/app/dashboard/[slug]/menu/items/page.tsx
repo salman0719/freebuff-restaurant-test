@@ -5,10 +5,17 @@
  * their categories in display order, uncategorised last, plus the create
  * form. Renaming, repricing, reassignment, and visibility live in the
  * per-item editor; deletion waits there behind a confirm.
+ *
+ * The sync default export exists so the page's own read — `params`, then the
+ * session, then the context — starts inside a `<Suspense>` boundary: without
+ * it Next reports "encountered uncached data" and the client navigation
+ * blocks on the data instead of painting the skeleton (Phase 4.5 sweep).
  */
+import { Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { connection } from "next/server";
 import { UtensilsCrossed } from "lucide-react";
 import { auth } from "@/auth";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +28,7 @@ import { getTenantContext } from "@/lib/tenant-context";
 import { getTenantCategories, getTenantItems } from "@/lib/tenant-data";
 import type { MenuItem } from "@/lib/restaurant";
 import { formatPrice } from "@/themes/format";
+import { PageSkeleton } from "../../../_components/page-skeleton";
 import { ItemCreateForm } from "./_components/item-create-form";
 
 /** Item thumbnail, or a neutral placeholder tile when the item has no photo. */
@@ -73,11 +81,22 @@ function ItemRow({ base, item }: { base: string; item: MenuItem }) {
   );
 }
 
-export default async function ItemsPage({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}): Promise<React.ReactElement> {
+type Props = { params: Promise<{ slug: string }> };
+
+export default function ItemsPage({ params }: Props): React.ReactElement {
+  return (
+    <Suspense fallback={<PageSkeleton label="Loading items…" />}>
+      <ItemsList params={params} />
+    </Suspense>
+  );
+}
+
+async function ItemsList({ params }: Props): Promise<React.ReactElement> {
+  // Request-time before anything else: Auth.js reads random bytes while it
+  // builds its CSRF token, which `cacheComponents` treats as IO, so a
+  // prerender pass reaching `auth()` reports the crypto insight and this page
+  // gets no static shell. The cookie decides all of it — nothing to prerender.
+  await connection();
   const { slug } = await params;
   const context = await getTenantContext(await auth(), slug);
   if (!context.ok) {

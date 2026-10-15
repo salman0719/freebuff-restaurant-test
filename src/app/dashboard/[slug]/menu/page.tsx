@@ -7,9 +7,17 @@
  * Row actions are plain server-action forms (no client JS): move up/down
  * renumbers the list, Edit leads to the per-category editor where
  * renaming, visibility, and deletion live.
+ *
+ * The sync default export exists so the page's own read — `params`, then the
+ * session, then the categories and items — starts inside a `<Suspense>`
+ * boundary: without it Next reports "encountered uncached data" and the client
+ * navigation blocks on the data instead of painting the skeleton (Phase 4.5
+ * sweep).
  */
+import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { connection } from "next/server";
 import { FolderPlus } from "lucide-react";
 import { auth } from "@/auth";
 import { Badge } from "@/components/ui/badge";
@@ -19,14 +27,25 @@ import { EmptyState } from "@/components/ui/feedback";
 import { Heading, Text } from "@/components/ui/typography";
 import { getTenantContext } from "@/lib/tenant-context";
 import { getTenantCategories, getTenantItems } from "@/lib/tenant-data";
+import { PageSkeleton } from "../../_components/page-skeleton";
 import { CategoryCreateForm } from "./_components/category-create-form";
 import { moveCategory } from "./actions";
 
-export default async function MenuPage({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}): Promise<React.ReactElement> {
+type Props = { params: Promise<{ slug: string }> };
+
+export default function MenuPage({ params }: Props): React.ReactElement {
+  return (
+    <Suspense fallback={<PageSkeleton label="Loading menu…" />}>
+      <MenuCategoryList params={params} />
+    </Suspense>
+  );
+}
+
+async function MenuCategoryList({ params }: Props): Promise<React.ReactElement> {
+  // Request-time before anything else: Auth.js reads random bytes while it
+  // builds its CSRF token, and `cacheComponents` treats that as IO — a
+  // prerender pass that reaches `auth()` reports the crypto insight otherwise.
+  await connection();
   const { slug } = await params;
   const context = await getTenantContext(await auth(), slug);
   if (!context.ok) {

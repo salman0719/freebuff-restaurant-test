@@ -3,9 +3,18 @@
  * user belongs to — multi-tenant owners pick one; single-restaurant
  * owners get one link. Anonymous visitors bounce to `/login`
  * (the proxy normally does this first; the check here is the real one).
+ *
+ * The sync default export is load-bearing (Phase 4.5 sweep): the session read
+ * has to start inside a `<Suspense>` boundary, and the page has to declare
+ * itself request-time first — Auth.js reads random bytes building its CSRF
+ * token, which `cacheComponents` treats as IO, so a prerender pass that
+ * reaches `auth()` reports the unstable-value insight for this route. There is
+ * nothing to prerender: the cookie decides every line below.
  */
+import { Suspense } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { connection } from "next/server";
 import { Store } from "lucide-react";
 import { auth } from "@/auth";
 import { Badge } from "@/components/ui/badge";
@@ -17,8 +26,18 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Text } from "@/components/ui/typography";
 import { listUserTenants } from "@/lib/tenant-context";
 import { requireUser } from "@/lib/permissions";
+import { DashboardSkeleton } from "./_components/dashboard-skeleton";
 
-export default async function DashboardPage(): Promise<React.ReactElement> {
+export default function DashboardPage(): React.ReactElement {
+  return (
+    <Suspense fallback={<DashboardSkeleton />}>
+      <RestaurantPicker />
+    </Suspense>
+  );
+}
+
+async function RestaurantPicker(): Promise<React.ReactElement> {
+  await connection();
   const session = await auth();
   if (!requireUser(session).ok) {
     redirect("/login?next=/dashboard");

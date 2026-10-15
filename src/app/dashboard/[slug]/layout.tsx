@@ -7,9 +7,20 @@
  *
  * The shell is a sticky `SiteNav` (collapses to a menu on mobile) with
  * the role-filtered sections from `../nav` plus a sign-out action.
+ *
+ * Everything below sits inside a `<Suspense>` boundary, because this layout's
+ * own read — `params`, then the session, then the membership-gated context —
+ * is what everything here depends on. Without the boundary that read keeps
+ * the App Shell from being prerendered, and Next logs it: every page under
+ * this segment reported "encountered uncached data" on client navigation, a
+ * blocking route that no test saw because it only shows on the navigation a
+ * signed-in owner actually performs. With it, the shell paints from the
+ * shared skeleton and the restaurant streams in.
  */
+import { Suspense } from "react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { connection } from "next/server";
 import { auth, signOut } from "@/auth";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
@@ -18,6 +29,7 @@ import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { getTenantContext, listUserTenants } from "@/lib/tenant-context";
 import { getTenantProfile } from "@/lib/tenant-data";
 import { requireUser } from "@/lib/permissions";
+import { DashboardSkeleton } from "../_components/dashboard-skeleton";
 import { getDashboardNav } from "../nav";
 import { DashboardNavLinks } from "../nav-links";
 import { RestaurantSwitcher } from "../restaurant-switcher";
@@ -27,7 +39,7 @@ async function signOutAction(): Promise<void> {
   await signOut({ redirectTo: "/" });
 }
 
-export default async function TenantDashboardLayout({
+export default function TenantDashboardLayout({
   children,
   params,
 }: {
@@ -36,7 +48,33 @@ export default async function TenantDashboardLayout({
   // for this segment, so narrow at the boundary: non-string slugs fall
   // through to the same `notFound()` as unknown tenants (no oracle).
   params: Promise<unknown>;
+}): React.ReactElement {
+  return (
+    <Suspense fallback={<DashboardSkeleton label="Loading restaurant…" />}>
+      <TenantDashboardShell params={params}>{children}</TenantDashboardShell>
+    </Suspense>
+  );
+}
+
+/**
+ * The read half. It renders the nav and the page together because both need
+ * the same resolved membership — and because a page cannot paint without the
+ * shell that frames it.
+ */
+async function TenantDashboardShell({
+  children,
+  params,
+}: {
+  children: React.ReactNode;
+  params: Promise<unknown>;
 }): Promise<React.ReactElement> {
+  // Declares the whole segment request-time before anything else. Auth.js reads
+  // random bytes while it builds its CSRF token, and with `cacheComponents`
+  // that is IO: prerendering this route would have to invent a value it cannot
+  // invent, so Next reports the crypto insight for every route underneath
+  // (the shell is what the pages hang off). There is nothing to prerender here
+  // anyway — the cookie decides everything below.
+  await connection();
   const resolved = (await params) as { slug?: unknown };
   const slug = typeof resolved.slug === "string" ? resolved.slug : "";
   const session = await auth();

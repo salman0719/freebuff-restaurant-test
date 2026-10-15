@@ -2,9 +2,18 @@
  * Dashboard overview (Phase 3.1). The context is already
  * membership-gated by the parent layout; this page summarises status
  * (visibility, content counts) and links into the 3.2–3.5 editors.
+ *
+ * The sync default export is load-bearing (Phase 4.5 sweep): the page's read —
+ * `params`, then the session, then the restaurant — must start inside its own
+ * `<Suspense>` boundary, or Next reports this route as blocking (both
+ * "encountered uncached data" and the unstable-value insight, since the
+ * session read is request-time) and the client navigation waits on the query
+ * instead of painting the skeleton.
  */
+import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { connection } from "next/server";
 import { Clock, UtensilsCrossed } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { buttonClasses } from "@/components/ui/button";
@@ -15,12 +24,23 @@ import { Text } from "@/components/ui/typography";
 import { getTenantContext } from "@/lib/tenant-context";
 import { getOwnerRestaurant } from "@/lib/tenant-data";
 import { auth } from "@/auth";
+import { PageSkeleton } from "../_components/page-skeleton";
 
-export default async function TenantOverviewPage({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}): Promise<React.ReactElement> {
+type Props = { params: Promise<{ slug: string }> };
+
+export default function TenantOverviewPage({ params }: Props): React.ReactElement {
+  return (
+    <Suspense fallback={<PageSkeleton label="Loading restaurant…" />}>
+      <RestaurantOverview params={params} />
+    </Suspense>
+  );
+}
+
+async function RestaurantOverview({ params }: Props): Promise<React.ReactElement> {
+  // Request-time before anything else: Auth.js reads random bytes while it
+  // builds its CSRF token, and `cacheComponents` treats that as IO — a
+  // prerender pass that reaches `auth()` reports the crypto insight otherwise.
+  await connection();
   const { slug } = await params;
   const context = await getTenantContext(await auth(), slug);
   if (!context.ok) {

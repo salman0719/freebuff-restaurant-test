@@ -4,19 +4,38 @@
  * load (same `notFound()` on failure — a forged id looks exactly like a
  * missing one, never an oracle) and hands the row plus its item count to
  * the form.
+ *
+ * The sync default export exists so the page's own read — `params`, then the
+ * session, then the context — starts inside a `<Suspense>` boundary: without
+ * it Next reports "encountered uncached data" and the client navigation
+ * blocks on the data instead of painting the skeleton (Phase 4.5 sweep).
  */
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
+import { connection } from "next/server";
 import { auth } from "@/auth";
 import { Heading, Text } from "@/components/ui/typography";
 import { getTenantContext } from "@/lib/tenant-context";
 import { getTenantCategory, getTenantItems } from "@/lib/tenant-data";
+import { PageSkeleton } from "../../../_components/page-skeleton";
 import { CategoryEditForm } from "./_components/category-edit-form";
 
-export default async function CategoryEditPage({
-  params,
-}: {
-  params: Promise<{ slug: string; categoryId: string }>;
-}): Promise<React.ReactElement> {
+type Props = { params: Promise<{ slug: string; categoryId: string }> };
+
+export default function CategoryEditPage({ params }: Props): React.ReactElement {
+  return (
+    <Suspense fallback={<PageSkeleton label="Loading category…" />}>
+      <CategoryEditor params={params} />
+    </Suspense>
+  );
+}
+
+async function CategoryEditor({ params }: Props): Promise<React.ReactElement> {
+  // Request-time before anything else: Auth.js reads random bytes while it
+  // builds its CSRF token, which `cacheComponents` treats as IO, so a
+  // prerender pass reaching `auth()` reports the crypto insight and this page
+  // gets no static shell. The cookie decides all of it — nothing to prerender.
+  await connection();
   const { slug, categoryId } = await params;
   const context = await getTenantContext(await auth(), slug);
   if (!context.ok) {

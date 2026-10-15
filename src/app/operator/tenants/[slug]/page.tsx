@@ -25,6 +25,7 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { connection } from "next/server";
 import { auth } from "@/auth";
 import { Badge } from "@/components/ui/badge";
 import { buttonClasses } from "@/components/ui/button";
@@ -89,6 +90,10 @@ async function TenantSetup({
 }: {
   params: Promise<{ slug: string }>;
 }): Promise<React.ReactElement> {
+  // Request-time before the gate: Auth.js reads random bytes while it builds
+  // its CSRF token, which `cacheComponents` treats as IO, so a prerender pass
+  // that reaches `auth()` reports the unstable-value insight for this route.
+  await connection();
   const { slug } = await params;
   const staff = requireOperatorPage(await auth());
   const result = await getTenantSetup(staff, slug);
