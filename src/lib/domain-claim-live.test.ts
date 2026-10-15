@@ -124,11 +124,13 @@ live("domain claims (live database)", () => {
 
     const absent = await checkDomainClaim(ctxA, async () => []);
     expect(absent.ok).toBe(true);
-    if (absent.ok) expect(absent.data).toEqual({ domain: domainA, status: "pending", recordSeen: false });
+    if (absent.ok)
+      expect(absent.data).toEqual({ domain: domainA, status: "pending", recordSeen: false });
 
     const wrong = await checkDomainClaim(ctxA, async () => [["definitely-not-the-token"]]);
     expect(wrong.ok).toBe(true);
-    if (wrong.ok) expect(wrong.data).toEqual({ domain: domainA, status: "pending", recordSeen: false });
+    if (wrong.ok)
+      expect(wrong.data).toEqual({ domain: domainA, status: "pending", recordSeen: false });
   });
 
   it("reports a failed DNS query as an error, not as a wrong record", async () => {
@@ -151,7 +153,8 @@ live("domain claims (live database)", () => {
       return [[claim.data.verifyToken as string]];
     });
     expect(checked.ok).toBe(true);
-    if (checked.ok) expect(checked.data).toEqual({ domain: domainA, status: "verified", recordSeen: true });
+    if (checked.ok)
+      expect(checked.data).toEqual({ domain: domainA, status: "verified", recordSeen: true });
 
     const resolved = await resolveTenantByHost(domainA, BASE);
     expect(resolved).toEqual({ found: true, tenant: { id: expect.any(String), slug: slugA } });
@@ -175,7 +178,12 @@ live("domain claims (live database)", () => {
     // The other tenant's verified claim is untouched by B's activity…
     const readA = await getDomainClaim(await contextFor(userA, slugA));
     expect(readA.ok).toBe(true);
-    if (readA.ok) expect(readA.data).toEqual({ domain: domainA, status: "verified", verifyToken: readA.data.verifyToken });
+    if (readA.ok)
+      expect(readA.data).toEqual({
+        domain: domainA,
+        status: "verified",
+        verifyToken: readA.data.verifyToken,
+      });
 
     // …and a stranger cannot even establish a context to try with.
     const { getTenantContext } = await libs();
@@ -190,7 +198,8 @@ live("domain claims (live database)", () => {
 
     const removed = await removeDomainClaim(ctxA);
     expect(removed.ok).toBe(true);
-    if (removed.ok) expect(removed.data).toEqual({ domain: null, status: "none", verifyToken: null });
+    if (removed.ok)
+      expect(removed.data).toEqual({ domain: null, status: "none", verifyToken: null });
 
     const read = await getDomainClaim(ctxA);
     expect(read.ok).toBe(true);

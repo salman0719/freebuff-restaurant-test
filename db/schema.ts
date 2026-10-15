@@ -40,7 +40,13 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 
-export { AUDIT_ACTIONS, DOMAIN_STATUSES, MEMBERSHIP_ROLES, SLUG_PATTERN, THEME_IDS } from "./constants";
+export {
+  AUDIT_ACTIONS,
+  DOMAIN_STATUSES,
+  MEMBERSHIP_ROLES,
+  SLUG_PATTERN,
+  THEME_IDS,
+} from "./constants";
 export type { AuditAction, DomainStatus, MembershipRole, ThemeId } from "./constants";
 
 function timestamps() {
@@ -88,7 +94,10 @@ export const tenants = pgTable(
   (t) => [
     unique("tenants_slug_unique").on(t.slug),
     unique("tenants_custom_domain_unique").on(t.customDomain),
-    check("tenants_custom_domain_status_allowed", sql`${t.customDomainStatus} in ('none', 'pending', 'verified')`),
+    check(
+      "tenants_custom_domain_status_allowed",
+      sql`${t.customDomainStatus} in ('none', 'pending', 'verified')`
+    ),
     // A claim and its state move together: 'none' means no domain, and a
     // domain (pending or verified) always carries a state.
     check(

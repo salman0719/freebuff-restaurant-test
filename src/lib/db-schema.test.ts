@@ -112,8 +112,12 @@ describe("custom-domain verification state (Phase 5.2)", () => {
   it("keeps a claim, its state, and its TXT token together", () => {
     // 'none' ⇔ no domain, and a live claim always carries the token that
     // can verify it — the two invariants the claim flow maintains.
-    expect(config.checks.find((e) => e.name === "tenants_custom_domain_claim_present")).toBeDefined();
-    expect(config.checks.find((e) => e.name === "tenants_custom_domain_token_present")).toBeDefined();
+    expect(
+      config.checks.find((e) => e.name === "tenants_custom_domain_claim_present")
+    ).toBeDefined();
+    expect(
+      config.checks.find((e) => e.name === "tenants_custom_domain_token_present")
+    ).toBeDefined();
   });
 
   it("keeps the domain claim unique across tenants", () => {

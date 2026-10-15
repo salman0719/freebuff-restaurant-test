@@ -60,9 +60,7 @@ export async function resolveTenantByHost(
   const byDomain = await db
     .select({ id: tenants.id, slug: tenants.slug })
     .from(tenants)
-    .where(
-      and(eq(tenants.customDomain, hostname), eq(tenants.customDomainStatus, "verified"))
-    )
+    .where(and(eq(tenants.customDomain, hostname), eq(tenants.customDomainStatus, "verified")))
     .limit(1);
   if (byDomain[0]) {
     return { found: true, tenant: byDomain[0] };

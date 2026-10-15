@@ -16,8 +16,17 @@ an `owner` role alone never implies access to a specific tenant.
 2. Exact match on `custom_domain` → tenant.
 3. Else `{slug}.platform.example` subdomain → tenant by slug.
 4. Else safe 404 — never fall through to another tenant.
-5. Overwrite (never trust) any client-sent tenant header; rewrite to an
-   internal tenant route and enforce membership again in the data layer.
+
+**Update 2026-10-15 (Phase 5.2):** step 2 now requires the claim to be
+VERIFIED — the row carries `custom_domain_status` ('none' / 'pending' /
+'verified') and resolves only at 'verified', which is granted only
+after the owner's TXT token is seen at
+`_restaurant-platform.<domain>`. Rationale: an unverified `custom_domain`
+row is just a claim, and a claim must never be enough to serve a
+tenant on an arbitrary hostname. Owner flow and guarantees:
+`docs/runbooks/custom-domains.md`. Routing/HTTPS (5.3) is still what
+makes a verified domain reachable in practice. 5. Overwrite (never trust) any client-sent tenant header; rewrite to an
+internal tenant route and enforce membership again in the data layer.
 
 ## Rules
 

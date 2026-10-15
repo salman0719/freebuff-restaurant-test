@@ -111,11 +111,7 @@ interface ClaimRow {
 }
 
 async function readClaim(tenantId: string): Promise<DomainClaim | null> {
-  const rows = await db
-    .select(claimColumns)
-    .from(tenants)
-    .where(eq(tenants.id, tenantId))
-    .limit(1);
+  const rows = await db.select(claimColumns).from(tenants).where(eq(tenants.id, tenantId)).limit(1);
   const row = rows[0];
   return row ? toDomainClaim(row) : null;
 }

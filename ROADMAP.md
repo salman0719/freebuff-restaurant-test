@@ -1142,6 +1142,37 @@ environment.
 
 ## 5.2 Custom-domain records and verification
 
+**Status:** Done 2026-10-15 (`phase5`). Owner-submitted claims with
+dns-token verification: `tenants.custom_domain_status`
+('none'/'pending'/'verified') + `custom_domain_verify_token`
+(migration 0009, CHECKs keep claim/state/token together);
+`src/lib/domain-claim.ts` owns every write (submit keeps the token on
+re-submit, unique index refuses another tenant's domain as a
+field-keyed CONFLICT, check flips to verified only on an exact
+`_restaurant-platform.<domain>` TXT match with an injectable DNS seam,
+remove clears all three). The resolver now honors custom domains ONLY
+when verified — the 5.2 "no unverified attach" requirement is enforced
+at the lookup, not by convention — and `updateTenantSettings` can no
+longer write a domain without its state. Owner UI at
+`/dashboard/[slug]/domain` (record → TXT instructions → check → switch
+/ remove behind confirm), phrased so "verified" never reads as "live"
+(routing/HTTPS stay 5.3, same line as 4.3's RECORDED). Operator
+console badge keeps showing the recorded domain unchanged.
+Verification: 13 new pure unit tests + 10-test live suite
+(conflict, pending-does-not-resolved, verified flip unlocks the
+hostname, DNS-failure honesty, scoping, idempotent removal) and a
+2-test browser journey (`e2e/domain-claim.spec.ts`, disposable
+fixture); whole suite green — 516+ unit, 15 E2E, build.
+Found while testing: the owner journey's loose `getByText("Mains")`
+matched the new nav's "Domain" item ("…doMAINS…" substring) —
+fixed with exact matching. Also fixed before shipping: status
+messages rendered inside a claim phase unmounted with it (removal
+reported nothing), so results now render where they stay true.
+Runbook: `docs/runbooks/custom-domains.md`; 0003 carries the dated
+resolution update. Remaining before "live custom domains": Phase 5.3
+routing + TLS, which still needs a real base domain and DNS access
+from the owner (Vercel token is in place, project-scoped).
+
 **Can be done independently:** Yes, after the domain data model and host
 resolver interface are stable.
 
