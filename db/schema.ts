@@ -394,6 +394,45 @@ export const auditEvents = pgTable(
   ]
 );
 
+/**
+ * Sign-in rate limiting (Phase 6.1, finding F3). One fixed-window counter
+ * per `(scope, key)`, so the unauthenticated magic-link endpoint cannot be
+ * used to send unlimited mail or write unlimited verification rows.
+ *
+ * Why a table rather than memory, and why no new service: the platform runs
+ * on serverless functions, where a fresh isolate per invocation makes an
+ * in-process counter meaningless — every request would look like the first
+ * request. Postgres is already required for sign-in (the verification token
+ * row is written to it), so a durable counter needs no dependency, no
+ * second datastore, and no new moving part.
+ *
+ * `key_hash` is an HMAC of the address or source IP, never the value
+ * itself: this table must not become a harvestable record of who tried to
+ * sign in. `scope` keeps the two dimensions from colliding. Rows are
+ * disposable by design — the window's start is the only meaning they carry
+ * — and stale windows are pruned as new ones begin, so the table stays the
+ * size of "what is happening right now" rather than a history.
+ */
+export const signinRateLimits = pgTable(
+  "signin_rate_limits",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    scope: text("scope").notNull(),
+    keyHash: text("key_hash").notNull(),
+    windowStart: timestamp("window_start", { withTimezone: true }).notNull(),
+    count: integer("count").notNull().default(0),
+    ...timestamps(),
+  },
+  (t) => [
+    // The upsert target AND the read: exactly one counter per scope+key+window.
+    unique("signin_rate_limits_window_unique").on(t.scope, t.keyHash, t.windowStart),
+    // Pruning stale windows is a range scan over this column.
+    index("signin_rate_limits_window_start_idx").on(t.windowStart),
+    check("signin_rate_limits_scope_allowed", sql`${t.scope} in ('email', 'ip')`),
+    check("signin_rate_limits_count_non_negative", sql`${t.count} >= 0`),
+  ]
+);
+
 export const tenantsRelations = relations(tenants, ({ many, one }) => ({
   memberships: many(memberships),
   profile: one(restaurantProfiles),

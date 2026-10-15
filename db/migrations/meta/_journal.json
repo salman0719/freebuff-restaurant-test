@@ -71,6 +71,13 @@
       "when": 1792049427467,
       "tag": "0009_mushy_redwing",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1792070075101,
+      "tag": "0010_simple_the_renegades",
+      "breakpoints": true
     }
   ]
 }
