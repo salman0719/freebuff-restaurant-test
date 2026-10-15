@@ -37,7 +37,9 @@ const ctx: TenantContext = {
 
 describe("verificationRecordName", () => {
   it("builds the exact TXT record the owner must publish", () => {
-    expect(verificationRecordName("shop.example.com")).toBe("_restaurant-platform.shop.example.com");
+    expect(verificationRecordName("shop.example.com")).toBe(
+      "_restaurant-platform.shop.example.com"
+    );
     expect(VERIFY_RECORD_LABEL).toBe("_restaurant-platform");
   });
 });
@@ -66,12 +68,7 @@ describe("matchesVerification", () => {
   });
 
   it("matches any one record, not only the first", () => {
-    expect(
-      matchesVerification(
-        [["google-site-verification=abc"], [token]],
-        token
-      )
-    ).toBe(true);
+    expect(matchesVerification([["google-site-verification=abc"], [token]], token)).toBe(true);
   });
 
   it("refuses a token wrapped in quotes — the proof is exact", () => {
@@ -84,7 +81,11 @@ describe("matchesVerification", () => {
 describe("toDomainClaim", () => {
   it("reports a domain-less row as the empty claim", () => {
     expect(
-      toDomainClaim({ customDomain: null, customDomainStatus: "none", customDomainVerifyToken: null })
+      toDomainClaim({
+        customDomain: null,
+        customDomainStatus: "none",
+        customDomainVerifyToken: null,
+      })
     ).toEqual({ domain: null, status: "none", verifyToken: null });
   });
 
@@ -109,7 +110,11 @@ describe("toDomainClaim", () => {
     // The schema CHECKs keep these together; this pins the reader's
     // defensive behaviour if a row ever slipped past them.
     expect(
-      toDomainClaim({ customDomain: null, customDomainStatus: "verified", customDomainVerifyToken: "tok" })
+      toDomainClaim({
+        customDomain: null,
+        customDomainStatus: "verified",
+        customDomainVerifyToken: "tok",
+      })
     ).toEqual({ domain: null, status: "none", verifyToken: null });
   });
 });
@@ -122,9 +127,9 @@ describe("submitDomainClaim validation (fails before any database access)", () =
     ["not a host!!", "spaces and punctuation"],
     ["ftp://shop.example.com", "a URL, not a hostname"],
     ["x".repeat(300), "over the 253-char hostname limit"],
-  ])("rejects %s (%s) keyed to the domain field", async (input, _label) => {
+  ])("rejects %s (%s) keyed to the domain field", async (input, label) => {
     const result = await submitDomainClaim(ctx, input);
-    expect(result.ok).toBe(false);
+    expect(result.ok, label).toBe(false);
     if (result.ok) return expect.unreachable();
     expect(result.error.code).toBe("VALIDATION_FAILED");
     expect(Object.keys(result.error.fields ?? {})).toEqual(["domain"]);

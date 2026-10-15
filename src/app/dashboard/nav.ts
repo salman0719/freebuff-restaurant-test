@@ -1,7 +1,7 @@
 /**
  * Dashboard navigation model (Phase 3.1). Pure — unit-tested, no I/O.
  *
- * Every tenant member (owner or operator role) sees the same five
+ * Every tenant member (owner or operator role) sees the same six
  * content sections: per-action checks land with the 3.2–3.5 editors,
  * not in the nav. Global `operator` staff additionally see the
  * Operator console link (built in Phase 4).
@@ -24,13 +24,14 @@ export interface DashboardNavOptions {
   globalRole: string;
 }
 
-const memberSections = ["profile", "hours", "menu", "theme"] as const;
+const memberSections = ["profile", "hours", "menu", "theme", "domain"] as const;
 
 const sectionLabels: Record<(typeof memberSections)[number], string> = {
   profile: "Profile",
   hours: "Hours",
   menu: "Menu",
   theme: "Theme",
+  domain: "Domain",
 };
 
 export function getDashboardNav({ slug, globalRole }: DashboardNavOptions): DashboardNavItem[] {

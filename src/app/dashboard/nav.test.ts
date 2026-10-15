@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { activeNavHref, getDashboardNav } from "./nav";
 
 describe("getDashboardNav", () => {
-  it("gives every member the five content sections", () => {
+  it("gives every member the six content sections", () => {
     const items = getDashboardNav({
       slug: "marios",
       membershipRole: "owner",
@@ -14,6 +14,7 @@ describe("getDashboardNav", () => {
       "Hours",
       "Menu",
       "Theme",
+      "Domain",
     ]);
     expect(items[0]?.href).toBe("/dashboard/marios");
     expect(items[1]?.href).toBe("/dashboard/marios/profile");

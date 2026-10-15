@@ -716,10 +716,9 @@ export async function updateTenantSettings(
   if (!parsed.success) {
     return err("VALIDATION_FAILED", "Invalid settings.", validationFields(parsed.error));
   }
-  const set: { theme?: Tenant["theme"]; published?: boolean; customDomain?: string | null } = {};
+  const set: { theme?: Tenant["theme"]; published?: boolean } = {};
   if (parsed.data.theme !== undefined) set.theme = parsed.data.theme;
   if (parsed.data.published !== undefined) set.published = parsed.data.published;
-  if (parsed.data.customDomain !== undefined) set.customDomain = parsed.data.customDomain;
   if (Object.keys(set).length === 0) {
     return ok(ctx.tenant);
   }

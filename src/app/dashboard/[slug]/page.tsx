@@ -101,6 +101,9 @@ async function RestaurantOverview({ params }: Props): Promise<React.ReactElement
         <Link href={`${base}/publishing`} className={buttonClasses({ variant: "outline" })}>
           Publishing
         </Link>
+        <Link href={`${base}/domain`} className={buttonClasses({ variant: "outline" })}>
+          Custom domain
+        </Link>
       </div>
     </div>
   );

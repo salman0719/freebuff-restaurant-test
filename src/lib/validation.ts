@@ -34,7 +34,12 @@ export const slugSchema = z
     message: "Slug is reserved for platform use.",
   });
 
-/** Nullable custom domain (onboarding deferred; format reserved for later). */
+/**
+ * Custom-domain hostname (Phase 5.2). Written ONLY through the claim flow
+ * (`./domain-claim.ts`) so state and token move with it — never through a
+ * generic settings update, which would leave a domain the resolver must
+ * not honor yet (the schema CHECKs refuse that pairing outright).
+ */
 export const customDomainSchema = z
   .string()
   .trim()
@@ -73,11 +78,12 @@ export const createTenantSchema = z.object({
 /**
  * Tenant updates. No `slug` field on purpose — renames break URLs and
  * incoming links, so they need a dedicated redirect flow, not an edit.
+ * No `customDomain` either: domain claims move through `./domain-claim.ts`
+ * with their verification state (5.2).
  */
 export const updateTenantSchema = z.object({
   theme: themeSchema.optional(),
   published: z.boolean().optional(),
-  customDomain: customDomainSchema,
 });
 
 const profileFields = {
