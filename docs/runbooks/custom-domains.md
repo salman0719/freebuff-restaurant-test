@@ -37,6 +37,34 @@ HTTPS for a tenant's custom domain arrive with Phase 5.3. The operator
 onboarding checklist therefore reports a domain as RECORDED even after
 verification, and the dashboard says the same thing in its own words.
 
+## Routing and HTTPS (Phase 5.3)
+
+Verification proves ownership; routing is what serves the domain. The
+platform drives Vercel's project-domain API (`src/lib/vercel.ts`):
+
+- **Verifying a claim attaches the domain** to the project
+  automatically (already-attached counts as success, so retried
+  verifies never re-report failure).
+- **Removing a claim detaches it** (best-effort — the hostname resolver
+  stops honoring the domain the moment the claim is gone, so a failed
+  detach is stated, never blocking).
+- **Check routing status** (dashboard, verified claims) folds three
+  facts into one state: attached to the project, Vercel-validated DNS
+  (`verified`), and a real HTTPS probe. Only all three together say
+  **live** — the API exposes no certificate status, so the probe is the
+  only honest TLS signal.
+
+States: `detached` (not connected), `pending` (waiting on DNS
+validation, or on the certificate after validation), `live` (answers
+over HTTPS). Vercel issues and renews Let's Encrypt certificates
+automatically via DNS-01 once DNS points at it.
+
+Configuration (server-side only, never committed):
+`VERCEL_TOKEN` (project-scoped access token) + `VERCEL_PROJECT_ID` in
+`.env.local`. Without them every routing operation fails closed with a
+"not configured" message; claims, verification, and resolution all
+still work — routing is additive.
+
 ## Guarantees (enforced, not conventions)
 
 - The hostname resolver honors a `custom_domain` row **only** when
@@ -48,6 +76,30 @@ verification, and the dashboard says the same thing in its own words.
   (`tenants_custom_domain_claim_present`, `…_token_present`); writes go
   only through `src/lib/domain-claim.ts` (the generic settings update
   deliberately cannot set a domain).
+
+## Manual recovery — common DNS errors
+
+- **Stuck "waiting for DNS validation"** — the domain's registrar is
+  not pointing at Vercel yet. Either move the nameservers to
+  `ns1/ns2.vercel-dns.com`, or (keeping your DNS host) add the
+  `_acme-challenge` NS delegation + wildcard CNAME from the platform
+  subdomains runbook. Validation retries automatically.
+- **Attach refused: "already assigned to another Vercel project"**
+  (CONFLICT) — the domain sits on someone else's project (possibly an
+  old one of yours). Remove it there (Project → Settings → Domains),
+  then re-check routing; or complete Vercel's verification challenge,
+  which proves ownership for your account.
+- **Verification check says "could not query DNS"** — the platform's
+  resolver could not answer the TXT lookup (some networks refuse TXT
+  queries; CI and most servers are fine). Nothing is wrong with the
+  record; retry, or check from another network.
+- **Validated but HTTPS pending for a long time** — the certificate's
+  DNS-01 challenge is waiting on propagation; nameserver changes can
+  take 24–48 h. Confirm `_acme-challenge` delegation exists.
+- **Removal reported a failed detach** — the domain no longer serves
+  the restaurant either way (the resolver ignores it). Retry by
+  removing it in the Vercel dashboard (Project → Settings → Domains),
+  or re-run removal.
 
 ## Verification
 

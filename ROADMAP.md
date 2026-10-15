@@ -1188,6 +1188,29 @@ resolver interface are stable.
 
 ## 5.3 SSL and production routing
 
+**Status:** Done 2026-10-15 (`phase5`) for everything the API exposes;
+the hosted wildcard verification (5.1's live half) still awaits the
+base-domain decision. Vercel provisions and renews certificates
+automatically via DNS-01 once a domain is attached and its DNS points
+here; the API exposes **no certificate status**, so the platform
+couples its own facts (project attach + Vercel `verified`) with a real
+HTTPS probe (`src/lib/domain-routing.ts`): `live` is unreachable
+unless all three hold — the 4.3 rule ("never call a domain live before
+routing and TLS do") is now one pure, truth-tabled function. Verifying
+a 5.2 claim attaches the domain automatically; removal detaches
+best-effort (the resolver already stopped honoring it, so a failure is
+stated, never blocking); a routing-status check reports
+pending/live/detached in plain words. Config is server-side only
+(`VERCEL_TOKEN` project-scoped + `VERCEL_PROJECT_ID`); without it
+routing fails closed while claims and verification keep working.
+Verification: 29 unit tests on injected fakes (including the truth
+table and "the token never appears in a message"), and a live
+round-trip through the app's own client against the real project —
+attach → read back → fold says _pending_ (never live) → detach →
+gone; the project's domain list was restored to its original shape
+afterwards. Manual recovery steps for the common DNS failures are in
+`docs/runbooks/custom-domains.md`.
+
 **Can be done independently:** Partially. Application state can be
 developed separately, but actual SSL provisioning depends on the hosting
 provider.
