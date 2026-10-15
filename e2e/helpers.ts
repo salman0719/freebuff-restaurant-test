@@ -103,6 +103,25 @@ export async function seedOperatorUser(email: string): Promise<string> {
 }
 
 /**
+ * A disposable tenant + owner (Phase 5.2): for a spec that must own its
+ * whole fixture instead of sharing the owner-journey one, which would
+ * race a parallel worker re-seeding it. Cleanup is the caller's job via
+ * `deleteTenantBySlug` + `deleteUserByEmail`.
+ */
+export async function seedTenantWithOwner(slug: string, email: string): Promise<void> {
+  const { db, close } = newDb();
+  try {
+    await db.delete(tenants).where(eq(tenants.slug, slug));
+    await db.delete(users).where(eq(users.email, email));
+    const [user] = await db.insert(users).values({ email }).returning({ id: users.id });
+    const [tenant] = await db.insert(tenants).values({ slug }).returning({ id: tenants.id });
+    await db.insert(memberships).values({ userId: user.id, tenantId: tenant.id, role: "owner" });
+  } finally {
+    await close();
+  }
+}
+
+/**
  * Remove a tenant a spec created through the UI, along with everything it
  * owns (every child table cascades from `tenants`). Specs clean up after
  * themselves because global setup only resets the owner-journey fixture.

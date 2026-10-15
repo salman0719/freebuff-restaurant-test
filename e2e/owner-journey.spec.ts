@@ -62,7 +62,9 @@ test("owner signs in, edits, and publishes the restaurant site", async ({ page }
   // The list is server-rendered and `useActionState` doesn't refresh it:
   // reload to see the new row (a real user would navigate the same way).
   await page.reload();
-  await expect(page.getByText("Mains")).toBeVisible();
+  // exact: the dashboard nav's "Domain" item concatenates into text that
+  // contains "…mains…", so a substring match is no longer unique.
+  await expect(page.getByText("Mains", { exact: true })).toBeVisible();
 
   await page.goto(`${dashboard}/menu/items`);
   await page.getByLabel(/item name/i).fill("E2E Burger");
@@ -103,7 +105,7 @@ test("owner signs in, edits, and publishes the restaurant site", async ({ page }
   await page.goto(publicSite);
   await expect(page.getByText(E2E_NAME).first()).toBeVisible();
   await expect(page.getByText("E2E Burger")).toBeVisible();
-  await expect(page.getByText("Mains")).toBeVisible();
+  await expect(page.getByText("Mains", { exact: true })).toBeVisible();
 
   // Cleanup: take the site back offline for the next run. The publish
   // controls render server-side, so reload for the fresh published state.
