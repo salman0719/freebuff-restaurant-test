@@ -44,6 +44,23 @@ export const AUDIT_ACTIONS = ["tenant.created", "tenant.owner_granted", "staff.g
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 
 /**
+ * Custom-domain verification states (Phase 5.2).
+ *
+ * `none` — no domain claimed. `pending` — a domain is recorded but its
+ * TXT record has not been seen yet, so the hostname resolver must NOT
+ * serve the tenant on it. `verified` — the TXT token was seen, so the
+ * domain is proven to belong to this claim. Verification proves
+ * ownership, not liveness: routing and HTTPS are Phase 5.3, which is why
+ * the onboarding checklist keeps reporting a domain as merely RECORDED.
+ *
+ * Closed vocabulary like the audit actions: the `tenants_custom_domain_status_allowed`
+ * CHECK in `./schema.ts` lists exactly these values, so a new state ships
+ * with a migration.
+ */
+export const DOMAIN_STATUSES = ["none", "pending", "verified"] as const;
+export type DomainStatus = (typeof DOMAIN_STATUSES)[number];
+
+/**
  * Tenant slug format: lowercase alphanumerics joined with single hyphens.
  * Must stay identical to the `tenants_slug_format` CHECK in `./schema.ts`
  * (which inlines the same pattern in SQL) — `src/lib/db-schema.test.ts`

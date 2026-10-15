@@ -40,8 +40,8 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 
-export { AUDIT_ACTIONS, MEMBERSHIP_ROLES, SLUG_PATTERN, THEME_IDS } from "./constants";
-export type { AuditAction, MembershipRole, ThemeId } from "./constants";
+export { AUDIT_ACTIONS, DOMAIN_STATUSES, MEMBERSHIP_ROLES, SLUG_PATTERN, THEME_IDS } from "./constants";
+export type { AuditAction, DomainStatus, MembershipRole, ThemeId } from "./constants";
 
 function timestamps() {
   return {
@@ -64,7 +64,16 @@ export const tenants = pgTable(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     slug: text("slug").notNull(),
+    /**
+     * Claimed custom domain (Phase 5.2). On its own this is only a CLAIM:
+     * the hostname resolver honors a `custom_domain` row exclusively when
+     * `custom_domain_status = 'verified'`, so an unverified domain can
+     * never serve a tenant. `custom_domain_verify_token` is the TXT value
+     * the claimant publishes to prove the domain is theirs.
+     */
     customDomain: text("custom_domain"),
+    customDomainStatus: text("custom_domain_status").notNull().default("none"),
+    customDomainVerifyToken: text("custom_domain_verify_token"),
     published: boolean("published").notNull().default(false),
     theme: text("theme").notNull().default("cafe"),
     /**
@@ -79,6 +88,18 @@ export const tenants = pgTable(
   (t) => [
     unique("tenants_slug_unique").on(t.slug),
     unique("tenants_custom_domain_unique").on(t.customDomain),
+    check("tenants_custom_domain_status_allowed", sql`${t.customDomainStatus} in ('none', 'pending', 'verified')`),
+    // A claim and its state move together: 'none' means no domain, and a
+    // domain (pending or verified) always carries a state.
+    check(
+      "tenants_custom_domain_claim_present",
+      sql`(${t.customDomainStatus} = 'none') = (${t.customDomain} is null)`
+    ),
+    // …and a live claim always has the TXT token that can verify it.
+    check(
+      "tenants_custom_domain_token_present",
+      sql`${t.customDomainStatus} = 'none' or ${t.customDomainVerifyToken} is not null`
+    ),
     // URL-safe slug: lowercase alphanumerics joined with single hyphens.
     // Reserved subdomains (www, api, app, admin) and duplicate detection
     // are enforced at creation time in the app layer (Phase 1.2/1.4).

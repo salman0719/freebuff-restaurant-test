@@ -7,6 +7,8 @@ function rows(overrides: Partial<PublicRestaurantRows> = {}): PublicRestaurantRo
       id: "tenant_a",
       slug: "marios",
       customDomain: null,
+      customDomainStatus: "none",
+      customDomainVerifyToken: null,
       published: true,
       theme: "cafe",
       themeConfig: { accent: "tomato" },

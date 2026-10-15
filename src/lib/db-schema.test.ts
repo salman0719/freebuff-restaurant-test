@@ -10,6 +10,7 @@ import { getTableConfig } from "drizzle-orm/pg-core";
 import { describe, expect, it } from "vitest";
 import {
   AUDIT_ACTIONS,
+  DOMAIN_STATUSES,
   MEMBERSHIP_ROLES,
   SLUG_PATTERN,
   THEME_IDS,
@@ -95,6 +96,39 @@ describe("the audit trail table (Phase 4.4)", () => {
   });
 });
 
+describe("custom-domain verification state (Phase 5.2)", () => {
+  const config = getTableConfig(tenants);
+
+  it("constrains the claim state to a closed vocabulary", () => {
+    // Same rule as the audit actions: a new state is a deliberate
+    // migration, not something a caller can write.
+    const check = config.checks.find(
+      (entry) => entry.name === "tenants_custom_domain_status_allowed"
+    );
+    expect(check).toBeDefined();
+    expect([...DOMAIN_STATUSES]).toEqual(["none", "pending", "verified"]);
+  });
+
+  it("keeps a claim, its state, and its TXT token together", () => {
+    // 'none' ⇔ no domain, and a live claim always carries the token that
+    // can verify it — the two invariants the claim flow maintains.
+    expect(config.checks.find((e) => e.name === "tenants_custom_domain_claim_present")).toBeDefined();
+    expect(config.checks.find((e) => e.name === "tenants_custom_domain_token_present")).toBeDefined();
+  });
+
+  it("keeps the domain claim unique across tenants", () => {
+    // Read from the committed SQL rather than the table config: the
+    // constraint has shipped since 0000, and the deployed text is what
+    // actually rejects a second tenant claiming the same domain.
+    const dir = join(process.cwd(), "db", "migrations");
+    const sql = readdirSync(dir)
+      .filter((f) => f.endsWith(".sql"))
+      .map((f) => readFileSync(join(dir, f), "utf8").toLowerCase())
+      .join("\n");
+    expect(sql).toContain("tenants_custom_domain_unique");
+  });
+});
+
 describe("committed migrations", () => {
   const dir = join(process.cwd(), "db", "migrations");
   const sqlFiles = readdirSync(dir).filter((f) => f.endsWith(".sql"));
@@ -131,6 +165,13 @@ describe("committed migrations", () => {
     expect(sql).toContain("tenants_slug_format");
     expect(sql).toContain("opening_hours_weekday_range");
     expect(sql).toContain("menu_items_price_non_negative");
+  });
+
+  it("deploys the custom-domain status vocabulary (5.2)", () => {
+    expect(sql).toContain("tenants_custom_domain_status_allowed");
+    expect(sql).toContain("('none', 'pending', 'verified')");
+    expect(sql).toContain("tenants_custom_domain_claim_present");
+    expect(sql).toContain("tenants_custom_domain_token_present");
   });
 
   it("uses the shared SLUG_PATTERN in the slug CHECK", () => {
