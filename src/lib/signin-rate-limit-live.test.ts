@@ -180,8 +180,9 @@ live("sign-in rate limiting (live database)", () => {
       await attempt("many-final@example.com", SHARED_IP, now)
     );
     expect(blocked.allowed).toBe(false);
-    if (blocked.allowed) return expect.unreachable();
-    expect(blocked.reason).toBe("limited");
+    // A limit refusal, not the fail-closed path: the source dimension is what
+    // must have tripped, and reading `blockedBy` at all proves it answered.
+    if (blocked.allowed || blocked.reason !== "limited") return expect.unreachable();
     expect(blocked.blockedBy).toBe("ip");
   });
 

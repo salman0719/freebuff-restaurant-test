@@ -183,8 +183,9 @@ describe("enforceSignInRateLimit", () => {
     }
     const blocked = await enforceSignInRateLimit(attempt);
     expect(blocked.allowed).toBe(false);
-    if (blocked.allowed) return expect.unreachable();
-    expect(blocked.reason).toBe("limited");
+    // A limit refusal, not the fail-closed path: `blockedBy` only exists once
+    // the store has answered, so the reason is pinned before it is read.
+    if (blocked.allowed || blocked.reason !== "limited") return expect.unreachable();
     expect(blocked.blockedBy).toBe("email");
     expect(blocked.message).toContain("Too many sign-in attempts");
   });
