@@ -10,12 +10,14 @@ configuration, review dependency warnings, and fix critical/high issues
 before onboarding customers. This is the resulting checklist.
 
 **Method matters as much as the verdicts here.** Where a claim could be
-measured, it was measured rather than assumed: the input bound and the
-parser cost were probed directly (`local/security-probe.ts`,
-`local/security-probe2.ts`), the redirect and header behaviour was read off
-a real production server (`next start`), and each new test was
-mutation-checked to prove it fails when the protection is removed. Anything
-not verified says so below.
+measured, it wasmeasured rather than assumed: the input bound and the parser cost were
+probed directly (scratch scripts `local/security-probe.ts` and
+`local/security-probe2.ts` — git-ignored, as `local/` is, so they are not
+reproducible from a clone; the bound they established is pinned as a
+committed test instead), the redirect and header behaviour was read off a
+real production server (`next start`), and each new test was
+mutation-checked to prove it fails when the protection is removed.
+Anything not verified says so below.
 
 ## Checklist
 
