@@ -4,6 +4,7 @@ import {
   createCategorySchema,
   createItemSchema,
   createTenantSchema,
+  emailSchema,
   inviteOwnerSchema,
   openingHoursSchema,
   slugSchema,
@@ -192,6 +193,25 @@ describe("membership schemas", () => {
   it("validates invite emails", () => {
     expect(inviteOwnerSchema.safeParse({ email: "owner@example.com" }).success).toBe(true);
     expect(inviteOwnerSchema.safeParse({ email: "not-an-email" }).success).toBe(false);
+  });
+
+  it("bounds email length at the RFC 5321 maximum (Phase 6.1)", () => {
+    // The sign-in form is unauthenticated: whatever passes here is echoed
+    // back, stored on the verification token, and parsed by the mail
+    // provider, so the length must be bounded before any of that.
+    const atLimit = `${"a".repeat(242)}@example.com`;
+    expect(atLimit).toHaveLength(254);
+    expect(emailSchema.safeParse(atLimit).success).toBe(true);
+
+    const overLimit = `${"a".repeat(243)}@example.com`;
+    expect(overLimit).toHaveLength(255);
+    const rejected = emailSchema.safeParse(overLimit);
+    expect(rejected.success).toBe(false);
+    if (!rejected.success) expect(rejected.error.issues[0]?.message).toMatch(/too long/i);
+
+    // Trailing padding is trimmed first, so a user pasting a padded address
+    // is not refused for whitespace they cannot see.
+    expect(emailSchema.safeParse(`  owner@example.com  `).success).toBe(true);
   });
 });
 

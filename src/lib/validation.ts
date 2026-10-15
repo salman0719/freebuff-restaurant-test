@@ -53,8 +53,20 @@ export const themeSchema = z.enum(THEME_IDS);
 
 export const membershipRoleSchema = z.enum(MEMBERSHIP_ROLES);
 
-/** Owner sign-in identity (Phase 1.3 owns the actual auth flow). */
-export const emailSchema = z.string().trim().email("Must be a valid email address.");
+/**
+ * Owner sign-in identity (Phase 1.3 owns the actual auth flow).
+ *
+ * Bounded like every other input here (Phase 6.1): this value is echoed back
+ * into the login form, stored on `verification_tokens.identifier`, and handed
+ * to the mail provider's address parser, so an unbounded string is unbounded
+ * unauthenticated work and storage per request. 254 is the RFC 5321 maximum
+ * for a forward-path address, so no deliverable address is refused.
+ */
+export const emailSchema = z
+  .string()
+  .trim()
+  .max(254, "Email address is too long.")
+  .email("Must be a valid email address.");
 
 /** `HH:MM` 24-hour clock, matching the DB `time` columns. */
 export const timeStringSchema = z
