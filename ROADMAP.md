@@ -1295,9 +1295,84 @@ real customers.
 
 **Exit criteria:** Core journeys work in the target environment,
 important security boundaries are tested, and the operator can support
-the pilot.
+the pilot.## 6.1 Security review
 
-## 6.1 Security review
+**Status:** Done 2026-10-15 (`phase6`). The deliverable is
+`docs/security-review.md`: nine areas checked with a verdict each, a
+findings register with severities and resolutions, and the verification
+log. Started by decision with 5.1's hosted half still open — that ordering
+is deliberate rather than an oversight: 5.1 waits on a base domain and DNS
+access, and nothing in this review depended on either.
+
+**Method, because the verdicts are only worth their evidence:** the input
+bound and the mail parser's cost were probed directly instead of assumed
+(which is how the one real coverage hole surfaced — `emailSchema` accepted
+a 200,013-character address on the unauthenticated login form); the
+redirect and header behaviour was read off a real production server, not
+inferred from a config that type-checks; and each new test was
+mutation-checked to prove it fails when the protection is removed.
+
+**Found and fixed (three):** the unbounded sign-in email, now 254 per RFC
+5321; the route serving tenant-uploaded bytes, which sent no hardening
+headers and had no test at all (it now sends `nosniff` + a locking-down
+CSP and has three); and the app sending **no baseline security headers
+anywhere** — no HSTS, framing protection, or referrer policy — now four
+headers on every path, wired from a unit-tested pure module so a new route
+cannot forget them. Two hardening calls are recorded as deliberate rather
+than silent: no page CSP yet (a bare `default-src` breaks Next's inline
+bootstrap, so it needs a nonce pipeline — its own change), and uploads stay
+capability URLs.
+
+**Verified safe rather than assumed safe:** a forged `Host` header cannot
+steer the auth redirect — tested against a production server in two
+configurations and eight variants, including `X-Forwarded-Host` and
+`X-Forwarded-Proto`; the proxy's long-standing comment now has evidence
+behind it.
+
+**Dependencies (13 advisories, 9 high, 4 moderate, 0 critical):** none is
+reachable. Twelve are the `nodemailer` set, and that copy really is the one
+Auth.js sends with (one deduped `7.0.12`), so the assessment is per
+advisory against our usage: every parser-DoS trigger shape is rejected by
+`emailSchema` before the provider sees it and the accepted shapes scale
+linearly (measured), the file-read/SSRF and header-injection ones need
+attacker-controlled message options or transport the app never supplies,
+and the cross-tenant SMTP-cache one needs several transports where the
+platform has one. The upgrade is blocked by `@auth/core`'s peer range and
+recorded with a trigger: re-run `npm audit` at pilot onboarding and check
+that range. The rest are dev-only (`eslint-config-next` tooling,
+`drizzle-kit`'s dev server). `npm audit fix --force` must not be used — it
+proposes a `next-auth` major downgrade off the v5 beta.
+
+**Open and flagged, not buried:** there is no rate limiting on the
+magic-link endpoint, so an unauthenticated caller can make the platform
+send unlimited mail and write unlimited verification rows. It is the
+highest-impact item found and it needs an infrastructure decision (an edge
+rate-limit rule is the recommended fix; a durable-store limiter would mean
+a new dependency, which this project does not add unasked). It sits on the
+review's before-onboarding checklist rather than being quietly deferred.
+
+**Tests for "unauthorised access by changing resource IDs"**, which the
+roadmap asks to be tested rather than reviewed:
+`src/lib/resource-id-forgery-live.test.ts` pins no enumeration oracle (a
+foreign, absent, and malformed id are the same answer at every entry
+point), no partial write (the victim's row, counts and stored file are
+compared before and after every refused attempt, including that a refused
+upload leaves no orphan file), and that a claimed role is no substitute for
+a membership row. Mutation-checked: a permissive `ownsRow` fails three of
+four, and `NOT_FOUND` for a missing row fails exactly the no-oracle test —
+the property no earlier suite covered.
+
+**Verification:** 593 tests across 49 files with `TEST_DATABASE_URL` (547
+pass / 46 skip without one), `npm run check` green, `npm run build` green,
+and **15/15 E2E** — the whole journey suite, not one spec, because the
+headers land on every response. Headers and the redirect were additionally
+confirmed against a production server (200 HTML, the gate's 302, a 404, and
+a real stored upload).
+
+**Remaining in Phase 6:** 6.2 reliability and error handling, 6.3
+performance and accessibility, 6.4 end-to-end regression, 6.5 deployment
+and support documentation. The page CSP with nonces and the R2 storage move
+are recorded in the review as changes of their own.
 
 - Review authentication, role checks, tenant isolation, public data
   exposure, uploads, and domain verification.
