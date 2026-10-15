@@ -1119,6 +1119,15 @@ correct tenant and communicate domain setup status clearly.
 
 ## 5.1 Platform subdomains
 
+**Status:** In progress 2026-10-15 (`phase5`): format decided as
+`{slug}.{PLATFORM_BASE_DOMAIN}` and recorded in
+`docs/runbooks/platform-subdomains.md` (local `*.localhost` behavior,
+Vercel wildcard production steps, limitations); hostname helpers hardened
+(trim/case/FQDN trailing dot/IPv6/bracketed port, malformed-base refusal)
+with 8 new unit cases; live resolution + public-flow suites green against
+local Postgres (19/19). Blocked on operator input for the hosted step:
+real base domain, Vercel project, and DNS access (see runbook).
+
 **Can be done independently:** Yes, once host resolution and deployment
 constraints are documented.
 
