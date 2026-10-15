@@ -1,0 +1,2 @@
+ALTER TABLE "tenants" DROP CONSTRAINT "tenants_theme_allowed";--> statement-breakpoint
+ALTER TABLE "tenants" ADD CONSTRAINT "tenants_theme_allowed" CHECK ("tenants"."theme" in ('cafe', 'takeaway', 'bistro'));

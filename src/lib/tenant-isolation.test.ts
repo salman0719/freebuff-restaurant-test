@@ -4,7 +4,7 @@
  * Exercises the REAL `getTenantContext` + scoped loaders + mutation against
  * a database — the negative paths no mock can fully prove. Opt-in: runs
  * only when `TEST_DATABASE_URL` points at a disposable database (local
- * Docker: `TEST_DATABASE_URL="postgresql://app:secret@localhost:5432/restaurant_app"`);
+ * Docker: `TEST_DATABASE_URL="postgresql://app:secret@localhost:4432/restaurant_app"`);
  * otherwise the suite skips so CI (no database) stays green. The suite
  * seeds two tenants + users and removes them afterwards; nothing outside
  * the `iso_` slug namespace is touched.
@@ -482,5 +482,49 @@ live("cross-tenant isolation (live database)", () => {
     const saved = await updateTenantSettings(ctx.data, { theme: "takeaway" });
     expect(saved.ok).toBe(true);
     if (saved.ok) expect(saved.data.theme).toBe("takeaway");
+  });
+
+  it("saves theme options for the context tenant only, rejecting bad values", async () => {
+    const { getTenantContext, updateTenantThemeConfig, updateTenantSettings } = await libs();
+    const ctx = await getTenantContext({ user: { id: userA, role: "owner" } }, slugA);
+    expect(ctx.ok).toBe(true);
+    if (!ctx.ok) return expect.unreachable();
+
+    const saved = await updateTenantThemeConfig(ctx.data, "cafe", {
+      accent: "tomato",
+      menuLayout: "grid",
+      showHours: false,
+    });
+    expect(saved.ok).toBe(true);
+    if (saved.ok) {
+      expect(saved.data.themeConfig).toEqual({
+        accent: "tomato",
+        menuLayout: "grid",
+        showHours: false,
+      });
+    }
+
+    // A bad option is rejected outright — never written, never silently reset.
+    const bad = await updateTenantThemeConfig(ctx.data, "cafe", { accent: "neon" });
+    expect(bad.ok).toBe(false);
+    if (!bad.ok) expect(bad.error.code).toBe("VALIDATION_FAILED");
+
+    // The rejected write left the stored options intact. A context is a
+    // snapshot of the row when it was loaded, so reload to read the database.
+    const reloaded = await getTenantContext({ user: { id: userA, role: "owner" } }, slugA);
+    expect(reloaded.ok).toBe(true);
+    if (reloaded.ok) {
+      expect(reloaded.data.tenant.themeConfig.accent).toBe("tomato");
+    }
+
+    // A stranger cannot reach another tenant's context at all.
+    const stranger = await getTenantContext({ user: { id: userB, role: "owner" } }, slugA);
+    expect(stranger.ok).toBe(false);
+
+    // The Phase C migration widened the DB CHECK, so the new theme id is
+    // accepted by the database itself — not just by application validation.
+    const switched = await updateTenantSettings(ctx.data, { theme: "bistro" });
+    expect(switched.ok).toBe(true);
+    if (switched.ok) expect(switched.data.theme).toBe("bistro");
   });
 });

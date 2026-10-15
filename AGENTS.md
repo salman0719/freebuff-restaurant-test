@@ -7,9 +7,9 @@ post-MVP — see `ROADMAP.md` Phase 8.
 
 ## Commands (npm)
 
-- `npm run dev` — start dev server on :4000 (Turbopack)
+- `npm run dev` — start dev server on :4030 (Turbopack)
 - `npm run build` — production build (must pass before PRs)
-- `npm run start` — serve production build on :4000
+- `npm run start` — serve production build on :4030
 - `npm run lint` / `npm run lint:fix` — ESLint check / auto-fix
 - `npm run format` / `npm run format:check` — Prettier write / check
 - `npm run typecheck` — `tsc --noEmit` (strict)

@@ -7,8 +7,18 @@
  * import so client bundles can use these without pulling in `drizzle-orm`.
  */
 
-/** Public themes agreed for the MVP (product-scope sign-off). */
-export const THEME_IDS = ["cafe", "takeaway"] as const;
+/**
+ * Public themes the platform ships. Café and takeaway were the agreed MVP
+ * pair; `bistro` joined in Phase C once the theme system could express a
+ * genuinely different look; `diner` and `garden` are the appearance round
+ * (docs/decisions/0004). Adding one is a product decision, not a refactor:
+ * it widens the `tenants_theme_allowed` CHECK, so it ships with a
+ * migration, and every reader of `THEME_IDS` (validation, registry, tests)
+ * picks the new id up from here. `garden` used no migration — decision
+ * 0004 widened the CHECK for both ids in one step, so the database was
+ * already ahead of the app when the component landed.
+ */
+export const THEME_IDS = ["cafe", "takeaway", "bistro", "diner", "garden"] as const;
 export type ThemeId = (typeof THEME_IDS)[number];
 
 /**
@@ -18,6 +28,37 @@ export type ThemeId = (typeof THEME_IDS)[number];
  */
 export const MEMBERSHIP_ROLES = ["owner", "operator"] as const;
 export type MembershipRole = (typeof MEMBERSHIP_ROLES)[number];
+
+/**
+ * Operator actions the platform records (Phase 4.4).
+ *
+ * The vocabulary is closed on purpose: an audit trail is only worth reading
+ * if the set of things it can say is small, spelled the same way every time,
+ * and decided in one place. Adding a member here is a deliberate act — it
+ * widens the `audit_events_action_allowed` CHECK, so it ships with a
+ * migration, and `src/lib/audit.ts` must learn to describe it (an unknown
+ * action renders as its raw key rather than crashing, so a row written by a
+ * newer deploy still shows up).
+ */
+export const AUDIT_ACTIONS = ["tenant.created", "tenant.owner_granted", "staff.granted"] as const;
+export type AuditAction = (typeof AUDIT_ACTIONS)[number];
+
+/**
+ * Custom-domain verification states (Phase 5.2).
+ *
+ * `none` — no domain claimed. `pending` — a domain is recorded but its
+ * TXT record has not been seen yet, so the hostname resolver must NOT
+ * serve the tenant on it. `verified` — the TXT token was seen, so the
+ * domain is proven to belong to this claim. Verification proves
+ * ownership, not liveness: routing and HTTPS are Phase 5.3, which is why
+ * the onboarding checklist keeps reporting a domain as merely RECORDED.
+ *
+ * Closed vocabulary like the audit actions: the `tenants_custom_domain_status_allowed`
+ * CHECK in `./schema.ts` lists exactly these values, so a new state ships
+ * with a migration.
+ */
+export const DOMAIN_STATUSES = ["none", "pending", "verified"] as const;
+export type DomainStatus = (typeof DOMAIN_STATUSES)[number];
 
 /**
  * Tenant slug format: lowercase alphanumerics joined with single hyphens.

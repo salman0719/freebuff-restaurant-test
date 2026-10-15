@@ -34,7 +34,12 @@ export const slugSchema = z
     message: "Slug is reserved for platform use.",
   });
 
-/** Nullable custom domain (onboarding deferred; format reserved for later). */
+/**
+ * Custom-domain hostname (Phase 5.2). Written ONLY through the claim flow
+ * (`./domain-claim.ts`) so state and token move with it — never through a
+ * generic settings update, which would leave a domain the resolver must
+ * not honor yet (the schema CHECKs refuse that pairing outright).
+ */
 export const customDomainSchema = z
   .string()
   .trim()
@@ -48,8 +53,20 @@ export const themeSchema = z.enum(THEME_IDS);
 
 export const membershipRoleSchema = z.enum(MEMBERSHIP_ROLES);
 
-/** Owner sign-in identity (Phase 1.3 owns the actual auth flow). */
-export const emailSchema = z.string().trim().email("Must be a valid email address.");
+/**
+ * Owner sign-in identity (Phase 1.3 owns the actual auth flow).
+ *
+ * Bounded like every other input here (Phase 6.1): this value is echoed back
+ * into the login form, stored on `verification_tokens.identifier`, and handed
+ * to the mail provider's address parser, so an unbounded string is unbounded
+ * unauthenticated work and storage per request. 254 is the RFC 5321 maximum
+ * for a forward-path address, so no deliverable address is refused.
+ */
+export const emailSchema = z
+  .string()
+  .trim()
+  .max(254, "Email address is too long.")
+  .email("Must be a valid email address.");
 
 /** `HH:MM` 24-hour clock, matching the DB `time` columns. */
 export const timeStringSchema = z
@@ -73,11 +90,12 @@ export const createTenantSchema = z.object({
 /**
  * Tenant updates. No `slug` field on purpose — renames break URLs and
  * incoming links, so they need a dedicated redirect flow, not an edit.
+ * No `customDomain` either: domain claims move through `./domain-claim.ts`
+ * with their verification state (5.2).
  */
 export const updateTenantSchema = z.object({
   theme: themeSchema.optional(),
   published: z.boolean().optional(),
-  customDomain: customDomainSchema,
 });
 
 const profileFields = {
@@ -187,6 +205,27 @@ export const assignMembershipSchema = z.object({
 
 export const inviteOwnerSchema = z.object({ email: emailSchema });
 
+/**
+ * Operator grants owner access to one restaurant by email (Phase 4.2).
+ *
+ * One operation covers both cases an operator actually has — assigning
+ * someone who has signed in before, and inviting someone who has not —
+ * because the operator never holds an internal user id, so email is the only
+ * identifier they can type. `slug` addresses the tenant; `role` defaults to
+ * `owner`.
+ */
+export const assignOwnerSchema = inviteOwnerSchema.extend({
+  slug: slugSchema,
+  role: membershipRoleSchema.default("owner"),
+});
+
+/**
+ * Operator grants the platform staff role by email. No account is created:
+ * staff access is granted to someone who already exists, so a typo cannot
+ * invent a privileged account — it fails as "no such person" instead.
+ */
+export const grantStaffSchema = inviteOwnerSchema;
+
 export type CreateTenantInput = z.infer<typeof createTenantSchema>;
 export type UpdateTenantInput = z.infer<typeof updateTenantSchema>;
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
@@ -199,6 +238,8 @@ export type CreateItemInput = z.infer<typeof createItemSchema>;
 export type UpdateItemInput = z.infer<typeof updateItemSchema>;
 export type AssignMembershipInput = z.infer<typeof assignMembershipSchema>;
 export type InviteOwnerInput = z.infer<typeof inviteOwnerSchema>;
+export type AssignOwnerInput = z.infer<typeof assignOwnerSchema>;
+export type GrantStaffInput = z.infer<typeof grantStaffSchema>;
 
 /**
  * Map a Zod failure to field-keyed messages for `ServiceError.fields`

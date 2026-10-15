@@ -11,7 +11,8 @@
  *   claim — see 0003).
  * - Every tenant-owned row carries `tenant_id` with `ON DELETE CASCADE`,
  *   so deleting a tenant removes its content but nothing else.
- * - `created_at` / `updated_at` on every table.
+ * - `created_at` / `updated_at` on every table — except the append-only
+ *   `audit_events`, which carries only `created_at` (see its own note).
  * - Money uses integer `price_cents` (never float).
  * - Images store a provider-neutral R2 object key (see 0002 §5), never a
  *   provider URL.
@@ -39,8 +40,14 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 
-export { MEMBERSHIP_ROLES, SLUG_PATTERN, THEME_IDS } from "./constants";
-export type { MembershipRole, ThemeId } from "./constants";
+export {
+  AUDIT_ACTIONS,
+  DOMAIN_STATUSES,
+  MEMBERSHIP_ROLES,
+  SLUG_PATTERN,
+  THEME_IDS,
+} from "./constants";
+export type { AuditAction, DomainStatus, MembershipRole, ThemeId } from "./constants";
 
 function timestamps() {
   return {
@@ -63,7 +70,16 @@ export const tenants = pgTable(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     slug: text("slug").notNull(),
+    /**
+     * Claimed custom domain (Phase 5.2). On its own this is only a CLAIM:
+     * the hostname resolver honors a `custom_domain` row exclusively when
+     * `custom_domain_status = 'verified'`, so an unverified domain can
+     * never serve a tenant. `custom_domain_verify_token` is the TXT value
+     * the claimant publishes to prove the domain is theirs.
+     */
     customDomain: text("custom_domain"),
+    customDomainStatus: text("custom_domain_status").notNull().default("none"),
+    customDomainVerifyToken: text("custom_domain_verify_token"),
     published: boolean("published").notNull().default(false),
     theme: text("theme").notNull().default("cafe"),
     /**
@@ -78,11 +94,34 @@ export const tenants = pgTable(
   (t) => [
     unique("tenants_slug_unique").on(t.slug),
     unique("tenants_custom_domain_unique").on(t.customDomain),
+    check(
+      "tenants_custom_domain_status_allowed",
+      sql`${t.customDomainStatus} in ('none', 'pending', 'verified')`
+    ),
+    // A claim and its state move together: 'none' means no domain, and a
+    // domain (pending or verified) always carries a state.
+    check(
+      "tenants_custom_domain_claim_present",
+      sql`(${t.customDomainStatus} = 'none') = (${t.customDomain} is null)`
+    ),
+    // …and a live claim always has the TXT token that can verify it.
+    check(
+      "tenants_custom_domain_token_present",
+      sql`${t.customDomainStatus} = 'none' or ${t.customDomainVerifyToken} is not null`
+    ),
     // URL-safe slug: lowercase alphanumerics joined with single hyphens.
     // Reserved subdomains (www, api, app, admin) and duplicate detection
     // are enforced at creation time in the app layer (Phase 1.2/1.4).
     check("tenants_slug_format", sql`${t.slug} ~ '^[a-z0-9]+(-[a-z0-9]+)*$'`),
-    check("tenants_theme_allowed", sql`${t.theme} in ('cafe', 'takeaway')`),
+    // `diner` + `garden` widened together in ONE migration (0004: two new
+    // themes, one migration). The CHECK ran ahead of the app on purpose:
+    // `garden` entered THEME_IDS only when its component shipped, so the
+    // database accepted the id before the app did, and no second migration
+    // was needed. Keep this list a superset of THEME_IDS.
+    check(
+      "tenants_theme_allowed",
+      sql`${t.theme} in ('cafe', 'takeaway', 'bistro', 'diner', 'garden')`
+    ),
   ]
 );
 
@@ -300,12 +339,107 @@ export const verificationTokens = pgTable(
   (t) => [primaryKey({ columns: [t.identifier, t.token] })]
 );
 
+/**
+ * Operator audit trail (Phase 4.4). Append-only and deliberately unlike
+ * every other table here:
+ *
+ * - **No `updated_at`.** A record of what happened is not edited; the
+ *   missing column is the enforcement, since there is nothing to update it
+ *   with. Every other table in this file carries both timestamps.
+ * - **It survives what it describes.** `tenant_id` is `SET NULL` and
+ *   `actor_user_id` carries no FK at all, so deleting a restaurant or an
+ *   account cannot delete the fact that someone created it. Every
+ *   tenant-owned table above cascades instead, because for content the
+ *   cascade IS the correct behaviour.
+ * - **It snapshots names.** `tenant_slug` and `actor_email` are copied at
+ *   write time, so the trail still reads after a slug is retired or an
+ *   address changes. The email is read from the account row, never from a
+ *   request — a caller cannot sign a wrong name into the history.
+ * - **It stores no content.** `detail` holds the few facts an action
+ *   changed (a theme, a publishing flag, an invited address), never a
+ *   restaurant's menu, hours, or contact details. An operator needs to know
+ *   who did what, not to read the owner's drafts — the same line
+ *   `operator-tenants.ts` draws for its reads.
+ *
+ * `tenant_id` is nullable because a future platform-wide act (granting the
+ * staff role itself, say) has no restaurant as its subject.
+ */
+export const auditEvents = pgTable(
+  "audit_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    action: text("action").notNull(),
+    /** The staff account that acted. No FK: the trail outlives accounts. */
+    actorUserId: text("actor_user_id").notNull(),
+    /** Snapshot of the actor's address at the time of the act. */
+    actorEmail: text("actor_email"),
+    tenantId: uuid("tenant_id").references(() => tenants.id, { onDelete: "set null" }),
+    /** Snapshot of the restaurant's address at the time of the act. */
+    tenantSlug: text("tenant_slug"),
+    detail: jsonb("detail").notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    // The console reads one restaurant's history newest first.
+    index("audit_events_tenant_created_idx").on(t.tenantId, t.createdAt),
+    // …and the platform-wide feed reads them all, newest first. Without this
+    // that read sorts the whole table every time the console renders.
+    index("audit_events_created_idx").on(t.createdAt),
+    // "What has this staff account done" — an audit question, not a UI one.
+    index("audit_events_actor_idx").on(t.actorUserId),
+    check(
+      "audit_events_action_allowed",
+      sql`${t.action} in ('tenant.created', 'tenant.owner_granted', 'staff.granted')`
+    ),
+  ]
+);
+
+/**
+ * Sign-in rate limiting (Phase 6.1, finding F3). One fixed-window counter
+ * per `(scope, key)`, so the unauthenticated magic-link endpoint cannot be
+ * used to send unlimited mail or write unlimited verification rows.
+ *
+ * Why a table rather than memory, and why no new service: the platform runs
+ * on serverless functions, where a fresh isolate per invocation makes an
+ * in-process counter meaningless — every request would look like the first
+ * request. Postgres is already required for sign-in (the verification token
+ * row is written to it), so a durable counter needs no dependency, no
+ * second datastore, and no new moving part.
+ *
+ * `key_hash` is an HMAC of the address or source IP, never the value
+ * itself: this table must not become a harvestable record of who tried to
+ * sign in. `scope` keeps the two dimensions from colliding. Rows are
+ * disposable by design — the window's start is the only meaning they carry
+ * — and stale windows are pruned as new ones begin, so the table stays the
+ * size of "what is happening right now" rather than a history.
+ */
+export const signinRateLimits = pgTable(
+  "signin_rate_limits",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    scope: text("scope").notNull(),
+    keyHash: text("key_hash").notNull(),
+    windowStart: timestamp("window_start", { withTimezone: true }).notNull(),
+    count: integer("count").notNull().default(0),
+    ...timestamps(),
+  },
+  (t) => [
+    // The upsert target AND the read: exactly one counter per scope+key+window.
+    unique("signin_rate_limits_window_unique").on(t.scope, t.keyHash, t.windowStart),
+    // Pruning stale windows is a range scan over this column.
+    index("signin_rate_limits_window_start_idx").on(t.windowStart),
+    check("signin_rate_limits_scope_allowed", sql`${t.scope} in ('email', 'ip')`),
+    check("signin_rate_limits_count_non_negative", sql`${t.count} >= 0`),
+  ]
+);
+
 export const tenantsRelations = relations(tenants, ({ many, one }) => ({
   memberships: many(memberships),
   profile: one(restaurantProfiles),
   hours: many(openingHours),
   categories: many(menuCategories),
   items: many(menuItems),
+  auditEvents: many(auditEvents),
 }));
 
 export const membershipsRelations = relations(memberships, ({ one }) => ({
@@ -345,5 +479,12 @@ export const menuItemsRelations = relations(menuItems, ({ one }) => ({
   category: one(menuCategories, {
     fields: [menuItems.categoryId],
     references: [menuCategories.id],
+  }),
+}));
+
+export const auditEventsRelations = relations(auditEvents, ({ one }) => ({
+  tenant: one(tenants, {
+    fields: [auditEvents.tenantId],
+    references: [tenants.id],
   }),
 }));

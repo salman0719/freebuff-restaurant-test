@@ -31,6 +31,13 @@ export async function GET(
       "Content-Type": object.mimeType,
       "Content-Length": String(object.bytes.length),
       "Cache-Control": "public, max-age=31536000, immutable",
+      // Defence in depth for user-uploaded bytes served from our origin
+      // (6.1): the browser must take the declared type at face value and
+      // must never treat a stored file as a document. Bytes are magic-byte
+      // checked on upload; this is the layer that does not depend on that
+      // check being perfect.
+      "X-Content-Type-Options": "nosniff",
+      "Content-Security-Policy": "default-src 'none'; sandbox",
     },
   });
 }

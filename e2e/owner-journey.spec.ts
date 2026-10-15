@@ -10,10 +10,10 @@
  * unpublish cleanup.
  */
 import { expect, test } from "@playwright/test";
-import { E2E_EMAIL, E2E_NAME, E2E_SLUG, fetchSignInLink, purgeMailpit } from "./helpers";
+import { E2E_EMAIL, E2E_NAME, E2E_SLUG, fetchSignInLink, purgeMailpitFor } from "./helpers";
 
 const dashboard = `/dashboard/${E2E_SLUG}`;
-const publicSite = `http://${E2E_SLUG}.localhost:4000/`;
+const publicSite = `http://${E2E_SLUG}.localhost:4030/`;
 
 /** Server-action round-trips compile on first hit (dev) — allow room. */
 const ACTION_TIMEOUT = 30_000;
@@ -22,7 +22,7 @@ const ACTION_TIMEOUT = 30_000;
 test.setTimeout(240_000);
 
 test.beforeAll(async () => {
-  await purgeMailpit();
+  await purgeMailpitFor(E2E_EMAIL);
 });
 
 test("owner signs in, edits, and publishes the restaurant site", async ({ page }) => {
@@ -62,7 +62,9 @@ test("owner signs in, edits, and publishes the restaurant site", async ({ page }
   // The list is server-rendered and `useActionState` doesn't refresh it:
   // reload to see the new row (a real user would navigate the same way).
   await page.reload();
-  await expect(page.getByText("Mains")).toBeVisible();
+  // exact: the dashboard nav's "Domain" item concatenates into text that
+  // contains "…mains…", so a substring match is no longer unique.
+  await expect(page.getByText("Mains", { exact: true })).toBeVisible();
 
   await page.goto(`${dashboard}/menu/items`);
   await page.getByLabel(/item name/i).fill("E2E Burger");
@@ -103,7 +105,7 @@ test("owner signs in, edits, and publishes the restaurant site", async ({ page }
   await page.goto(publicSite);
   await expect(page.getByText(E2E_NAME).first()).toBeVisible();
   await expect(page.getByText("E2E Burger")).toBeVisible();
-  await expect(page.getByText("Mains")).toBeVisible();
+  await expect(page.getByText("Mains", { exact: true })).toBeVisible();
 
   // Cleanup: take the site back offline for the next run. The publish
   // controls render server-side, so reload for the fresh published state.

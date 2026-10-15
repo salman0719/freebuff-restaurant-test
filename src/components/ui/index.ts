@@ -38,7 +38,13 @@ export {
   type CardProps,
   type CardTitleProps,
 } from "./card";
+export { Badge, type BadgeProps, type BadgeTone } from "./badge";
+export { Divider, type DividerProps } from "./divider";
+export { Stat, type StatProps } from "./stat";
+export { PageHeader, type PageHeaderProps } from "./page-header";
+export { FormActions, type FormActionsProps } from "./form-actions";
 export { SiteNav, SiteNavLink, type SiteNavLinkProps, type SiteNavProps } from "./site-nav";
+export { ThemeToggle } from "./theme-toggle";
 export {
   EmptyState,
   ErrorState,

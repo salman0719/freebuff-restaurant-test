@@ -23,7 +23,7 @@ export function Spinner({ label = "Loading…", size = "md", className, ...rest 
         aria-hidden="true"
         viewBox="0 0 16 16"
         fill="none"
-        className={cn("animate-spin text-brand-600", spinnerSizes[size])}
+        className={cn("animate-spin text-brand-600 dark:text-brand-400", spinnerSizes[size])}
       >
         <circle cx="8" cy="8" r="7" stroke="currentColor" strokeOpacity="0.25" strokeWidth="2" />
         <path d="M15 8a7 7 0 0 0-7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
@@ -40,7 +40,7 @@ export function Skeleton({ className, ...rest }: SkeletonProps) {
   return (
     <div
       aria-hidden="true"
-      className={cn("animate-pulse rounded-md bg-zinc-200 dark:bg-zinc-800", className)}
+      className={cn("animate-pulse rounded-md bg-surface-muted", className)}
       {...rest}
     />
   );
@@ -51,22 +51,37 @@ export interface EmptyStateProps extends Omit<HTMLAttributes<HTMLDivElement>, "t
   description?: ReactNode;
   /** Slot: follow-up action (e.g. a Button). */
   action?: ReactNode;
+  /** Optional icon shown in a tinted tile above the title. */
+  icon?: ReactNode;
 }
 
 /** Dashed placeholder for lists with zero results. */
-export function EmptyState({ title, description, action, className, ...rest }: EmptyStateProps) {
+export function EmptyState({
+  title,
+  description,
+  action,
+  icon,
+  className,
+  ...rest
+}: EmptyStateProps) {
   return (
     <div
       className={cn(
-        "flex flex-col items-center gap-2 rounded-xl border border-dashed border-zinc-300 px-6 py-12 text-center dark:border-zinc-700",
+        "flex flex-col items-center gap-2 rounded-xl border border-dashed border-border bg-surface/50 px-6 py-12 text-center",
         className
       )}
       {...rest}
     >
-      <p className="text-base font-semibold text-zinc-900 dark:text-zinc-50">{title}</p>
-      {description ? (
-        <p className="max-w-sm text-sm text-zinc-500 dark:text-zinc-400">{description}</p>
+      {icon ? (
+        <span
+          aria-hidden="true"
+          className="mb-1 flex size-12 items-center justify-center rounded-2xl bg-brand-50 text-brand-700 dark:bg-brand-950/60 dark:text-brand-300"
+        >
+          {icon}
+        </span>
       ) : null}
+      <p className="font-display text-lg font-semibold text-foreground">{title}</p>
+      {description ? <p className="max-w-sm text-sm text-muted-foreground">{description}</p> : null}
       {action ? <div className="mt-2">{action}</div> : null}
     </div>
   );
@@ -91,7 +106,7 @@ export function ErrorState({
     <div
       role="alert"
       className={cn(
-        "flex flex-col items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-5 py-4 dark:border-red-900 dark:bg-red-950/40",
+        "flex flex-col items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-5 py-4 dark:border-red-900/60 dark:bg-red-950/40",
         className
       )}
       {...rest}

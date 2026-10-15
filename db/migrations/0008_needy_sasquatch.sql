@@ -1,0 +1,2 @@
+ALTER TABLE "audit_events" DROP CONSTRAINT "audit_events_action_allowed";--> statement-breakpoint
+ALTER TABLE "audit_events" ADD CONSTRAINT "audit_events_action_allowed" CHECK ("audit_events"."action" in ('tenant.created', 'tenant.owner_granted', 'staff.granted'));

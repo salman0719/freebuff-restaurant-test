@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
 afterEach(cleanup);
@@ -37,14 +37,32 @@ function restaurant(overrides: Partial<PublicRestaurant> = {}): PublicRestaurant
   };
 }
 
-describe.each([["cafe"], ["takeaway"]] as const)("theme %s", (id) => {
+/** One accent per theme, with the class that proves it reached the page. */
+const ACCENT_CASE = {
+  cafe: { accent: "tomato", marker: "bg-red-50/70" },
+  takeaway: { accent: "gold", marker: "bg-yellow-800" },
+  bistro: { accent: "sage", marker: "bg-lime-50/60" },
+  diner: { accent: "butter", marker: "bg-butter-50/70" },
+  garden: { accent: "brook", marker: "bg-teal-50/70" },
+} as const;
+
+/** Themes with a tel: call CTA strip — takeaway's hero, diner's band. */
+const CALL_CTA_THEMES = ["takeaway", "diner"] as const;
+
+/** Every shipped theme; kept as a one-liner so adding one stays a diff of one. */
+const THEME_CASES = ["cafe", "takeaway", "bistro", "diner", "garden"] as const;
+
+describe.each(THEME_CASES)("theme %s", (id) => {
   it("renders the same public content model", () => {
     const Component = getTheme(id);
     render(<Component restaurant={restaurant()} config={resolveThemeConfig(id, {})} />);
     expect(screen.getByRole("heading", { name: "Marios" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Pizza" })).toBeInTheDocument();
-    expect(screen.getByText(/Margherita/)).toBeInTheDocument();
-    expect(screen.getByText(/12\.99/)).toBeInTheDocument();
+    // Scoped to the menu landmark: garden repeats a featured item in its
+    // market module by design, and this asserts the menu itself renders it.
+    const menu = within(screen.getByRole("region", { name: "Menu" }));
+    expect(menu.getByText(/Margherita/)).toBeInTheDocument();
+    expect(menu.getByText(/12\.99/)).toBeInTheDocument();
     expect(screen.getByText(/Monday/)).toBeInTheDocument();
     // At least one rendering of the phone number — takeaway repeats it in
     // the call CTA and the contact block, which is intentional, not a bug.
@@ -52,14 +70,14 @@ describe.each([["cafe"], ["takeaway"]] as const)("theme %s", (id) => {
   });
 
   it("offers a call CTA when a phone number exists", () => {
-    if (id !== "takeaway") return;
+    if (!(CALL_CTA_THEMES as readonly string[]).includes(id)) return;
     const Component = getTheme(id);
     render(<Component restaurant={restaurant()} config={resolveThemeConfig(id, {})} />);
     expect(screen.getByRole("link", { name: /call 0123/i })).toHaveAttribute("href", "tel:0123");
   });
 
   it("omits the call CTA without a phone number", () => {
-    if (id !== "takeaway") return;
+    if (!(CALL_CTA_THEMES as readonly string[]).includes(id)) return;
     const Component = getTheme(id);
     const withoutPhone = restaurant();
     withoutPhone.contact.phone = null;
@@ -118,5 +136,21 @@ describe.each([["cafe"], ["takeaway"]] as const)("theme %s", (id) => {
     );
     expect(screen.getByText(/menu is coming soon/i)).toBeInTheDocument();
     expect(screen.getByText(/hours coming soon/i)).toBeInTheDocument();
+  });
+  it("applies the configured accent palette, not just the defaults", () => {
+    const Component = getTheme(id);
+    const { accent, marker } = ACCENT_CASE[id];
+    const config = resolveThemeConfig(id, { accent });
+    const { container } = render(<Component restaurant={restaurant()} config={config} />);
+    // Café, bistro, and diner tint their page surface; takeaway paints its
+    // hero band.
+    expect(container.innerHTML).toContain(marker);
+  });
+
+  it("honours the menu layout option", () => {
+    const Component = getTheme(id);
+    const config = resolveThemeConfig(id, { menuLayout: "grid" });
+    const { container } = render(<Component restaurant={restaurant()} config={config} />);
+    expect(container.innerHTML).toContain("sm:grid-cols-2");
   });
 });

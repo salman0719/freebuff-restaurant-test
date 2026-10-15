@@ -5,19 +5,37 @@
  * week to the form as initial values. Days with no row yet render as
  * closed — matching the public `HoursList`, which renders exactly the
  * stored rows and shows "Closed" for closed days.
+ *
+ * The sync default export exists so the page's own read — `params`, then the
+ * session, then the week — starts inside a `<Suspense>` boundary: without it
+ * Next reports "encountered uncached data" and the client navigation blocks
+ * on the data instead of painting the skeleton (Phase 4.5 sweep).
  */
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
+import { connection } from "next/server";
 import { auth } from "@/auth";
 import { Heading, Text } from "@/components/ui/typography";
 import { getTenantContext } from "@/lib/tenant-context";
 import { getTenantHours } from "@/lib/tenant-data";
+import { PageSkeleton } from "../../_components/page-skeleton";
 import { HoursForm } from "./_components/hours-form";
 
-export default async function HoursPage({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}): Promise<React.ReactElement> {
+type Props = { params: Promise<{ slug: string }> };
+
+export default function HoursPage({ params }: Props): React.ReactElement {
+  return (
+    <Suspense fallback={<PageSkeleton label="Loading opening hours…" />}>
+      <HoursEditor params={params} />
+    </Suspense>
+  );
+}
+
+async function HoursEditor({ params }: Props): Promise<React.ReactElement> {
+  // Request-time before anything else: Auth.js reads random bytes while it
+  // builds its CSRF token, and `cacheComponents` treats that as IO — a
+  // prerender pass that reaches `auth()` reports the crypto insight otherwise.
+  await connection();
   const { slug } = await params;
   const context = await getTenantContext(await auth(), slug);
   if (!context.ok) {

@@ -1,14 +1,18 @@
 import type { HTMLAttributes } from "react";
 import { cn } from "./cn";
 
-export type CardProps = HTMLAttributes<HTMLDivElement>;
+export interface CardProps extends HTMLAttributes<HTMLDivElement> {
+  /** Adds a subtle hover lift for cards that act as links. */
+  interactive?: boolean;
+}
 
 /** Surface container for grouped content. */
-export function Card({ className, children, ...rest }: CardProps) {
+export function Card({ interactive = false, className, children, ...rest }: CardProps) {
   return (
     <div
       className={cn(
-        "rounded-xl border border-zinc-200 bg-white p-5 shadow-sm sm:p-6 dark:border-zinc-800 dark:bg-zinc-900",
+        "rounded-xl border border-border bg-surface p-5 shadow-sm sm:p-6",
+        interactive && "transition-shadow duration-200 hover:shadow-md",
         className
       )}
       {...rest}
@@ -23,10 +27,7 @@ export type CardTitleProps = HTMLAttributes<HTMLHeadingElement>;
 /** Card heading (h3). */
 export function CardTitle({ className, children, ...rest }: CardTitleProps) {
   return (
-    <h3
-      className={cn("text-base font-semibold text-zinc-900 dark:text-zinc-50", className)}
-      {...rest}
-    >
+    <h3 className={cn("text-base font-semibold text-foreground", className)} {...rest}>
       {children}
     </h3>
   );

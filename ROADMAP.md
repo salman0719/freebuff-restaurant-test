@@ -352,6 +352,13 @@ interface is stable.
 
 ## 2.5 Theme C: optional additional style
 
+**Status:** Done. The optional third style shipped as `bistro` (split
+hero, card menu, deeper accent palettes) in Phase C. The later
+appearance round added two more fully distinct looks — `diner` and
+`garden` — plus migration-free refreshes of `café` and `takeaway`; see
+"Appearance round" below and `docs/decisions/0004-theme-directions.md`.
+Five themes ship.
+
 **Can be done independently:** Yes, in parallel with other theme work if
 time and quality permit.
 
@@ -716,6 +723,66 @@ schemas.
 
 ---
 
+# Appearance round (detour between Phase 3 and Phase 4) — Done
+
+**Status:** Done 2026-10-14, on `appearance-enhancement-exploration`
+(commits `974f259`…`786e93f`). Directions and the reasoning behind them:
+`docs/decisions/0004-theme-directions.md`. How to change appearance safely:
+`docs/design-system.md`.
+
+**Why:** Phase 3 closed with a working dashboard over three themes that
+shared one warm cast, display face, and section rhythm; the roadmap allows
+a bounded visual detour while the theme pipeline is still cheap to change.
+Directions were researched and owner-approved before building (0004).
+
+**What shipped**
+
+- **Diner Revival (`diner`)** — retro comfort food: cherry/butter/cola
+  ramps authored in OKLCH, the platform's first light hero band under dark
+  text, a Caprasimo display face, an awning crown, a framed menu board, and
+  a call-to-order strip.
+- **Market Garden (`garden`)** — the first cool-palette family (green/teal
+  on slate), an asymmetric hero, a two-column menu/visit split, and a
+  `From the market this week` module derived from the tenant's own menu.
+  Shipped with **no migration**: 0004 had already widened the theme CHECK
+  for both new ids in one step (migration 0005), so the database was ahead
+  of the app by design.
+- **Migration-free refreshes** — café is Modern Trattoria (warm
+  espresso/terracotta/tomato inks, a hero that hands straight to the menu)
+  and takeaway is Night Market (near-black bands, one call to action, hours
+  folded into a single visit block, answering the round's research notes on
+  competing CTAs and scanability).
+- **Hardening the round exposed** — the accent-contrast guard became a
+  committed unit test (`src/themes/contrast.test.ts`), which immediately
+  caught a real shipped failure in the `gold` accent (band/button
+  2.7–2.9:1, rule 1.8:1); the dashboard accent swatches were missing six
+  palettes; and the theme visibility toggle silently saved nothing for
+  every non-café theme.
+- **Demos** — `db/seed.ts` publishes `rosies-diner` and `the-greenhouse`
+  (plus one deliberately long menu item) so every look is inspectable in a
+  real browser, and is ready for Phase 7 demos.
+
+**Verification:** `npm run check`, 311 unit tests including the live
+database suites, `npm run build`, and the owner-journey E2E, all green. The
+round's visual pass drove all seeded looks through real Chromium at 390 px
+and 1440 px, light and dark, asserting rendered overflow, clipped text,
+broken images, tap targets, heading structure, empty states, and computed
+contrast: 20/20 combinations clean. That replaced the computed-style
+sign-off the earlier diner round had to settle for.
+
+**Scope note:** the MVP scope agreed two themes (0.2). Five now ship — a
+product decision recorded in 0004, not scope drift; journeys, the data
+model, and the acceptance criteria in `docs/product-scope.md` are
+unchanged.
+
+**Deferred:** Counter Culture (brutalist/grotesk) stays unbuilt until the
+add-a-theme pipeline has run more than once; per-tenant typography presets
+would be a config-schema change on the existing `--display-font`
+mechanism and are not scheduled. Bistro has no public demo tenant — it is
+reachable through the dashboard theme picker and preview.
+
+---
+
 # Phase 4: Platform operator and onboarding
 
 **Goal:** Let the platform operator configure and support customer
@@ -725,6 +792,73 @@ tenants without direct database editing.
 choose a theme, and inspect its setup status.
 
 ## 4.1 Operator access and role protection
+
+**Status:** Done 2026-10-14. One gate owns operator access
+(`src/lib/operator-access.ts`): a pure decision (`operatorGate`) plus
+`requireOperatorPage` for pages. `/operator` routes through it — anonymous
+visitors go to `/login?next=/operator`, and a signed-in owner sees the same
+not-found page as an unknown route, so the console's existence is never
+confirmed to them.
+
+The role authority is `users.role` as loaded from the database by the
+Auth.js adapter; nothing request-supplied is consulted. Three guards keep
+it that way: a structural test requires every `page`/`layout`/`route`/
+`actions` file under `src/app/operator` (at any depth) to call the gate; a
+tripwire fails if any module under `src/` assigns `users.role` (the 4.2
+provisioning module goes on an allowlist there rather than removing the
+guard); and the gate must stay off client bundles.
+
+**Verification:** 18 unit tests across `operator-access.test.ts` and the
+near-miss role cases in `permissions.test.ts`; new `e2e/operator-access.spec.ts`
+proves the deployed behaviour — anonymous redirect, owner 404, promotion
+attempts via query string leaving the stored role `owner`, forged staff
+headers refused, and platform staff reaching the console (previously
+untested: no operator user had ever existed in the suite). E2E sessions are
+seeded straight into the database so the spec cannot race the owner
+journey's Mailpit purge, and the staff fixture is a `users.role` row — the
+same act 4.2's provisioning will perform.
+
+**Found and fixed while testing this:** `proxy.ts` — the edge first-pass
+gate from Phase 1.3 — had never run. Next only loads the file at the app
+directory's own level (`src/proxy.ts` for a `src/app` project), so the
+repository-root copy was inert; the move is proven by the redirect it now
+produces and by the owner journey still signing in and navigating (signed-in
+users are not blocked). The failure was quiet by construction: the
+page-level check still guarded every route, so an anonymous hit was merely
+_streamed_ a redirect inside a 200 shell rather than bounced with a real 302
+before rendering — which is why the missing 302, not a broken page, was the
+only evidence. Verified by contrast: with the matcher neutered, the same
+URLs answer 200. The fix was then re-checked against a real production
+server (`next start`), since dev-server behaviour and a build that merely
+lists `ƒ Proxy (Middleware)` prove neither that a request is bounced. That
+run also confirmed the redirect cannot be steered by a forged `Host`
+header: the target follows the configured auth origin, so the gate is not
+an open redirect.
+
+**Regression guard for that failure:** `npm run smoke` (`scripts/smoke.ts`,
+rules in the pure `src/lib/route-smoke.ts`) points at any origin and asserts
+what the platform promises — every private path bounces with the edge gate's
+own 302 to `/login?next=<path>`, every public path stays open with a 200. The
+status code is the assertion, not the body: a protected path answering 200
+(streamed redirect inside a shell) or 307 (a page-level `redirect()`
+covering for the gate) is a failure, so the exact way the gate went missing
+cannot pass again. Tested three ways against a production server: it passes
+as shipped; with the matcher emptied, four protected routes answer 200 — the
+exact original signature — and it exits 1; and with `/login` added to the
+matcher, the two public routes are flagged as an over-broad gate while the
+protected half still passes, so the two failure modes are distinguishable.
+It works against a deployed origin, where a build listing `ƒ Proxy
+(Middleware)` proved nothing either way on its own. CI runs it as a release
+gate on every push: the production build is started on 4031 (the E2E owns
+4030 and, with `reuseExistingServer` off in CI, refuses to start beside an
+existing server), `--wait` covers the boot instead of a fixed sleep, and a
+non-zero exit fails the job — so the gate going silently inert now breaks the
+build rather than reaching a deploy.
+
+**Note for 4.2:** operator _actions_ still have no consumer. When one
+lands it needs the structured variant (`requireOperator` → an error state
+to return), not the navigating one: an action must fail closed with a
+result rather than redirect.
 
 **Can be done independently:** Yes, after the role model is stable.
 
@@ -736,6 +870,43 @@ choose a theme, and inspect its setup status.
 **Deliverable:** Secure operator access.
 
 ## 4.2 Restaurant creation and configuration
+
+**Status:** Done 2026-10-14. An operator creates a restaurant from
+`/operator/tenants/new` — address, display name, default theme, and whether
+it starts published — then follows the link to its page and grants the
+person who will run it access by email. The privileged work lives in
+`src/lib/tenant-provisioning.ts`, and the server actions in
+`src/app/operator/actions.ts` only resolve the caller and map the result,
+which is what 4.1's note asked for: they call the structured
+`requireOperator` and fail closed with a result, because an action cannot
+`redirect()` — it would either throw or answer with a 200 the browser
+ignores.
+
+Two silences are deliberate and load-bearing. Creating a tenant does NOT
+make the operator a member of it, so the onboarding check "owner access
+configured" still means something the moment a restaurant exists. And
+provisioning never writes an elevated role: an invited owner's account is
+created on the platform DEFAULT, the same row a first magic-link sign-in
+produces, so the invite path cannot promote anyone to platform staff. The
+tripwire in `operator-access.test.ts` keeps it that way — that one module
+is named as the only code allowed to write `users.role`.
+
+The tenant and its profile are written in one transaction. Two sequential
+inserts would leave a nameless tenant behind when the second failed, and
+that half-created row is quiet: it reports as "profile not started" rather
+than as the failure it is. Invalid and duplicate identifiers are refused
+before anything is written — the address is validated as a slug, and a
+duplicate is recognised through Drizzle's error wrapper instead of by
+matching a driver's message.
+
+**Verification:** 26 unit tests in `tenant-provisioning.test.ts` (the
+transaction, the duplicate, and the never-writes-a-role cases among them);
+`e2e/operator-provisioning.spec.ts` drives the real form and every refusal
+— invalid address, duplicate address, a second grant, and an ordinary owner
+who must learn nothing about the console or the restaurant — then signs the
+invited owner in to prove the membership really opens a dashboard rather
+than merely existing as a row. `npm run smoke` claims both new private
+paths and verifies each bounces with the edge gate's own 302 (9 routes).
 
 **Can be done independently:** Yes, after tenant schema and auth
 contracts are stable.
@@ -750,6 +921,66 @@ contracts are stable.
 
 ## 4.3 Onboarding checklist and status
 
+**Status:** Done 2026-10-14. The rules are pure and live in
+`src/lib/onboarding.ts`; `/operator` lists every restaurant newest first
+with the gaps that actually block a usable site, and each restaurant's page
+carries the full seven-step checklist — profile, menu, hours, theme, owner,
+domain, published.
+
+Three things the steps deliberately do not do. They do not re-invent the
+owner's rules: profile, menu, and hours ask through `lib/readiness.ts`, the
+same predicates the owner's publishing checklist uses, so the two surfaces
+cannot contradict each other. They do not treat a custom domain as a
+blocker — the platform address works and custom domains are Phase 5 — so it
+is marked optional and reported as RECORDED, never as live, because 5.3 is
+explicit that a domain must not be called live before routing and TLS do.
+And they do not pretend to know which theme was CHOSEN: `tenants.theme` is
+NOT NULL with a platform default and 4.2 writes an explicit value at
+creation, so nothing records whether a decision was made and the step
+reports which theme instead of gating on it.
+
+`required` is stated once and read by both views: the console's counts and
+each restaurant's checklist come from the same function, so a gap can never
+be a blocker on one page and merely unset on the other.
+
+**Verification:** 20 unit tests pin the rules — including exactly what a
+just-provisioned restaurant looks like (2 of 7 set, blocked on menu, hours,
+owner, and publishing) — and 21 pin the read's authorisation and mapping.
+`e2e/operator-provisioning.spec.ts` reads both views through the browser,
+including that granting an owner turns "No owner assigned" into "1 person",
+so the status view is a live reading rather than a static description.
+Whole suite green: 426 unit tests, 13 E2E tests.
+
+**Found and fixed while testing this:** every operator click from the console
+into a restaurant logged a Next 16 insight —
+`/operator/tenants/[slug]: Next.js encountered uncached data during
+prerendering or a navigation` — naming the session read. Nothing in the suite
+or in a hard load showed it, because it fires on the client navigation an
+operator actually performs: it took a browser, a fresh dev server and the
+click to see. The cause was this round's own page reading its address at the
+top. The App Shell shared by every link into `/operator/tenants/*` cannot
+carry a value that belongs to one link, so the route stopped painting and
+blocked on the server instead. The body now sits behind its own `<Suspense>`
+boundary with a fallback shaped like the page it stands in for — the fix the
+insight itself recommends, and what the sibling operator routes already get
+from `loading.tsx`. Verified by contrast on a fresh server, same click path
+both times: the stock page logs the insight twice per click-through, this one
+logs none, and the checklist, badges and owner card still render.
+
+**Found while testing this, left open:** every authenticated partially-prerendered
+route answers with a Next 16 warning — `crypto.getRandomValues()` while
+prerendering — and it names `/dashboard` as well as the operator paths, so
+it predates this round and is not caused by it. What happens is the safe
+fallback (the route renders at request time), but a platform-wide warning
+deserves its own pass rather than becoming a permanent fixture in every
+run's output.
+
+**Note for 4.4:** nothing records that an operator created a restaurant or
+invited its owner — the provisioning path writes no audit row, and 4.4's
+"record important operator actions" is where that belongs. The reads
+already hand back setup facts rather than tenant content, which 4.4 can
+widen deliberately or keep as it is.
+
 **Can be done independently:** Yes, after the required setup states are
 agreed.
 
@@ -760,6 +991,111 @@ configured. - Domain configured. - Website published.
 **Deliverable:** Basic operator onboarding view.
 
 ## 4.4 Operator integration and auditability
+
+**Status:** Done 2026-10-15. Every operator act that changes something now
+writes a row to `audit_events`, in the SAME transaction as the change, and
+each restaurant's page shows its own trail: who created it and who was
+granted access, with the acting account's address and the time. The
+vocabulary is closed ("tenant.created", "tenant.owner_granted") and lives in
+`db/constants.ts` with a CHECK behind it, so a new recorded action is a
+deliberate migration rather than something a caller can invent.
+
+Four things make it a trail rather than a log, and each is a place this
+could quietly have gone wrong. It is written inside the act's own
+transaction — the tenant, its profile, and the record of its creation commit
+together, so a restaurant cannot exist unrecorded. It records only what
+SUCCEEDED: a refused grant, a duplicate address, and a rejected form write
+nothing, because nothing changed. The actor's address is snapshotted from
+the account row, never from the request, so a tampered session claim cannot
+sign a wrong name into the history. And the detail payload is factual and
+small — a theme id, a publishing flag, an invited address — never the
+restaurant's name, menu, hours, or contact details: knowing who did what is
+the brief, and not copying tenant content into a second table is the same
+line 4.3's reads draw.
+
+It also survives what it describes, which is where it deliberately
+diverges from every other table here: `tenant_id` is `SET NULL` and the
+actor carries no foreign key, so deleting a restaurant or closing an
+account cannot delete the fact that someone created it. The snapshots
+(`tenant_slug`, `actor_email`) are what keep those rows readable afterwards,
+and the console's platform-wide feed is the one surface that can show a
+record whose restaurant is gone — a deleted restaurant has no page left for
+its history to appear on. That read joins the tenant with a LEFT join and
+falls back to the recorded address, so the row is reported rather than
+silently dropped.
+
+On 4.4's other three bullets: the writes go through the one provisioning
+module that already owns cross-tenant authority, and the reads through the
+staff-gated modules 4.2/4.3 built, so nothing new was granted a way to
+reach tenant data; the trail reads re-check the staff role themselves,
+exactly like `operator-tenants.ts`, because none of them is scoped by a
+`TenantContext`; and the E2E proves an ordinary owner reaches neither the
+page nor the trail. "Avoid exposing private tenant data unnecessarily" is
+satisfied by the trail holding acts and not content.
+
+The console also carries a platform-wide feed: what staff have been doing,
+newest first, each line naming the restaurant it was about and linking to it.
+It is the second thing on the page on purpose — the console's job is what
+still needs doing, and the feed is the record of what was done. It reads
+across every restaurant in one query, which is what the shipped
+`audit_events_created_idx` serves: without it the feed sorts the whole table
+on every render. It shows the newest handful and is deliberately not
+paginated; an operator who needs more reads that restaurant's own history,
+and scrolling further back would be a keyset read (`created_at < cursor`)
+rather than a bigger limit.
+
+**Verification:** 17 unit tests pin the descriptions, the time format and
+the read gate (an owner, a near-miss role and no identity at all get
+FORBIDDEN without a read); 10 more pin when provisioning records and what it
+hands down, including that a creation's record never contains the
+restaurant's name. In `db-schema.test.ts`, the schema's own metadata is
+checked as well as the committed SQL: the table is append-only (`created_at`,
+no `updated_at`), its tenant reference is `SET NULL` rather than a cascade,
+no foreign key ties it to the actor, and the vocabulary the app ships is the
+vocabulary the CHECK allows. A live suite (`audit-live.test.ts`, opt-in on
+`TEST_DATABASE_URL` like the other live suites) runs the REAL store against a
+database and proves the four claims that matter: the creation is recorded and
+linked to the tenant that now exists, the staff-gated read returns it, the
+grant is recorded while the refused second grant is not, and both a deleted
+restaurant and a deleted operator account leave the rows standing —
+`tenant_id` null, the slug and the actor's address intact.
+`e2e/operator-provisioning.spec.ts` reads the trail through the browser after
+creating a restaurant and granting access (asserted inside the trail's own
+region, because the operator's address appears elsewhere on the page), checks
+the refusal left exactly one grant, and reads the console's feed for the
+creation itself. The feed's own coverage: 10 unit tests pin its gate (the
+same refusals, without a read) and how an entry's restaurant is named, and
+the live suite proves it still shows a record whose restaurant has since been
+deleted — by its address, rather than not at all. Whole suite green: 473 unit
+tests without a database, 499 with one including the 26 opt-in live tests,
+and 13 E2E tests; the route smoke check passes against a production server
+on all 9 routes.
+
+**Found while doing this:** the E2E's own cleanup was leaving one orphan
+`tenant_id IS NULL` row per run, because the trail deliberately does not
+cascade from `tenants` — the helper now deletes a spec's audit rows by their
+slug snapshot before deleting the tenant, which is the only handle left
+afterwards.
+
+**Found while verifying the feed:** the console's "New restaurant" link was
+a blocking route — navigating to it client-side logged Next's "encountered
+uncached data" insight, exactly as `/operator/tenants/[slug]` did before
+this round fixed that one. It hid from the suite and from hard loads for the
+same reason as before: it fires only on the client navigation an operator
+actually performs. `/operator/tenants/new` now keeps its header and its way
+back in the App Shell and puts the session-gated form behind the same kind
+of boundary, so both operator destinations an operator clicks into paint
+immediately. The `dashboard` routes log the same insight and were NOT
+touched: that is a platform-wide sweep of its own, the pass the crypto
+warning above also needs.
+
+**Note for later:** nothing records an operator READING a restaurant — only
+what they changed — so the trail cannot answer "who looked at this", which
+is the question that matters if staff access to owner content ever widens
+beyond the setup facts it has today. One gap the same table can still absorb
+without changing shape: platform-scoped acts such as granting the staff role
+itself, which is why `tenant_id` is nullable and the vocabulary is a closed
+set rather than a free string.
 
 **Can be done independently:** Partially.
 
@@ -783,6 +1119,15 @@ correct tenant and communicate domain setup status clearly.
 
 ## 5.1 Platform subdomains
 
+**Status:** In progress 2026-10-15 (`phase5`): format decided as
+`{slug}.{PLATFORM_BASE_DOMAIN}` and recorded in
+`docs/runbooks/platform-subdomains.md` (local `*.localhost` behavior,
+Vercel wildcard production steps, limitations); hostname helpers hardened
+(trim/case/FQDN trailing dot/IPv6/bracketed port, malformed-base refusal)
+with 8 new unit cases; live resolution + public-flow suites green against
+local Postgres (19/19). Blocked on operator input for the hosted step:
+real base domain, Vercel project, and DNS access (see runbook).
+
 **Can be done independently:** Yes, once host resolution and deployment
 constraints are documented.
 
@@ -796,6 +1141,37 @@ constraints are documented.
 environment.
 
 ## 5.2 Custom-domain records and verification
+
+**Status:** Done 2026-10-15 (`phase5`). Owner-submitted claims with
+dns-token verification: `tenants.custom_domain_status`
+('none'/'pending'/'verified') + `custom_domain_verify_token`
+(migration 0009, CHECKs keep claim/state/token together);
+`src/lib/domain-claim.ts` owns every write (submit keeps the token on
+re-submit, unique index refuses another tenant's domain as a
+field-keyed CONFLICT, check flips to verified only on an exact
+`_restaurant-platform.<domain>` TXT match with an injectable DNS seam,
+remove clears all three). The resolver now honors custom domains ONLY
+when verified — the 5.2 "no unverified attach" requirement is enforced
+at the lookup, not by convention — and `updateTenantSettings` can no
+longer write a domain without its state. Owner UI at
+`/dashboard/[slug]/domain` (record → TXT instructions → check → switch
+/ remove behind confirm), phrased so "verified" never reads as "live"
+(routing/HTTPS stay 5.3, same line as 4.3's RECORDED). Operator
+console badge keeps showing the recorded domain unchanged.
+Verification: 13 new pure unit tests + 10-test live suite
+(conflict, pending-does-not-resolved, verified flip unlocks the
+hostname, DNS-failure honesty, scoping, idempotent removal) and a
+2-test browser journey (`e2e/domain-claim.spec.ts`, disposable
+fixture); whole suite green — 516+ unit, 15 E2E, build.
+Found while testing: the owner journey's loose `getByText("Mains")`
+matched the new nav's "Domain" item ("…doMAINS…" substring) —
+fixed with exact matching. Also fixed before shipping: status
+messages rendered inside a claim phase unmounted with it (removal
+reported nothing), so results now render where they stay true.
+Runbook: `docs/runbooks/custom-domains.md`; 0003 carries the dated
+resolution update. Remaining before "live custom domains": Phase 5.3
+routing + TLS, which still needs a real base domain and DNS access
+from the owner (Vercel token is in place, project-scoped).
 
 **Can be done independently:** Yes, after the domain data model and host
 resolver interface are stable.
@@ -812,6 +1188,29 @@ resolver interface are stable.
 
 ## 5.3 SSL and production routing
 
+**Status:** Done 2026-10-15 (`phase5`) for everything the API exposes;
+the hosted wildcard verification (5.1's live half) still awaits the
+base-domain decision. Vercel provisions and renews certificates
+automatically via DNS-01 once a domain is attached and its DNS points
+here; the API exposes **no certificate status**, so the platform
+couples its own facts (project attach + Vercel `verified`) with a real
+HTTPS probe (`src/lib/domain-routing.ts`): `live` is unreachable
+unless all three hold — the 4.3 rule ("never call a domain live before
+routing and TLS do") is now one pure, truth-tabled function. Verifying
+a 5.2 claim attaches the domain automatically; removal detaches
+best-effort (the resolver already stopped honoring it, so a failure is
+stated, never blocking); a routing-status check reports
+pending/live/detached in plain words. Config is server-side only
+(`VERCEL_TOKEN` project-scoped + `VERCEL_PROJECT_ID`); without it
+routing fails closed while claims and verification keep working.
+Verification: 29 unit tests on injected fakes (including the truth
+table and "the token never appears in a message"), and a live
+round-trip through the app's own client against the real project —
+attach → read back → fold says _pending_ (never live) → detach →
+gone; the project's domain list was restored to its original shape
+afterwards. Manual recovery steps for the common DNS failures are in
+`docs/runbooks/custom-domains.md`.
+
 **Can be done independently:** Partially. Application state can be
 developed separately, but actual SSL provisioning depends on the hosting
 provider.
@@ -826,6 +1225,56 @@ provider.
 manual process if full automation is not supported.
 
 ## 5.4 Domain lifecycle tests
+
+**Status:** Done 2026-10-15 (`phase5`). Most of the list was already
+pinned by 5.1–5.3's own suites; what nothing covered was the
+transitions BETWEEN the links, so that is what this round added —
+`src/lib/domain-lifecycle-live.test.ts`, five tests ordered as one
+lifecycle (the shape the claim suite uses): a VERIFIED domain cannot be
+taken over (CONFLICT keyed to the field, and the refused restaurant is
+left with no claim of its own), removal RELEASES the domain so the next
+claimant can hold it and is still refused the hostname until they pass
+the TXT check, switching a VERIFIED claim frees the old hostname
+immediately (a stale verified row would be a live alias) and the freed
+hostname is claimable again, an activation that fails — routing
+unconfigured, or attach refused by the provider — leaves the durable
+claim verified while the status folds to _pending_, never _live_, and a
+failed edge detach is reported without holding open a removal the
+resolver has already stopped honoring. DNS and the Vercel project are
+injected, so the suite never touches the network; live-gated on
+`TEST_DATABASE_URL` like its siblings.
+
+**Mutation-checked, because a suite is worth what it catches:** with
+the resolver's `verified` gate removed, four of the five fail; with a
+switching claim left `verified`, the switch test fails — and the
+existing claim suite passes that same mutation, which is the evidence
+this is new coverage rather than a second copy; with the routing fold
+asked to say _live_ without the HTTPS probe, the activation test fails.
+
+**Support documentation:** `docs/runbooks/domain-lifecycle.md` is the
+support-facing map the deliverable asks for — the stored states and
+what a visitor gets in each, the three facts behind _live_ and the
+wording for each, the invariants that hold in every state (one hostname
+one restaurant; reassignment is release + proof, never takeover;
+removal clears domain/state/token together), the reassignment
+procedure, a symptom → action triage table, what staff must not do
+(never move a domain by editing data, never call a verified domain
+live), and a coverage map pointing each 5.4 item at the suite that pins
+it. Cross-linked from `custom-domains.md` and
+`platform-subdomains.md`.
+
+**Verification:** 581 tests across 46 files green with
+`TEST_DATABASE_URL` set (539 pass / 42 skip without one), `npm run
+check` green, `npm run build` green. E2E unchanged and still green —
+5.4 added no route or behaviour for it to re-verify.
+
+**Honest limit:** the hosted half of 5.1 is still outstanding, so
+nothing here proves a real `{slug}.{base-domain}` or a real certificate
+in production — the suite pins the resolver, the claim flow, and the
+routing fold, and the routing cases run against injected provider
+answers (5.3's one live round-trip against the real project remains the
+only test that touched the provider). Those checks land with the
+base-domain decision, not before.
 
 **Can be done independently:** Yes, once 5.1 to 5.3 expose stable
 interfaces.
@@ -849,6 +1298,110 @@ important security boundaries are tested, and the operator can support
 the pilot.
 
 ## 6.1 Security review
+
+**Status:** Done 2026-10-15 (`phase6`). The deliverable is
+`docs/security-review.md`: nine areas checked with a verdict each, a
+findings register with severities and resolutions, and the verification
+log. Started by decision with 5.1's hosted half still open — that ordering
+is deliberate rather than an oversight: 5.1 waits on a base domain and DNS
+access, and nothing in this review depended on either. Its one open finding
+(F3, the unchecked magic-link endpoint) was closed the next day — the review
+records it as fixed, with the limits that remain.
+
+**Method, because the verdicts are only worth their evidence:** the input
+bound and the mail parser's cost were probed directly instead of assumed
+(which is how the one real coverage hole surfaced — `emailSchema` accepted
+a 200,013-character address on the unauthenticated login form); the
+redirect and header behaviour was read off a real production server, not
+inferred from a config that type-checks; and each new test was
+mutation-checked to prove it fails when the protection is removed.
+
+**Found and fixed (three):** the unbounded sign-in email, now 254 per RFC
+5321; the route serving tenant-uploaded bytes, which sent no hardening
+headers and had no test at all (it now sends `nosniff` + a locking-down
+CSP and has three); and the app sending **no baseline security headers
+anywhere** — no HSTS, framing protection, or referrer policy — now four
+headers on every path, wired from a unit-tested pure module so a new route
+cannot forget them. Two hardening calls are recorded as deliberate rather
+than silent: no page CSP yet (a bare `default-src` breaks Next's inline
+bootstrap, so it needs a nonce pipeline — its own change), and uploads stay
+capability URLs.
+
+**Verified safe rather than assumed safe:** a forged `Host` header cannot
+steer the auth redirect — tested against a production server in two
+configurations and eight variants, including `X-Forwarded-Host` and
+`X-Forwarded-Proto`; the proxy's long-standing comment now has evidence
+behind it.
+
+**Dependencies (13 advisories, 9 high, 4 moderate, 0 critical):** none is
+reachable. Twelve are the `nodemailer` set, and that copy really is the one
+Auth.js sends with (one deduped `7.0.12`), so the assessment is per
+advisory against our usage: every parser-DoS trigger shape is rejected by
+`emailSchema` before the provider sees it and the accepted shapes scale
+linearly (measured), the file-read/SSRF and header-injection ones need
+attacker-controlled message options or transport the app never supplies,
+and the cross-tenant SMTP-cache one needs several transports where the
+platform has one. The upgrade is blocked by `@auth/core`'s peer range and
+recorded with a trigger: re-run `npm audit` at pilot onboarding and check
+that range. The rest are dev-only (`eslint-config-next` tooling,
+`drizzle-kit`'s dev server). `npm audit fix --force` must not be used — it
+proposes a `next-auth` major downgrade off the v5 beta.
+
+**The one open finding, closed the next day rather than deferred:** there
+was no rate limiting on the magic-link endpoint, so an unauthenticated
+caller could make the platform send unlimited mail and write unlimited
+verification rows. It is now a durable fixed-window limiter — per address
+(the guarantee: mailing a victim spends the victim's bucket, and it holds
+even when the caller's source is unknown or rotates) and per source IP
+(defence in depth, deliberately the looser limit because a venue shares one
+connection) — checked **before** `signIn`, because a limit applied after the
+send still spends the SMTP quota and the reputation the finding is about.
+Postgres is already required for sign-in, so this needed no new service and
+no new dependency, which is what the earlier recommendation was really
+solving for: the choice was never "edge rule or code", it was "durable store
+or nothing".
+
+**What the limit does not do, stated rather than implied:** there is no
+global ceiling, so a caller working through many addresses from many sources
+is bounded per bucket and not in total, and there is no captcha. An edge
+rule keyed on the sign-in path is still worth adding at pilot onboarding and
+remains on the review's checklist, as the outer layer rather than the only
+one.
+
+**Tests for "unauthorised access by changing resource IDs"**, which the
+roadmap asks to be tested rather than reviewed:
+`src/lib/resource-id-forgery-live.test.ts` pins no enumeration oracle (a
+foreign, absent, and malformed id are the same answer at every entry
+point), no partial write (the victim's row, counts and stored file are
+compared before and after every refused attempt, including that a refused
+upload leaves no orphan file), and that a claimed role is no substitute for
+a membership row. Mutation-checked: a permissive `ownsRow` fails three of
+four, and `NOT_FOUND` for a missing row fails exactly the no-oracle test —
+the property no earlier suite covered.
+
+**Verification:** 620 tests across 51 files with `TEST_DATABASE_URL` (568
+pass / 52 skip without one), `npm run check` green, `npm run build` green,
+and **17/17 E2E** — the whole suite, not one spec. Headers and the redirect
+were additionally confirmed against a production server (200 HTML, the
+gate's 302, a 404, and a real stored upload), and the limiter's refusal was
+watched rather than inferred: three mail items in Mailpit, a fourth attempt
+refused inline, and no fourth mail. Mutation-checked in both layers —
+disabling the window comparison fails both new E2E specs, an always-allowing
+decision fails the boundary test, and an upsert that stops incrementing
+fails four of the six live tests.
+
+**A finding from running the whole suite:** the limiter's source dimension
+is one bucket per window, shared by every spec and every run from a
+developer machine, so the fourth `npm run test:e2e` inside a window refused
+the owner journey's own sign-in and looked like a broken email path. Global
+setup now clears the counters — they are app state, not fixture state — and
+the Mailpit purge is scoped to a spec's own recipients so parallel specs
+cannot delete each other's mail.
+
+**Remaining in Phase 6:** 6.2 reliability and error handling, 6.3
+performance and accessibility, 6.4 end-to-end regression, 6.5 deployment
+and support documentation. The page CSP with nonces and the R2 storage move
+are recorded in the review as changes of their own.
 
 - Review authentication, role checks, tenant isolation, public data
   exposure, uploads, and domain verification.

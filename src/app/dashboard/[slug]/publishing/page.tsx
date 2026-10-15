@@ -11,21 +11,40 @@
  * categories/items stay hidden — but edits to already-visible records go
  * live immediately. There is no edit-staging or versioning; the preview
  * (3.7) is how owners check drafts before and after publishing.
+ *
+ * The sync default export exists so the page's own read — `params`, then the
+ * session, then the restaurant — starts inside a `<Suspense>` boundary:
+ * without it Next reports "encountered uncached data" and the client
+ * navigation blocks on the data instead of painting the skeleton (Phase 4.5
+ * sweep).
  */
+import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { connection } from "next/server";
 import { auth } from "@/auth";
 import { Heading, Text } from "@/components/ui/typography";
 import { getTenantContext } from "@/lib/tenant-context";
 import { getOwnerRestaurant } from "@/lib/tenant-data";
+import { PageSkeleton } from "../../_components/page-skeleton";
 import { PublishControls } from "./_components/publish-controls";
 import { getPublishingChecklist } from "./checklist";
 
-export default async function PublishingPage({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}): Promise<React.ReactElement> {
+type Props = { params: Promise<{ slug: string }> };
+
+export default function PublishingPage({ params }: Props): React.ReactElement {
+  return (
+    <Suspense fallback={<PageSkeleton label="Loading publishing…" />}>
+      <PublishingView params={params} />
+    </Suspense>
+  );
+}
+
+async function PublishingView({ params }: Props): Promise<React.ReactElement> {
+  // Request-time before anything else: Auth.js reads random bytes building
+  // its CSRF token, which `cacheComponents` treats as IO. Without this the
+  // prerender pass reaches `auth()` and reports the crypto insight.
+  await connection();
   const { slug } = await params;
   const context = await getTenantContext(await auth(), slug);
   if (!context.ok) {
@@ -64,16 +83,16 @@ export default async function PublishingPage({
           {checklist.map((entry) => (
             <li
               key={entry.key}
-              className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-zinc-200 px-4 py-3 dark:border-zinc-800"
+              className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border px-4 py-3"
             >
-              <p className="text-sm text-zinc-900 dark:text-zinc-50">
+              <p className="text-sm text-foreground">
                 {entry.met ? "✓ " : "○ "}
                 {entry.label}
               </p>
               {entry.met ? null : (
                 <Link
                   href={entry.href}
-                  className="text-sm font-medium text-zinc-700 underline dark:text-zinc-300"
+                  className="text-sm font-medium text-foreground/80 underline"
                 >
                   Fix →
                 </Link>

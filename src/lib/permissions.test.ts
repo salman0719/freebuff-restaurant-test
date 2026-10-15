@@ -53,6 +53,16 @@ describe("requireOperator", () => {
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error.code).toBe("UNAUTHORIZED");
   });
+
+  it("never accepts a role the platform does not define", () => {
+    // The role vocabulary is the database CHECK's: owner or operator, exactly.
+    // Anything else — including a plausible-looking "admin" — is FORBIDDEN.
+    for (const role of ["admin", "Administrator", "root", "staff", "owner operator"]) {
+      const result = requireOperator({ user: { id: "user_x", role } });
+      expect(result.ok, `${role} must not be treated as staff`).toBe(false);
+      if (!result.ok) expect(result.error.code).toBe("FORBIDDEN");
+    }
+  });
 });
 
 describe("requireTenantRole", () => {

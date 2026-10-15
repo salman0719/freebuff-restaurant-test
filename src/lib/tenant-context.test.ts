@@ -14,6 +14,8 @@ const row: TenantMembershipRow = {
     id: "tenant_a",
     slug: "marios",
     customDomain: null,
+    customDomainStatus: "none",
+    customDomainVerifyToken: null,
     published: true,
     theme: "cafe",
     themeConfig: {},

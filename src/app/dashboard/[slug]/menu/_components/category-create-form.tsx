@@ -11,6 +11,7 @@ import { useActionState } from "react";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { ErrorState } from "@/components/ui/feedback";
+import { FormActions } from "@/components/ui/form-actions";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { createCategory, type CategoryState } from "../actions";
@@ -57,11 +58,11 @@ export function CategoryCreateForm({ slug }: { slug: string }) {
           <Textarea name="description" rows={2} defaultValue={state.values?.description ?? ""} />
         </Field>
       </div>
-      <div>
+      <FormActions>
         <Button type="submit" loading={pending}>
           {pending ? "Adding…" : "Add category"}
         </Button>
-      </div>
+      </FormActions>
     </form>
   );
 }
