@@ -1226,6 +1226,56 @@ manual process if full automation is not supported.
 
 ## 5.4 Domain lifecycle tests
 
+**Status:** Done 2026-10-15 (`phase5`). Most of the list was already
+pinned by 5.1–5.3's own suites; what nothing covered was the
+transitions BETWEEN the links, so that is what this round added —
+`src/lib/domain-lifecycle-live.test.ts`, five tests ordered as one
+lifecycle (the shape the claim suite uses): a VERIFIED domain cannot be
+taken over (CONFLICT keyed to the field, and the refused restaurant is
+left with no claim of its own), removal RELEASES the domain so the next
+claimant can hold it and is still refused the hostname until they pass
+the TXT check, switching a VERIFIED claim frees the old hostname
+immediately (a stale verified row would be a live alias) and the freed
+hostname is claimable again, an activation that fails — routing
+unconfigured, or attach refused by the provider — leaves the durable
+claim verified while the status folds to _pending_, never _live_, and a
+failed edge detach is reported without holding open a removal the
+resolver has already stopped honoring. DNS and the Vercel project are
+injected, so the suite never touches the network; live-gated on
+`TEST_DATABASE_URL` like its siblings.
+
+**Mutation-checked, because a suite is worth what it catches:** with
+the resolver's `verified` gate removed, four of the five fail; with a
+switching claim left `verified`, the switch test fails — and the
+existing claim suite passes that same mutation, which is the evidence
+this is new coverage rather than a second copy; with the routing fold
+asked to say _live_ without the HTTPS probe, the activation test fails.
+
+**Support documentation:** `docs/runbooks/domain-lifecycle.md` is the
+support-facing map the deliverable asks for — the stored states and
+what a visitor gets in each, the three facts behind _live_ and the
+wording for each, the invariants that hold in every state (one hostname
+one restaurant; reassignment is release + proof, never takeover;
+removal clears domain/state/token together), the reassignment
+procedure, a symptom → action triage table, what staff must not do
+(never move a domain by editing data, never call a verified domain
+live), and a coverage map pointing each 5.4 item at the suite that pins
+it. Cross-linked from `custom-domains.md` and
+`platform-subdomains.md`.
+
+**Verification:** 581 tests across 46 files green with
+`TEST_DATABASE_URL` set (539 pass / 42 skip without one), `npm run
+check` green, `npm run build` green. E2E unchanged and still green —
+5.4 added no route or behaviour for it to re-verify.
+
+**Honest limit:** the hosted half of 5.1 is still outstanding, so
+nothing here proves a real `{slug}.{base-domain}` or a real certificate
+in production — the suite pins the resolver, the claim flow, and the
+routing fold, and the routing cases run against injected provider
+answers (5.3's one live round-trip against the real project remains the
+only test that touched the provider). Those checks land with the
+base-domain decision, not before.
+
 **Can be done independently:** Yes, once 5.1 to 5.3 expose stable
 interfaces.
 
