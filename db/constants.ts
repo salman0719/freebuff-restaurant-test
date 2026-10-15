@@ -40,7 +40,7 @@ export type MembershipRole = (typeof MEMBERSHIP_ROLES)[number];
  * action renders as its raw key rather than crashing, so a row written by a
  * newer deploy still shows up).
  */
-export const AUDIT_ACTIONS = ["tenant.created", "tenant.owner_granted"] as const;
+export const AUDIT_ACTIONS = ["tenant.created", "tenant.owner_granted", "staff.granted"] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 
 /**

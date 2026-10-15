@@ -17,7 +17,7 @@
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { requireOperator } from "@/lib/permissions";
-import { inviteTenantOwner, provisionTenant } from "@/lib/tenant-provisioning";
+import { grantStaffAccess, inviteTenantOwner, provisionTenant } from "@/lib/tenant-provisioning";
 
 export interface ProvisionState {
   status: "idle" | "saved" | "error";
@@ -96,5 +96,30 @@ export async function inviteOwnerAction(
     message: result.data.created
       ? `Invited ${result.data.email} — they can sign in with a magic link to reach their dashboard.`
       : `Granted ${result.data.email} owner access.`,
+  };
+}
+
+/**
+ * Grant the platform staff role to an existing account. Fails closed like
+ * the other actions: a refusal is the same generic denial, and a grant to
+ * an unknown address reports only that no account holds it.
+ */
+export async function grantStaffAction(
+  _previous: ProvisionState,
+  formData: FormData
+): Promise<ProvisionState> {
+  const check = requireOperator(await auth());
+  if (!check.ok) {
+    return denied();
+  }
+  const email = formText(formData, "email");
+  const result = await grantStaffAccess(check.data, { email });
+  if (!result.ok) {
+    return { status: "error", message: result.error.message, fields: result.error.fields };
+  }
+  revalidatePath("/operator");
+  return {
+    status: "saved",
+    message: `Granted ${result.data.email} platform staff access — recorded in the activity feed above.`,
   };
 }

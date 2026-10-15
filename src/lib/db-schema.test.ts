@@ -168,10 +168,19 @@ describe("committed migrations", () => {
   });
 
   it("deploys the action vocabulary the app ships", () => {
+    // The vocabulary grows by widening the CHECK in later migrations (a new
+    // recorded act is a deliberate migration), so this spans every migration
+    // that names the CHECK — the deployed constraint is the last one.
+    const vocabularySql = sqlFiles
+      .filter((file) =>
+        readFileSync(join(dir, file), "utf8").toLowerCase().includes("audit_events_action_allowed")
+      )
+      .map((file) => readFileSync(join(dir, file), "utf8").toLowerCase())
+      .join("\n");
     for (const action of AUDIT_ACTIONS) {
-      expect(auditSql).toContain(action);
+      expect(vocabularySql).toContain(action);
     }
-    expect(auditSql).toContain("audit_events_action_allowed");
+    expect(vocabularySql).toContain("audit_events_action_allowed");
   });
 
   it("deploys the index the platform-wide feed reads through", () => {

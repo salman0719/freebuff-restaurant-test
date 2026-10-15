@@ -11,7 +11,12 @@
 import { describe, expect, it, vi } from "vitest";
 import type { AuditEvent } from "./audit";
 import type { AuthenticatedUser } from "./permissions";
-import { inviteTenantOwner, provisionTenant, type ProvisioningStore } from "./tenant-provisioning";
+import {
+  grantStaffAccess,
+  inviteTenantOwner,
+  provisionTenant,
+  type ProvisioningStore,
+} from "./tenant-provisioning";
 
 const staff: AuthenticatedUser = { userId: "user_staff", role: "operator" };
 const tenantOwner: AuthenticatedUser = { userId: "user_owner", role: "owner" };
@@ -26,6 +31,8 @@ function fakeStore(overrides: Partial<ProvisioningStore> = {}): ProvisioningStor
       published: input.published,
     }),
     findOrCreateUser: async () => ({ id: "user_invited", created: true }),
+    findUserByEmail: async () => ({ id: "user_existing", role: "owner" }),
+    promoteToStaff: async () => "promoted",
     addMembership: async () => "created",
     ...overrides,
   };
@@ -441,5 +448,104 @@ describe("inviteTenantOwner records the act (4.4)", () => {
     );
     expect(result.ok).toBe(false);
     expect(events).toEqual([]);
+  });
+});
+
+describe("grantStaffAccess authorisation", () => {
+  it.each([
+    ["a restaurant owner", tenantOwner],
+    ["a user with no role", { userId: "user_x" } as AuthenticatedUser],
+    ["no identity at all", null],
+    ["undefined", undefined],
+  ])("refuses %s without touching the store", async (_label, act) => {
+    const store = fakeStore();
+    const spy = vi.spyOn(store, "promoteToStaff");
+    const result = await grantStaffAccess(act, { email: "someone@example.com" }, store);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.code).toBe("FORBIDDEN");
+    }
+    expect(spy).not.toHaveBeenCalled();
+  });
+});
+
+describe("grantStaffAccess", () => {
+  it("promotes an existing account and hands back who", async () => {
+    const store = fakeStore({
+      findUserByEmail: async () => ({ id: "user_owner", role: "owner" }),
+    });
+    const result = await grantStaffAccess(staff, { email: "owner@example.com" }, store);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data).toEqual({ userId: "user_owner", email: "owner@example.com" });
+    }
+  });
+
+  it("records a platform-scoped event: no tenant subject", async () => {
+    const events: AuditEvent[] = [];
+    const store = fakeStore({
+      findUserByEmail: async () => ({ id: "user_owner", role: "owner" }),
+      promoteToStaff: async (_input, event) => {
+        events.push(event);
+        return "promoted";
+      },
+    });
+    await grantStaffAccess(staff, { email: "owner@example.com" }, store);
+    expect(events).toEqual([
+      {
+        action: "staff.granted",
+        actor: staff,
+        tenantSlug: null,
+        detail: { email: "owner@example.com" },
+      },
+    ]);
+  });
+
+  it("refuses an address with no account instead of inventing a privileged one", async () => {
+    const store = fakeStore({ findUserByEmail: async () => null });
+    const promote = vi.spyOn(store, "promoteToStaff");
+    const result = await grantStaffAccess(staff, { email: "ghost@example.com" }, store);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.code).toBe("NOT_FOUND");
+      expect(result.error.fields?.email).toHaveLength(1);
+    }
+    expect(promote).not.toHaveBeenCalled();
+  });
+
+  it("reports someone already staff as a conflict", async () => {
+    const store = fakeStore({
+      findUserByEmail: async () => ({ id: "user_staff_2", role: "operator" }),
+    });
+    const promote = vi.spyOn(store, "promoteToStaff");
+    const result = await grantStaffAccess(staff, { email: "staff@example.com" }, store);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.code).toBe("CONFLICT");
+    }
+    expect(promote).not.toHaveBeenCalled();
+  });
+
+  it("resolves a promotion lost to a race as the same conflict", async () => {
+    const store = fakeStore({
+      findUserByEmail: async () => ({ id: "user_owner", role: "owner" }),
+      promoteToStaff: async () => "duplicate",
+    });
+    const result = await grantStaffAccess(staff, { email: "owner@example.com" }, store);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.code).toBe("CONFLICT");
+    }
+  });
+
+  it("rejects a malformed email before resolving anything", async () => {
+    const store = fakeStore();
+    const find = vi.spyOn(store, "findUserByEmail");
+    const result = await grantStaffAccess(staff, { email: "not-an-email" }, store);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.code).toBe("VALIDATION_FAILED");
+    }
+    expect(find).not.toHaveBeenCalled();
   });
 });

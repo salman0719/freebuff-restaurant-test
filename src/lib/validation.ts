@@ -201,6 +201,13 @@ export const assignOwnerSchema = inviteOwnerSchema.extend({
   role: membershipRoleSchema.default("owner"),
 });
 
+/**
+ * Operator grants the platform staff role by email. No account is created:
+ * staff access is granted to someone who already exists, so a typo cannot
+ * invent a privileged account — it fails as "no such person" instead.
+ */
+export const grantStaffSchema = inviteOwnerSchema;
+
 export type CreateTenantInput = z.infer<typeof createTenantSchema>;
 export type UpdateTenantInput = z.infer<typeof updateTenantSchema>;
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
@@ -214,6 +221,7 @@ export type UpdateItemInput = z.infer<typeof updateItemSchema>;
 export type AssignMembershipInput = z.infer<typeof assignMembershipSchema>;
 export type InviteOwnerInput = z.infer<typeof inviteOwnerSchema>;
 export type AssignOwnerInput = z.infer<typeof assignOwnerSchema>;
+export type GrantStaffInput = z.infer<typeof grantStaffSchema>;
 
 /**
  * Map a Zod failure to field-keyed messages for `ServiceError.fields`

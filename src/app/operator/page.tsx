@@ -22,6 +22,7 @@
  * was done.
  */
 import Link from "next/link";
+import { connection } from "next/server";
 import { auth } from "@/auth";
 import { Badge } from "@/components/ui/badge";
 import { buttonClasses } from "@/components/ui/button";
@@ -39,6 +40,7 @@ import {
   type RecentActivityEntry,
 } from "@/lib/audit";
 import { requireOperatorPage } from "@/lib/operator-access";
+import { GrantStaffForm } from "./_components/grant-staff-form";
 import { listTenantSetups, type OperatorTenantSetup } from "@/lib/operator-tenants";
 import { outstandingOnboardingSteps } from "@/lib/onboarding";
 
@@ -97,6 +99,11 @@ function outstandingLabel(setup: OperatorTenantSetup): string {
 }
 
 export default async function OperatorPage(): Promise<React.ReactElement> {
+  // Request-time before the gate: Auth.js reads random bytes while it builds
+  // its CSRF token, which `cacheComponents` treats as IO, so a prerender pass
+  // that reaches `auth()` reports the unstable-value insight for this route.
+  // Nothing here can be prerendered — the session decides all of it.
+  await connection();
   // Throws (redirect) or renders the not-found page for everyone else.
   const staff = requireOperatorPage(await auth());
   const listed = await listTenantSetups(staff);
@@ -211,6 +218,25 @@ export default async function OperatorPage(): Promise<React.ReactElement> {
             </Card>
           </section>
         ) : null}
+
+        {/* After the feed on purpose: the console's job is the restaurants
+            above, then what was done, and only then granting more power.
+            A staff grant is platform-scoped — no restaurant is its subject —
+            so its record appears in the feed above, not on any restaurant's
+            page. A platform-scoped entry renders with no restaurant link
+            (`ActivityLine` shows only what happened and by whom). */}
+        <section aria-label="Platform staff" className="mt-8">
+          <Card>
+            <CardTitle>Platform staff</CardTitle>
+            <Text size="sm" muted className="mt-1">
+              Grant the staff role to someone who already has an account. They will be able to open
+              this console — and every grant is recorded in the activity feed above.
+            </Text>
+            <div className="mt-3">
+              <GrantStaffForm />
+            </div>
+          </Card>
+        </section>
       </Section>
     </Container>
   );

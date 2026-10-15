@@ -359,7 +359,7 @@ export const auditEvents = pgTable(
     index("audit_events_actor_idx").on(t.actorUserId),
     check(
       "audit_events_action_allowed",
-      sql`${t.action} in ('tenant.created', 'tenant.owner_granted')`
+      sql`${t.action} in ('tenant.created', 'tenant.owner_granted', 'staff.granted')`
     ),
   ]
 );

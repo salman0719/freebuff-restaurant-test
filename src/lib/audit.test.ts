@@ -89,6 +89,16 @@ describe("describeAuditEvent", () => {
     expect(described.detail).toBe("Invited support@example.com as platform staff");
   });
 
+  it("reads a platform-scoped staff grant, which names no restaurant", () => {
+    const described = describeAuditEvent(
+      record({ action: "staff.granted", detail: { email: "new-staff@example.com" } })
+    );
+    expect(described).toEqual({
+      label: "Granted staff access",
+      detail: "Gave new-staff@example.com staff access",
+    });
+  });
+
   it("reports an action it does not know by its key instead of dropping it", () => {
     // A row written by a newer deploy is still evidence.
     expect(describeAuditEvent({ action: "tenant.archived", detail: {} })).toEqual({

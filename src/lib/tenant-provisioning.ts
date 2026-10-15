@@ -33,12 +33,12 @@
  *   exists — the exact thing an operator needs that check to tell them.
  * - **An invited owner's account is created with the platform DEFAULT role**
  *   (`users.role` defaults to `owner`), the same act Auth.js's adapter
- *   performs on a first magic-link sign-in. Provisioning never writes an
- *   elevated role, so it cannot promote anyone to platform staff. Granting
- *   that role is still an unimplemented operator act; when it lands it
- *   belongs here, inside this module's allowlist in `operator-access.test.ts`
- *   (the tripwire that fails if any other module under `src/` writes
- *   `users.role`).
+ *   performs on a first magic-link sign-in. The owner-invite path cannot
+ *   promote anyone to platform staff; the staff grant (`grantStaffAccess`)
+ *   is the separate act that does, and it updates an existing account
+ *   rather than creating one. Both live here, inside this module's
+ *   allowlist in `operator-access.test.ts` (the tripwire that fails if any
+ *   other module under `src/` writes `users.role`).
  *
  * - **Every act leaves a trail (Phase 4.4).** Each successful write records
  *   WHO did it and what changed, in the same transaction as the change, so a
@@ -56,11 +56,22 @@ import { eq } from "drizzle-orm";
 import { db } from "../../db";
 import type { MembershipRole, ThemeId } from "../../db/constants";
 import { memberships, restaurantProfiles, tenants, users } from "../../db/schema";
-import { ownerGrantedEvent, tenantCreatedEvent, writeAuditEvent, type AuditEvent } from "./audit";
+import {
+  ownerGrantedEvent,
+  staffGrantedEvent,
+  tenantCreatedEvent,
+  writeAuditEvent,
+  type AuditEvent,
+} from "./audit";
 import { isUniqueViolation } from "./db-errors";
 import type { AuthenticatedUser } from "./permissions";
 import { err, ok, type ServiceResult } from "./result";
-import { assignOwnerSchema, createTenantSchema, validationFields } from "./validation";
+import {
+  assignOwnerSchema,
+  createTenantSchema,
+  grantStaffSchema,
+  validationFields,
+} from "./validation";
 
 /** A tenant as provisioning reports it back to the console. */
 export interface ProvisionedTenant {
@@ -68,6 +79,12 @@ export interface ProvisionedTenant {
   slug: string;
   theme: ThemeId;
   published: boolean;
+}
+
+/** The account granted the platform staff role. */
+export interface GrantedStaff {
+  userId: string;
+  email: string;
 }
 
 /** The person granted owner access, and whether this call created them. */
@@ -103,6 +120,14 @@ export interface ProvisioningStore {
   ): Promise<ProvisionedTenant | null>;
   /** Finds the account for `email`, creating one (default role) if absent. */
   findOrCreateUser(email: string): Promise<{ id: string; created: boolean }>;
+  /** Finds the account for `email`, creating nothing. */
+  findUserByEmail(email: string): Promise<{ id: string; role: string } | null>;
+  /**
+   * The role update and the record of granting it, in one transaction. A
+   * no-op (already staff) writes neither — the trail describes changes, and
+   * there was none.
+   */
+  promoteToStaff(input: { userId: string }, event: AuditEvent): Promise<"promoted" | "duplicate">;
   /**
    * The membership and the record of granting it, in one transaction. A
    * duplicate writes neither — the trail describes changes, and there was
@@ -244,6 +269,52 @@ export async function inviteTenantOwner(
   });
 }
 
+/**
+ * Grant someone the platform staff role, recorded as a platform-scoped
+ * audit event (no tenant is the subject, so the row carries a null
+ * `tenantId` — the shape the trail was left nullable for).
+ *
+ * Unlike an owner grant this never creates the account: a typo in an owner
+ * invite invents an unprivileged row, while a typo here would invent a
+ * privileged one. The person signs in once (or is invited as an owner
+ * first); the operator promotes the account that already exists. Someone
+ * who is already staff is a conflict rather than a second row.
+ */
+export async function grantStaffAccess(
+  act: AuthenticatedUser | null | undefined,
+  input: unknown,
+  store: ProvisioningStore = defaultStore
+): Promise<ServiceResult<GrantedStaff>> {
+  if (!isOperator(act)) {
+    return operatorOnly();
+  }
+  const parsed = grantStaffSchema.safeParse(input);
+  if (!parsed.success) {
+    return err("VALIDATION_FAILED", "Invalid staff details.", validationFields(parsed.error));
+  }
+  const user = await store.findUserByEmail(parsed.data.email);
+  if (!user) {
+    return err("NOT_FOUND", "No account with that address.", {
+      email: ["No account with that address."],
+    });
+  }
+  if (user.role === "operator") {
+    return err("CONFLICT", "That person is already platform staff.", {
+      email: ["Already platform staff."],
+    });
+  }
+  const promoted = await store.promoteToStaff(
+    { userId: user.id },
+    staffGrantedEvent(act, { email: parsed.data.email })
+  );
+  if (promoted === "duplicate") {
+    return err("CONFLICT", "That person is already platform staff.", {
+      email: ["Already platform staff."],
+    });
+  }
+  return ok({ userId: user.id, email: parsed.data.email });
+}
+
 /** The one place provisioning touches the database. */
 const defaultStore: ProvisioningStore = {
   async findTenantBySlug(slug) {
@@ -316,6 +387,33 @@ const defaultStore: ProvisioningStore = {
       }
       throw error;
     }
+  },
+
+  async findUserByEmail(email) {
+    const rows = await db
+      .select({ id: users.id, role: users.role })
+      .from(users)
+      .where(eq(users.email, email))
+      .limit(1);
+    return rows[0] ?? null;
+  },
+
+  async promoteToStaff({ userId }, event) {
+    return db.transaction(async (tx) => {
+      const rows = await tx
+        .select({ role: users.role })
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
+      // Lost to a race (deleted between the check and the write) or already
+      // staff: either way nothing changed, so nothing is recorded.
+      if (!rows[0] || rows[0].role === "operator") {
+        return "duplicate";
+      }
+      await tx.update(users).set({ role: "operator" }).where(eq(users.id, userId));
+      await writeAuditEvent(tx, event, null);
+      return "promoted";
+    });
   },
 
   async addMembership({ userId, tenantId, role }, event) {

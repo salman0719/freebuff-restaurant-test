@@ -128,6 +128,27 @@ export function ownerGrantedEvent(
 }
 
 /**
+ * The event for granting someone the platform staff role. Platform-scoped:
+ * no restaurant is the subject, so the tenant address is null and the row
+ * is written with a null `tenantId` — the shape `tenant_id` was left
+ * nullable for.
+ */
+export function staffGrantedEvent(
+  actor: AuthenticatedUser,
+  granted: { email: string }
+): AuditEvent {
+  return {
+    action: "staff.granted",
+    actor,
+    tenantSlug: null,
+    // No `invited` flag: staff is granted to an existing account, never to
+    // one created by the grant itself (see `grantStaffAccess`), so there is
+    // no second case to distinguish.
+    detail: { email: granted.email },
+  };
+}
+
+/**
  * Append one event. `tenantId` is the resolved subject, or null for a
  * platform-wide act; the actor's address is snapshotted from their account
  * row here, inside the caller's transaction.
@@ -178,6 +199,10 @@ export function describeAuditEvent(
       label: "Created the restaurant",
       detail: `Started as ${detail.published ? "published" : "a draft"} with the ${themeLabel} theme`,
     };
+  }
+  if (event.action === "staff.granted") {
+    const email = text(detail.email) ?? "an account";
+    return { label: "Granted staff access", detail: `Gave ${email} staff access` };
   }
   if (event.action === "tenant.owner_granted") {
     const email = text(detail.email) ?? "an account";
