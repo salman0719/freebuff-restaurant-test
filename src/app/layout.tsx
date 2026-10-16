@@ -8,9 +8,16 @@ const geistSans = Geist({
   subsets: ["latin"],
 });
 
+/**
+ * Used only by `<code>` styling (the domain editor's record snippets), so it
+ * is deliberately not preloaded: every other page would download 23 KB it
+ * never renders. The @font-face stays, so the face is unchanged wherever a
+ * code snippet does appear — it is fetched on demand instead of up front.
+ */
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+  preload: false,
 });
 
 /** Editorial display serif used for public headings (see `--font-display`). */
