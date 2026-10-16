@@ -271,6 +271,10 @@ export function HeroSection({
             alt={`${restaurant.name} logo`}
             width={96}
             height={96}
+            // First-screen identity, and on several themes the largest thing
+            // on it — measured as the LCP element. `priority` preloads it and
+            // drops `loading="lazy"` so it no longer waits for lazy discovery.
+            priority
             className="rounded-2xl object-contain"
           />
         ) : null}

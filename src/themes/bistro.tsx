@@ -34,6 +34,9 @@ export function BistroTheme({ restaurant, config }: ThemeProps): React.ReactElem
                 alt={`${restaurant.name} logo`}
                 width={240}
                 height={240}
+                // Above the fold on every width, and the measured LCP element
+                // on mobile — preloaded rather than lazy (Phase 6.3).
+                priority
                 className="mx-auto w-full max-w-60 rounded-2xl object-contain lg:mr-0 lg:ml-auto"
               />
             ) : null}

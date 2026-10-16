@@ -44,6 +44,9 @@ export function DinerTheme({ restaurant, config }: ThemeProps): React.ReactEleme
                 alt={`${restaurant.name} logo`}
                 width={112}
                 height={112}
+                // Hero identity image: first screen on every theme, so eager
+                // and preloaded instead of lazy (Phase 6.3).
+                priority
                 className="rounded-full object-contain ring-4 ring-cherry-600"
               />
             ) : null}

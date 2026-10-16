@@ -47,6 +47,9 @@ export function TakeawayTheme({ restaurant, config }: ThemeProps): React.ReactEl
                   alt={`${restaurant.name} logo`}
                   width={64}
                   height={64}
+                  // Hero identity image: first screen on every theme, so eager
+                  // and preloaded instead of lazy (Phase 6.3).
+                  priority
                   className="rounded-xl object-contain"
                 />
               ) : null}
