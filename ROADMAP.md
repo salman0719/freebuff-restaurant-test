@@ -1501,9 +1501,10 @@ row unchanged) skip without a database locally and run in CI;
 
 ## 6.3 Performance and accessibility
 
-**Status:** Performance slice Done 2026-10-16 (`phase6`; commits
-`574eab2`, `171bdaf`, `04073e4`). The accessibility audit is still open
-— see "Still open" below.
+**Status:** Done 2026-10-16 (`phase6`) — all three slices landed:
+performance (`574eab2`, `171bdaf`, `04073e4`), accessibility (`cedb6a0`,
+`f27bfbd`, `e4d4c52`, `a8a9407`), and the font payload (`e806d75`,
+`239c1c2`).
 
 **What shipped:**
 
@@ -1529,6 +1530,56 @@ row unchanged) skip without a database locally and run in CI;
   three `MenuSection` layouts under 2 s (306 ms slowest) with a clean
   React console.
 
+**Accessibility slice (the half the appearance round never covered):**
+a keyboard-only sweep of the owner editors — ten dashboard pages walked
+tab stop by tab stop, checking accessible names, label association,
+focus visibility, WCAG 2.5.8 target size with its spacing exception, and
+behaviour probes (two-step delete opened and cancelled, a valid and a
+server-rejected save). The driver is scratch tooling
+(`local/qa-keyboard.mjs`; it signs in with a real session row the way
+the E2E specs do), so the method is described here rather than
+committed. It found four real defects, each fixed in its own commit:
+
+- `cedb6a0` — `Field` only wired its label onto a control that _was_
+  the whole field; a compound field (the logo picker) rendered a
+  label pointing at nothing and an unnamed file input.
+- `f27bfbd` — a `loading` button disables itself, and a disabled
+  element cannot hold focus: the browser dropped the keyboard user to
+  `<body>` mid-save. The button now hands focus back when the round
+  trip ends.
+- `e4d4c52` — the two-step delete replaced its own trigger on open
+  and lost focus to `<body>` on cancel; focus now travels across the
+  confirm and returns to the trigger.
+- `a8a9407` — every dashboard checkbox row was a 16–20 px target;
+  `min-h-6` on the wrapping label lifts it to 24 px with the layout
+  unchanged (the operator tenant form had the same pattern and rides
+  along).
+
+Final sweep: 0 issues across all 10 pages, both behaviour probes green.
+One reported crowd (a "Restaurants" link against a preset button on the
+theme page) turned out to be a harness bug, not a defect: the nav is
+sticky, so a viewport taken mid-scroll stacked it against content
+356 px away. The harness now scrolls to the top before measuring.
+
+**Font slice:** measured first — a network capture per theme and per
+editor page showed every page preloading all four faces (Geist 28.6,
+Fraunces 35.7, Geist Mono 22.6, Caprasimo 20.3 = 107.2 KiB), because the
+root layout registered all four and the theme registry pulls every
+theme component into the module graph. Then: Caprasimo is declared in
+the diner wrapper with `preload: false` (`e806d75` — only diner pages
+render it, and only they download it now), and Geist Mono drops its
+preload (`239c1c2` — the only `<code>` styling lives in the domain
+editor, which still gets the face on demand). Result: 64.3 KiB preloaded
+on a public page, 84.6 KiB on a diner page (Caprasimo fetched behind its
+metric-matched fallback), 86.9 KiB on the domain editor. Faces are
+visually unchanged — the diner `<h1>` still resolves to
+`"Caprasimo, Caprasimo Fallback"`, the bistro `<h1>` to Fraunces, both
+checked in a live browser against the production build. Known
+remainder: Fraunces is still preloaded on diner public pages (35.7 KiB)
+where nothing renders it; scoping it would need per-theme lazy loading
+of the registry, which was judged a bigger change than the bytes are
+worth.
+
 **Measured and rejected (the pass's real output):**
 
 - Responsive `sizes` on the fixed-width theme images would _raise_
@@ -1541,27 +1592,28 @@ row unchanged) skip without a database locally and run in CI;
   WebP-only.
 - Images are no longer the weight problem: one public page now ships
   178 KB of JavaScript on the wire (the budget's own level-9 gzip sum of
-  the same 13 chunks is 197 KB) and 109 KB of fonts across four display
-  faces instantiated in the root layout. Fonts are the next
-  lever and need a design decision — subset, drop a face, or accept
-  them — deliberately deferred rather than silently changed.
+  the same 13 chunks is 197 KB) and, at the time, 109 KB of fonts across
+  four display faces instantiated in the root layout — all four
+  preloaded everywhere. The font slice below cut that to 64 KiB.
 
 **Verification:** `npm run typecheck`, `prettier --check`, and `eslint`
 over `src`, `scripts`, `db`, `e2e` and the configs all green; `npm run
-build` green; full suite with the live database attached: 57 files, 652
-tests. Measurements came from a production build (`next start`) driven
-by a scratch harness (`local/perf-images.mjs`, `local/seed-logos.mjs` —
-`local/` is git-ignored per convention, so the method is described here
-rather than committed): per-class wire bytes, image resource timing, and
-the LCP element for each of the four published tenants.
+build` green; full suite with the live database attached ends at 604
+passed / 56 skipped, 0 failed. Measurements came from a production
+build (`next start`) driven by scratch harnesses (`local/perf-images.mjs`,
+`local/seed-logos.mjs`, `local/measure-fonts.mjs`, `local/qa-keyboard.mjs`
+— `local/` is git-ignored per convention, so the method is described
+here rather than committed): per-class wire bytes, image resource
+timing, the LCP element for each of the four published tenants, every
+font request per theme, and the keyboard sweep above.
 
-**Still open:** the accessibility half of this subphase. The appearance
-round covered contrast, tap targets, headings and empty states on the
-public pages at 390px/1440px (20/20 clean), but the owner editors —
-`useActionState` forms, two-step deletes, server-rendered lists — never
-had a keyboard-only sweep. Also outstanding from 5.1/6.2: the
-unavailable and not-found pages answer HTTP 200, so status monitors
-watch `/api/health`.
+**Still open:** nothing in the sweep's own scope. Outstanding from
+5.1/6.2: the unavailable and not-found pages answer HTTP 200, so status
+monitors watch `/api/health`. Next up for this phase's infrastructure
+thread: the R2 storage swap, scoped as three bounded commits in
+`docs/plans/r2-storage-swap.md` (uploads do not persist on Vercel with
+the local-filesystem driver, and it is also what triggers Turbopack's
+"traces the whole project" warnings).
 
 - Check mobile performance and image sizes.
 - Avoid unnecessary client-side JavaScript.
