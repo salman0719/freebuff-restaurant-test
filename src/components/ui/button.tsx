@@ -1,5 +1,6 @@
 import type { ButtonHTMLAttributes } from "react";
 import { cn } from "./cn";
+import { FocusAfterLoading } from "./focus-after-loading";
 
 export type ButtonVariant = "primary" | "secondary" | "outline" | "ghost" | "danger";
 export type ButtonSize = "sm" | "md" | "lg";
@@ -83,6 +84,9 @@ export function Button({
     >
       {loading ? <ButtonSpinner /> : null}
       {children}
+      {/* Focus bookkeeping for the disabled window `loading` opens — see
+          ./focus-after-loading.tsx; hidden, so nothing else changes. */}
+      <FocusAfterLoading loading={loading} />
     </button>
   );
 }
