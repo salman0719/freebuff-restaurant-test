@@ -103,6 +103,8 @@ describe("logServerEvent", () => {
         throw new Error("broken");
       },
     };
-    expect(() => logServerEvent({ event: "a", level: "error", message: "m" }, { sink })).not.toThrow();
+    expect(() =>
+      logServerEvent({ event: "a", level: "error", message: "m" }, { sink })
+    ).not.toThrow();
   });
 });

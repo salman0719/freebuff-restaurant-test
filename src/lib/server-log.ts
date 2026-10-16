@@ -99,9 +99,7 @@ export interface LogSink {
 
 function defaultSink(): LogSink {
   return {
-    // eslint-disable-next-line no-console
     stdout: (line) => console.log(line),
-    // eslint-disable-next-line no-console
     stderr: (line) => console.error(line),
   };
 }

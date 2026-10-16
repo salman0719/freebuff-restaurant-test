@@ -71,8 +71,12 @@ live("storage failure honesty (live database)", () => {
       .insert(schema.tenants)
       .values({ slug })
       .returning({ id: schema.tenants.id });
-    await db.insert(schema.memberships).values({ userId: user.id, tenantId: tenant.id, role: "owner" });
-    await db.insert(schema.restaurantProfiles).values({ tenantId: tenant.id, name: "Failure Café" });
+    await db
+      .insert(schema.memberships)
+      .values({ userId: user.id, tenantId: tenant.id, role: "owner" });
+    await db
+      .insert(schema.restaurantProfiles)
+      .values({ tenantId: tenant.id, name: "Failure Café" });
     const [item] = await db
       .insert(schema.menuItems)
       .values({ tenantId: tenant.id, name: "Soup", priceCents: 500 })
