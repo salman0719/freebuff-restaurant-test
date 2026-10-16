@@ -1445,6 +1445,51 @@ are recorded in the review as changes of their own.
 
 ## 6.2 Reliability and error handling
 
+**Status:** Done 2026-10-16 (`phase6`). Deliverable is
+`docs/runbooks/ops-reliability.md` (failure matrix, incident
+checklist, backup/restore expectations) plus the mechanisms it
+describes.
+
+**What shipped:** `GET /api/health` (unauthenticated; DB + storage
+probes, 5 s per-probe budget, coarse `{status, checks}` body — 200 when
+ok, 503 when degraded, never a driver message); `src/lib/server-log.ts`
+(structured JSON lines, info→stdout warn/error→stderr, credential keys
+redacted structurally with breadth/depth/length caps, sink failures
+swallowed); root `global-error.tsx` (self-contained markup, generic
+copy + digest reference), root-segment `error.tsx`, and
+`operator/error.tsx` beside the existing dashboard boundary; and
+storage-failure honesty in `setTenantLogo`/`setTenantItemImage` (a failed
+store returns `INTERNAL` with no link written and no orphan file —
+previously it threw, so the action crashed instead of reporting "saved,
+logo not"). Publish/domain honesty needed no change: publish is a
+single write (commits or throws, never half-published) and domain
+liveness already folds to `pending` unless routing + HTTPS all hold
+(5.3/5.4 suites). Health is deliberately outside the smoke route list —
+200 and 503 are both legitimate there depending on dependency state.
+
+**The real find (verified against a production server with the database
+down):** a throw inside the public page's `<Suspense>` hole does NOT
+reach `error.tsx` or `global-error.tsx` — it resolves to the not-found
+page, whose "isn't published yet" copy is exactly the misleading state
+this subphase forbids. So `src/app/page.tsx` catches dependency
+failures itself and renders an inline `SiteUnavailable` (logged,
+redacted, byte-identical for known and unknown hosts — no oracle, no
+leak; proven by curling both shapes against the down database). Same
+status wart as 5.1's: the honest content answers HTTP 200, so
+status-based monitors watch `/api/health`, not `/`. Lesson recorded in
+`docs/runbooks/ops-reliability.md` ("The Suspense-hole lesson").
+
+**Open item (recorded in the runbook, blocks pilot onboarding not this
+subphase):** the production `DATABASE_URL` provider's backup/PITR story
+is unconfirmed — name it, prove a restore to staging with E2E green,
+and until then `pg_dump` before every production migration.
+
+**Verification:** 13 new unit tests (logger redaction/routing,
+health states incl. hung-probe timeout, endpoint shape with no-leak
+scan) green; 2 new live tests (failed logo/photo store → INTERNAL,
+row unchanged) skip without a database locally and run in CI;
+`npm run check` + `npm run build` green (see 6.2 commits).
+
 - Handle database and storage failures gracefully.
 - Avoid leaking internal errors to visitors.
 - Add basic health checks and actionable server-side logging.
