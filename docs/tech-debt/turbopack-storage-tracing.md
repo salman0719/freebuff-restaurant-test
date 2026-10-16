@@ -52,3 +52,6 @@ the project grows.
 - `src/lib/storage.ts` (driver), `docs/runbooks/` domain docs unaffected.
 - Known prod limit recorded 2026-10-15: uploads don't persist on Vercel
   (local driver) — the R2 swap fixes that AND this warning together.
+- The swap is now scoped as three bounded commits in
+  `docs/plans/r2-storage-swap.md` (2026-10-16), including the exact
+  account setup it is waiting on; option 1 above is the one scheduled.
