@@ -76,11 +76,14 @@ The Diner Revival theme (`diner`) owns three things no other theme uses:
 - **Ramps** — `--color-cherry-*`, `--color-butter-*`, `--color-cola-*` in
   `globals.css` (Tailwind has no brown scale). Authored in OKLCH, every
   accent pair contrast-verified at AA before landing.
-- **Display face** — Caprasimo, registered once in the root layout as
-  `--font-caprasimo`; the diner wrapper swaps `--display-font` to it
-  (the `:root` token behind the `font-display` utility — swap the token,
-  not the utility class). Themes pick display faces by overriding
-  `--display-font`, never by loading fonts themselves.
+- **Display face** — Caprasimo, registered by the diner wrapper itself
+  as `--font-caprasimo` (the only page family that renders it), so the
+  root layout preloads nothing a page cannot use; the wrapper swaps
+  `--display-font` to it (the `:root` token behind the `font-display`
+  utility — swap the token, not the utility class). Themes pick display
+  faces by overriding `--display-font`; a face only one theme uses is
+  declared in that theme's wrapper, while the shared faces stay in the
+  root layout.
 - **Awning crown** — `cherry-700`/`butter-400` stripes at the top of the
   page, accent-independent diner identity.
 
