@@ -1119,14 +1119,45 @@ correct tenant and communicate domain setup status clearly.
 
 ## 5.1 Platform subdomains
 
-**Status:** In progress 2026-10-15 (`phase5`): format decided as
+**Status:** Done 2026-10-15. Format decided as
 `{slug}.{PLATFORM_BASE_DOMAIN}` and recorded in
 `docs/runbooks/platform-subdomains.md` (local `*.localhost` behavior,
 Vercel wildcard production steps, limitations); hostname helpers hardened
 (trim/case/FQDN trailing dot/IPv6/bracketed port, malformed-base refusal)
 with 8 new unit cases; live resolution + public-flow suites green against
-local Postgres (19/19). Blocked on operator input for the hosted step:
-real base domain, Vercel project, and DNS access (see runbook).
+local Postgres (19/19).
+
+The hosted half — the part that was blocked on operator input — closed
+2026-10-15. Base domain is `easyeatery.online`; Vercel holds
+`*.easyeatery.online` on the project (attached, DNS validated),
+`PLATFORM_BASE_DOMAIN` is set in production, and `main@d5f7c86` is the
+live deployment.
+
+**The non-obvious part, worth not rediscovering:** a wildcard
+certificate cannot be issued over HTTP the way the apex and `www`
+can — there is no HTTP-01 answer for "every possible subdomain", so
+Vercel's dashboard sat on _Invalid Configuration_ indefinitely while
+the apex validated in minutes. It needed the two NS records that
+delegate certificate validation to the provider at
+`_acme-challenge.easyeatery.online` (`ns1`/`ns2.vercel-dns.com`). The
+traffic `*` CNAME alone routes requests but proves nothing about
+control, so the certificate never started. Both records must stay put
+for renewals. This is why the runbook lists them rather than just the
+CNAME.
+
+**Verified in production, not assumed:** a published tenant
+(`demo`) serves `https://demo.easyeatery.online` with HTTP 200 and its
+own theme content; an unknown slug
+(`ghost-xyz-123.easyeatery.online`) renders the not-found page with no
+tenant content in it; apex and `www` stay 200 alongside. TLS completes
+on arbitrary subdomains, so the wildcard really does answer.
+
+**Known wart (does not affect isolation):** an unknown host currently
+answers HTTP 200 with 404 _content_ — `notFound()` fires correctly in
+`src/app/page.tsx`, but the status that leaves the edge is 200.
+No cross-tenant leak, yet wrong for crawlers and status-based
+checks; raised as follow-up work rather than folded into this
+subphase.
 
 **Can be done independently:** Yes, once host resolution and deployment
 constraints are documented.
