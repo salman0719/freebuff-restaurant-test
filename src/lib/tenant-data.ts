@@ -598,7 +598,15 @@ export async function setTenantLogo(
     });
   }
   const key = buildObjectKey("logos", ctx.tenant.id, parsed.data.extension);
-  await putObject(key, parsed.data.bytes);
+  try {
+    await putObject(key, parsed.data.bytes);
+  } catch {
+    // Storage down (or unwritable) must read as a failed save, never as a
+    // crash: the action reports "profile saved, logo not" and the profile
+    // row keeps no key for bytes that were never stored.
+    await forgetObject(key);
+    return err("INTERNAL", "Failed to save logo.");
+  }
   const rows = await db
     .update(restaurantProfiles)
     .set({ logoImageKey: key })
@@ -629,7 +637,14 @@ export async function setTenantItemImage(
   const current = await getTenantItem(ctx, itemId);
   if (isErr(current)) return current;
   const key = buildObjectKey("items", ctx.tenant.id, parsed.data.extension);
-  await putObject(key, parsed.data.bytes);
+  try {
+    await putObject(key, parsed.data.bytes);
+  } catch {
+    // Same contract as the logo path: a failed store is a failed save
+    // with no link written, not a crash and not a half-linked row.
+    await forgetObject(key);
+    return err("INTERNAL", "Failed to save photo.");
+  }
   const rows = await db
     .update(menuItems)
     .set({ imageKey: key })
