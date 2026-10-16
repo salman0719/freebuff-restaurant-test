@@ -77,7 +77,7 @@ export function CreateTenantForm({ themes }: { themes: ThemeChoice[] }) {
             </Select>
           </Field>
 
-          <label className="flex items-center gap-2 text-sm text-foreground/80">
+          <label className="flex min-h-6 items-center gap-2 text-sm text-foreground/80">
             <input type="checkbox" name="published" className="size-4 accent-brand-600" />
             Publish immediately
           </label>

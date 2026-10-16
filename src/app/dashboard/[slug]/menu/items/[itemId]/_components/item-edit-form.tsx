@@ -121,7 +121,7 @@ export function ItemEditForm({
           ) : null}
           <Input name="photo" type="file" accept="image/jpeg,image/png,image/webp" />
           {item.imageKey ? (
-            <label className="mt-2 flex items-center gap-2 text-sm text-foreground/80">
+            <label className="mt-2 flex min-h-6 items-center gap-2 text-sm text-foreground/80">
               <input type="checkbox" name="removePhoto" className="h-4 w-4 accent-brand-600" />
               Remove the current photo
             </label>
@@ -132,7 +132,7 @@ export function ItemEditForm({
             </p>
           ) : null}
         </Field>
-        <label className="flex items-center gap-2 text-sm text-foreground/80">
+        <label className="flex min-h-6 items-center gap-2 text-sm text-foreground/80">
           <input
             type="checkbox"
             name="isPublished"
@@ -141,7 +141,7 @@ export function ItemEditForm({
           />
           Published — visible on the public menu
         </label>
-        <label className="flex items-center gap-2 text-sm text-foreground/80">
+        <label className="flex min-h-6 items-center gap-2 text-sm text-foreground/80">
           <input
             type="checkbox"
             name="isAvailable"

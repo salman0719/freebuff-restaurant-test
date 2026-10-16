@@ -72,7 +72,7 @@ export function HoursForm({ slug, hours }: { slug: string; hours: OpeningHoursRo
               <fieldset>
                 <legend className="px-1 text-sm font-semibold text-foreground">{label}</legend>
                 <div className="flex flex-wrap items-center gap-4">
-                  <label className="flex items-center gap-2 text-sm text-foreground/80">
+                  <label className="flex min-h-6 items-center gap-2 text-sm text-foreground/80">
                     <input
                       type="checkbox"
                       name={`closed-${weekday}`}
@@ -81,7 +81,7 @@ export function HoursForm({ slug, hours }: { slug: string; hours: OpeningHoursRo
                     />
                     Closed
                   </label>
-                  <label className="flex items-center gap-2 text-sm text-foreground/80">
+                  <label className="flex min-h-6 items-center gap-2 text-sm text-foreground/80">
                     Opens
                     <Input
                       type="time"
@@ -92,7 +92,7 @@ export function HoursForm({ slug, hours }: { slug: string; hours: OpeningHoursRo
                       className="w-32"
                     />
                   </label>
-                  <label className="flex items-center gap-2 text-sm text-foreground/80">
+                  <label className="flex min-h-6 items-center gap-2 text-sm text-foreground/80">
                     Closes
                     <Input
                       type="time"
