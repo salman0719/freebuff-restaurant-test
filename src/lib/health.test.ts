@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { GET } from "@/app/api/health/route";
+import { healthResponse } from "@/app/api/health/route";
 import { runHealthChecks } from "./health";
 
 const passing = () => Promise.resolve();
@@ -31,20 +31,30 @@ describe("runHealthChecks", () => {
   }, 10_000);
 });
 
-describe("GET /api/health", () => {
-  it("answers a coarse report with no internal details, whatever the state", async () => {
-    const response = await GET();
-    expect([200, 503]).toContain(response.status);
+describe("healthResponse", () => {
+  async function bodyOf(probes: { database: () => Promise<void>; storage: () => Promise<void> }) {
+    const response = await healthResponse(probes);
     const body = (await response.json()) as {
       status: string;
       checks: { name: string; ok: boolean; latencyMs: number }[];
     };
-    expect(["ok", "degraded"]).toContain(body.status);
+    return { response, body };
+  }
+
+  it("answers 200 with a coarse ok report when every probe passes", async () => {
+    const { response, body } = await bodyOf({ database: passing, storage: passing });
+    expect(response.status).toBe(200);
+    expect(body.status).toBe("ok");
     expect(body.checks.map((check) => check.name).sort()).toEqual(["database", "storage"]);
+  });
+
+  it("answers 503 with no internal details when a probe fails", async () => {
+    const { response, body } = await bodyOf({ database: failing, storage: passing });
+    expect(response.status).toBe(503);
+    expect(body.status).toBe("degraded");
     const raw = JSON.stringify(body);
     for (const leaked of ["postgres", "DATABASE_URL", "token", "stack", "Error"]) {
       expect(raw).not.toContain(leaked);
     }
-    expect(response.status).toBe(body.status === "ok" ? 200 : 503);
   });
 });
