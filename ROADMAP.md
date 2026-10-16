@@ -1501,6 +1501,68 @@ row unchanged) skip without a database locally and run in CI;
 
 ## 6.3 Performance and accessibility
 
+**Status:** Performance slice Done 2026-10-16 (`phase6`; commits
+`574eab2`, `171bdaf`, `04073e4`). The accessibility audit is still open
+— see "Still open" below.
+
+**What shipped:**
+
+- `npm run perf:budget` (`src/lib/perf-budget.ts` +
+  `scripts/perf-budget.ts`, CI step after `npm run build`): the public
+  route's shipped JavaScript, measured against a ceiling. Nothing
+  measured it before — Turbopack prints no route sizes, `npm run check`
+  stops at lint/type/format, and the unit job runs before any build
+  exists. Baseline: 13 chunks, 645,075 raw / 202,132 gzipped bytes;
+  ceilings 700,000 / 220,000 (~8% headroom), exit 0/1/2, 11 unit tests
+  on the pure rules.
+- Hero logos load with `priority` in all five themes instead of Next's
+  default `loading="lazy"`. Measured at 390px/DPR 3 against a production
+  build with seeded logos: logo fetch start 364–593 ms → 41–97 ms, page
+  totals unchanged (1302.7 → 1302.8 KB across four tenants — the preload
+  resolves to the same optimizer URL, so nothing loads twice), exactly
+  one image preload per page and always for that page's own tenant.
+- Menu scale guards: `public-menu-scale.test.ts` (live) holds
+  `getPublicRestaurant` to five queries for an 8-item and a 400-item
+  tenant alike — counted at `client.unsafe`, the seam every postgres-js
+  query crosses — with a 1 s smoke ceiling on the 400-item load (~10 ms
+  actual); `menu-scale.test.tsx` renders a 100-item menu through all
+  three `MenuSection` layouts under 2 s (306 ms slowest) with a clean
+  React console.
+
+**Measured and rejected (the pass's real output):**
+
+- Responsive `sizes` on the fixed-width theme images would _raise_
+  mobile bytes. Density descriptors already cap selection at 2x — the
+  garden logo (288px display, 320px intrinsic) picks 640w, 50 KB —
+  while `sizes` switches the browser to layout×DPR and it picks 1080w,
+  240 KB, measured straight off the optimizer.
+- AVIF: 89,858 B against WebP's 50,580 B at 640w, and 486 ms to encode
+  against 72 ms, on this content. Bigger and slower, so `formats` stays
+  WebP-only.
+- Images are no longer the weight problem: one public page now ships
+  178 KB of JavaScript on the wire (the budget's own level-9 gzip sum of
+  the same 13 chunks is 197 KB) and 109 KB of fonts across four display
+  faces instantiated in the root layout. Fonts are the next
+  lever and need a design decision — subset, drop a face, or accept
+  them — deliberately deferred rather than silently changed.
+
+**Verification:** `npm run typecheck`, `prettier --check`, and `eslint`
+over `src`, `scripts`, `db`, `e2e` and the configs all green; `npm run
+build` green; full suite with the live database attached: 57 files, 652
+tests. Measurements came from a production build (`next start`) driven
+by a scratch harness (`local/perf-images.mjs`, `local/seed-logos.mjs` —
+`local/` is git-ignored per convention, so the method is described here
+rather than committed): per-class wire bytes, image resource timing, and
+the LCP element for each of the four published tenants.
+
+**Still open:** the accessibility half of this subphase. The appearance
+round covered contrast, tap targets, headings and empty states on the
+public pages at 390px/1440px (20/20 clean), but the owner editors —
+`useActionState` forms, two-step deletes, server-rendered lists — never
+had a keyboard-only sweep. Also outstanding from 5.1/6.2: the
+unavailable and not-found pages answer HTTP 200, so status monitors
+watch `/api/health`.
+
 - Check mobile performance and image sizes.
 - Avoid unnecessary client-side JavaScript.
 - Check keyboard access, labels, contrast, headings, and semantic
