@@ -10,6 +10,7 @@
 import { useActionState, useState } from "react";
 import Link from "next/link";
 import { Button, buttonClasses } from "@/components/ui/button";
+import { useConfirmFocus } from "@/components/ui/confirm-focus";
 import { ErrorState } from "@/components/ui/feedback";
 import { setPublished, type PublishState } from "../actions";
 
@@ -18,6 +19,7 @@ export function PublishControls({ slug, published }: { slug: string; published: 
     status: "idle",
   });
   const [confirming, setConfirming] = useState(false);
+  const { triggerRef, cancelRef } = useConfirmFocus(confirming);
   return (
     <div className="flex max-w-2xl flex-col gap-4">
       {state.status === "saved" ? (
@@ -36,13 +38,23 @@ export function PublishControls({ slug, published }: { slug: string; published: 
             <Button type="submit" variant="danger" loading={pending}>
               {pending ? "Unpublishing…" : "Confirm unpublish"}
             </Button>
-            <Button type="button" variant="outline" onClick={() => setConfirming(false)}>
+            <Button
+              ref={cancelRef}
+              type="button"
+              variant="outline"
+              onClick={() => setConfirming(false)}
+            >
               Keep published
             </Button>
           </form>
         ) : (
           <div className="flex flex-wrap gap-2">
-            <Button type="button" variant="outline" onClick={() => setConfirming(true)}>
+            <Button
+              ref={triggerRef}
+              type="button"
+              variant="outline"
+              onClick={() => setConfirming(true)}
+            >
               Unpublish site…
             </Button>
             <Link

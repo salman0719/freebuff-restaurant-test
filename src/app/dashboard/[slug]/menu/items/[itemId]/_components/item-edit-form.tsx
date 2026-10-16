@@ -11,6 +11,7 @@
 import { useActionState, useState } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
+import { useConfirmFocus } from "@/components/ui/confirm-focus";
 import { Field } from "@/components/ui/field";
 import { ErrorState } from "@/components/ui/feedback";
 import { FormActions } from "@/components/ui/form-actions";
@@ -45,6 +46,7 @@ export function ItemEditForm({
     { status: "idle" }
   );
   const [confirming, setConfirming] = useState(false);
+  const { triggerRef, cancelRef } = useConfirmFocus(confirming);
   const name = saveState.values?.name ?? item.name;
   const description = saveState.values?.description ?? item.description ?? "";
   const price = saveState.values?.price ?? formatPrice(item.priceCents);
@@ -169,13 +171,23 @@ export function ItemEditForm({
             <Button type="submit" variant="danger" loading={deletePending}>
               {deletePending ? "Deleting…" : "Confirm delete"}
             </Button>
-            <Button type="button" variant="outline" onClick={() => setConfirming(false)}>
+            <Button
+              ref={cancelRef}
+              type="button"
+              variant="outline"
+              onClick={() => setConfirming(false)}
+            >
               Keep item
             </Button>
           </form>
         ) : (
           <div>
-            <Button type="button" variant="outline" onClick={() => setConfirming(true)}>
+            <Button
+              ref={triggerRef}
+              type="button"
+              variant="outline"
+              onClick={() => setConfirming(true)}
+            >
               Delete item…
             </Button>
           </div>

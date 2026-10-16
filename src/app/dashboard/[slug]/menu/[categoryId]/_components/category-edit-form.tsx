@@ -9,6 +9,7 @@
 
 import { useActionState, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { useConfirmFocus } from "@/components/ui/confirm-focus";
 import { Field } from "@/components/ui/field";
 import { ErrorState } from "@/components/ui/feedback";
 import { FormActions } from "@/components/ui/form-actions";
@@ -39,6 +40,7 @@ export function CategoryEditForm({
     { status: "idle" }
   );
   const [confirming, setConfirming] = useState(false);
+  const { triggerRef, cancelRef } = useConfirmFocus(confirming);
   const name = saveState.values?.name ?? category.name;
   const description = saveState.values?.description ?? category.description ?? "";
   const isPublished = saveState.values?.isPublished ?? category.isPublished;
@@ -108,13 +110,23 @@ export function CategoryEditForm({
             <Button type="submit" variant="danger" loading={deletePending}>
               {deletePending ? "Deleting…" : "Confirm delete"}
             </Button>
-            <Button type="button" variant="outline" onClick={() => setConfirming(false)}>
+            <Button
+              ref={cancelRef}
+              type="button"
+              variant="outline"
+              onClick={() => setConfirming(false)}
+            >
               Keep category
             </Button>
           </form>
         ) : (
           <div>
-            <Button type="button" variant="outline" onClick={() => setConfirming(true)}>
+            <Button
+              ref={triggerRef}
+              type="button"
+              variant="outline"
+              onClick={() => setConfirming(true)}
+            >
               Delete category…
             </Button>
           </div>

@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes } from "react";
+import type { ComponentPropsWithRef } from "react";
 import { cn } from "./cn";
 import { FocusAfterLoading } from "./focus-after-loading";
 
@@ -46,7 +46,12 @@ export function buttonClasses({
   );
 }
 
-export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+/**
+ * `ComponentPropsWithRef`, not `ButtonHTMLAttributes`: callers hold refs to
+ * buttons they swap in and out (`useConfirmFocus`), and React 19 passes
+ * `ref` through props — which `...rest` below lands on the DOM node.
+ */
+export interface ButtonProps extends ComponentPropsWithRef<"button"> {
   variant?: ButtonVariant;
   size?: ButtonSize;
   fullWidth?: boolean;
