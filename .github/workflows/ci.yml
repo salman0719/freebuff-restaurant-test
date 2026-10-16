@@ -52,6 +52,12 @@ jobs:
       - run: npm run db:migrate
       - run: npm run test:run
       - run: npm run build
+      # Client-JS budget: measures the chunks the public route's built shell
+      # actually references, so a heavier public page fails here rather than
+      # in a pilot visitor's hands. It has to run after the build — the unit
+      # job above is deliberately build-free — hence its own step.
+      - name: Client-JS budget (public route)
+        run: npm run perf:budget
       # Release gate: the only check that proves a request is actually
       # *bounced* by the edge gate. A build that lists `ƒ Proxy (Middleware)`
       # proves nothing on its own — emptying the matcher leaves that listing

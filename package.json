@@ -16,6 +16,7 @@
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
     "smoke": "tsx scripts/smoke.ts",
+    "perf:budget": "tsx scripts/perf-budget.ts",
     "db:generate": "drizzle-kit generate && prettier --write db/migrations/meta",
     "db:migrate": "tsx db/migrate.ts",
     "db:seed": "tsx db/seed.ts",
