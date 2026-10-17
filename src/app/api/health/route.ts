@@ -8,20 +8,15 @@
  * without being exposed: the response says "degraded", the log says what
  * the driver actually reported.
  */
-import { mkdir } from "node:fs/promises";
 import { connection } from "next/server";
 import { sql } from "drizzle-orm";
 import { db } from "../../../../db";
 import { runHealthChecks, type HealthProbes } from "@/lib/health";
 import { logServerEvent } from "@/lib/server-log";
-import { storageDir } from "@/lib/storage";
+import { probeStorage } from "@/lib/storage";
 
 async function pingDatabase(): Promise<void> {
   await db.execute(sql`SELECT 1`);
-}
-
-async function probeStorage(): Promise<void> {
-  await mkdir(storageDir(), { recursive: true });
 }
 
 export async function GET(): Promise<Response> {

@@ -25,12 +25,15 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 const TEST_URL = process.env.TEST_DATABASE_URL;
 const live = TEST_URL ? describe : describe.skip;
 
-function pngFile(fill: number): File {
-  return new File(
-    [new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, fill])],
-    "x.png",
-    { type: "image/png" }
-  );
+/** Real decodable PNG, so `sharp` succeeds and the storage failure is what runs. */
+async function pngFile(): Promise<File> {
+  const { default: sharp } = await import("sharp");
+  const buf = await sharp({
+    create: { width: 64, height: 64, channels: 3, background: { r: 140, g: 170, b: 210 } },
+  })
+    .png()
+    .toBuffer();
+  return new File([new Uint8Array(buf)], "x.png", { type: "image/png" });
 }
 
 live("storage failure honesty (live database)", () => {
@@ -39,6 +42,7 @@ live("storage failure honesty (live database)", () => {
   let itemId = "";
   let blockerFile = "";
   let previousStorageDir: string | undefined;
+  let previousDriver: string | undefined;
 
   async function libs() {
     process.env.DATABASE_URL = TEST_URL as string;
@@ -55,6 +59,8 @@ live("storage failure honesty (live database)", () => {
     const { tmpdir } = await import("node:os");
     const { join } = await import("node:path");
     previousStorageDir = process.env.STORAGE_DIR;
+    previousDriver = process.env.STORAGE_DRIVER;
+    process.env.STORAGE_DRIVER = "fs";
     const dir = await mkdtemp(join(tmpdir(), "sfl-"));
     // The blocker: a file where the storage root should be.
     blockerFile = join(dir, "blocker");
@@ -94,6 +100,8 @@ live("storage failure honesty (live database)", () => {
     if (blockerFile) await rm(dirname(blockerFile), { recursive: true, force: true });
     if (previousStorageDir === undefined) delete process.env.STORAGE_DIR;
     else process.env.STORAGE_DIR = previousStorageDir;
+    if (previousDriver === undefined) delete process.env.STORAGE_DRIVER;
+    else process.env.STORAGE_DRIVER = previousDriver;
   });
 
   async function contextFor() {
@@ -112,7 +120,7 @@ live("storage failure honesty (live database)", () => {
       if (!before.ok || !before.data) return expect.unreachable();
       expect(before.data.logoImageKey).toBeNull();
 
-      const result = await libsApi.setTenantLogo(ctx, pngFile(1));
+      const result = await libsApi.setTenantLogo(ctx, await pngFile());
       expect(result).toMatchObject({ ok: false, error: { code: "INTERNAL" } });
 
       const after = await libsApi.getTenantProfile(ctx);
@@ -129,7 +137,7 @@ live("storage failure honesty (live database)", () => {
     process.env.STORAGE_DIR = blockerFile;
     try {
       const ctx = await contextFor();
-      const result = await libsApi.setTenantItemImage(ctx, itemId, pngFile(2));
+      const result = await libsApi.setTenantItemImage(ctx, itemId, await pngFile());
       expect(result).toMatchObject({ ok: false, error: { code: "INTERNAL" } });
 
       const after = await libsApi.getTenantItem(ctx, itemId);

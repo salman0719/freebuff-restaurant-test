@@ -1,27 +1,41 @@
 /**
- * Object storage (Phase 3.6). Server-only: touches the file system.
+ * Object storage selector (R2 swap, commits 1–2). Server-only: delegates
+ * to a driver, never touches bytes itself.
  *
- * Driver decision: 0002 §5 targets Cloudflare R2 behind an
- * `upload`/`delete`/`getPublicUrl` adapter, but R2 needs an account,
- * keys, and a new SDK — none of which the MVP has. This local-filesystem
- * driver implements the same shape (provider-neutral keys in the
- * database, server-owned key generation, explicit delete) so the R2 move
- * swaps this module, not the callers. Local files are dev-only: they live
- * under `STORAGE_DIR` (default `local/uploads`, git-ignored) and never
- * deploy anywhere.
+ * Drivers share the provider-neutral key shape (`./storage-keys.ts`) and
+ * the adapter signatures (`putObject` / `getObject` / `deleteObject`), so
+ * the database, the capability-URL serving route, and the
+ * tenant-isolation suite are untouched by the swap:
+ * - `./storage-fs.ts` — local filesystem (dev-only, git-ignored).
+ * - `./storage-r2.ts` — Cloudflare R2 via the S3-compatible API (hosted).
  *
- * Trust model: nothing user-supplied reaches the disk. Keys are built
- * here from the tenant id plus a random id (`tenants/{uuid}/logos|items/
- * {uuid}.{ext}`), extensions come from the sniffed bytes — never the
- * uploaded filename — and every read/write re-validates the key against
- * a strict pattern, so traversal is structurally impossible. Uploaded
- * bytes are validated (type allowlist, 2 MB cap, magic-byte sniff
- * matching the declared MIME) before anything is stored.
+ * Selection: `STORAGE_DRIVER=fs|r2`, defaulting to `r2` when
+ * `R2_ACCOUNT_ID` is present and `fs` otherwise, so local dev keeps
+ * working with zero setup and deployed environments are R2 by
+ * construction. A missing R2 config in a deployed environment fails the
+ * upload loudly (thrown error → `INTERNAL` in `tenant-data.ts`), never
+ * silently. The bucket stays private; serving flows through
+ * `/api/images/[...key]`.
+ *
+ * Trust model: nothing user-supplied reaches storage. Keys are built in
+ * `./storage-keys.ts` from the tenant id plus a random id, extensions come
+ * from the sniffed bytes — never the uploaded filename — and every
+ * read/write re-validates the key, so traversal is structurally
+ * impossible. Uploaded bytes are validated (type allowlist, 2 MB cap,
+ * magic-byte sniff matching the declared MIME) before anything is stored.
  */
-import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
-import { dirname, join, resolve, sep } from "node:path";
-import { randomUUID } from "node:crypto";
 import { err, ok, type ServiceResult } from "./result";
+import { buildObjectKey, isValidObjectKey } from "./storage-keys";
+import {
+  deleteObjectR2,
+  getObjectR2,
+  isR2Configured,
+  probeStorageR2,
+  putObjectR2,
+} from "./storage-r2";
+
+export { buildObjectKey, isValidObjectKey };
+export { isR2Configured };
 
 /** Largest accepted upload: 2 MB. Phone originals must be downsized first. */
 export const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
@@ -88,78 +102,64 @@ export async function parseImageUpload(file: unknown): Promise<ServiceResult<Par
   return ok({ bytes, mimeType: declared, extension: IMAGE_TYPES[declared], size: file.size });
 }
 
-/** Storage root, overridable for tests (`STORAGE_DIR`). Read per call. */
-export function storageDir(): string {
-  return resolve(process.cwd(), process.env.STORAGE_DIR ?? join("local", "uploads"));
-}
-
-const KEY_PATTERN = /^tenants\/[0-9a-f-]{36}\/(logos|items)\/[0-9a-f-]{36}\.(jpg|png|webp)$/;
-
-/** Strict allowlist: only keys this module could have generated. */
-export function isValidObjectKey(key: string): boolean {
-  return KEY_PATTERN.test(key);
-}
+export type StorageDriver = "fs" | "r2";
 
 /**
- * Build the key for an upload. The tenant prefix keeps ownership evident
- * (and future R2 prefix policies trivial); the random tail keeps URLs
- * unguessable and ignores the user-supplied filename entirely.
+ * Driver selection: explicit `STORAGE_DRIVER` wins, otherwise `r2` when
+ * `R2_ACCOUNT_ID` is present and `fs` otherwise. Read per call so tests
+ * can pin a driver via the environment.
  */
-export function buildObjectKey(
-  kind: "logos" | "items",
-  tenantId: string,
-  extension: string
-): string {
-  return `tenants/${tenantId}/${kind}/${randomUUID()}.${extension}`;
+export function resolveStorageDriver(): StorageDriver {
+  const explicit = process.env.STORAGE_DRIVER;
+  if (explicit === "fs" || explicit === "r2") return explicit;
+  return process.env.R2_ACCOUNT_ID ? "r2" : "fs";
+}
+/**
+ * Dev-only fs fallback, reachable only behind the driver selector. Dynamic
+ * import keeps `node:fs` (and its whole-project Turbopack trace — see
+ * `docs/tech-debt/turbopack-storage-tracing.md`) out of the production
+ * route graph: deployed environments are R2 by construction, so no
+ * production bundle statically includes the fs driver.
+ */
+async function fsDriver() {
+  return import("./storage-fs");
 }
 
-function pathForKey(key: string): string {
-  if (!isValidObjectKey(key)) {
-    throw new Error("Invalid object key.");
-  }
-  const full = resolve(storageDir(), key);
-  if (!full.startsWith(storageDir() + sep)) {
-    throw new Error("Invalid object key.");
-  }
-  return full;
-}
-
-/** Store validated bytes. Throws on invalid keys or I/O failures. */
+/** Store validated bytes via the selected driver. Throws on invalid keys or I/O failures. */
 export async function putObject(key: string, bytes: Uint8Array): Promise<void> {
-  const full = pathForKey(key);
-  await mkdir(dirname(full), { recursive: true });
-  await writeFile(full, bytes);
-}
-
-/** Read bytes plus their MIME type, or `null` when absent/invalid. */
-export async function getObject(key: string): Promise<{ bytes: Buffer; mimeType: string } | null> {
-  let full: string;
-  try {
-    full = pathForKey(key);
-  } catch {
-    return null;
-  }
-  const extension = full.slice(full.lastIndexOf(".") + 1);
-  const mimeType = Object.entries(IMAGE_TYPES).find(([, ext]) => ext === extension)?.[0] ?? null;
-  if (!mimeType) return null;
-  try {
-    return { bytes: await readFile(full), mimeType };
-  } catch {
-    return null;
-  }
-}
-
-/** Remove an object; missing files are fine (idempotent cleanup). */
-export async function deleteObject(key: string): Promise<void> {
-  let full: string;
-  try {
-    full = pathForKey(key);
-  } catch {
+  if (resolveStorageDriver() === "r2") {
+    await putObjectR2(key, bytes);
     return;
   }
-  try {
-    await unlink(full);
-  } catch (error) {
-    if ((error as { code?: unknown }).code !== "ENOENT") throw error;
+  const { putObjectFs } = await fsDriver();
+  await putObjectFs(key, bytes);
+}
+
+/** Read bytes plus their MIME type via the selected driver, or `null` when absent/invalid. */
+export async function getObject(key: string): Promise<{ bytes: Buffer; mimeType: string } | null> {
+  if (resolveStorageDriver() === "r2") {
+    return getObjectR2(key);
   }
+  const { getObjectFs } = await fsDriver();
+  return getObjectFs(key);
+}
+
+/** Remove an object via the selected driver; missing objects are fine (idempotent cleanup). */
+export async function deleteObject(key: string): Promise<void> {
+  if (resolveStorageDriver() === "r2") {
+    await deleteObjectR2(key);
+    return;
+  }
+  const { deleteObjectFs } = await fsDriver();
+  await deleteObjectFs(key);
+}
+
+/** Liveness probe for the selected driver (health route). */
+export async function probeStorage(): Promise<void> {
+  if (resolveStorageDriver() === "r2") {
+    await probeStorageR2();
+    return;
+  }
+  const { probeStorageFs } = await fsDriver();
+  await probeStorageFs();
 }

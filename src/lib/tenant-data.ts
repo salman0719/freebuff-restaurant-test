@@ -37,6 +37,7 @@ import type {
 } from "./restaurant";
 import type { TenantContext } from "./tenant-context";
 import { buildObjectKey, deleteObject, parseImageUpload, putObject } from "./storage";
+import { processItemImage, processLogoImage } from "./storage-image";
 import {
   categoryMoveSchema,
   createCategorySchema,
@@ -597,9 +598,15 @@ export async function setTenantLogo(
       name: ["Restaurant name is required."],
     });
   }
-  const key = buildObjectKey("logos", ctx.tenant.id, parsed.data.extension);
+  let image: { bytes: Uint8Array; extension: string };
   try {
-    await putObject(key, parsed.data.bytes);
+    image = await processLogoImage(parsed.data.bytes);
+  } catch {
+    return err("INTERNAL", "Failed to save logo.");
+  }
+  const key = buildObjectKey("logos", ctx.tenant.id, image.extension);
+  try {
+    await putObject(key, image.bytes);
   } catch {
     // Storage down (or unwritable) must read as a failed save, never as a
     // crash: the action reports "profile saved, logo not" and the profile
@@ -636,9 +643,15 @@ export async function setTenantItemImage(
   if (isErr(parsed)) return parsed;
   const current = await getTenantItem(ctx, itemId);
   if (isErr(current)) return current;
-  const key = buildObjectKey("items", ctx.tenant.id, parsed.data.extension);
+  let image: { bytes: Uint8Array; extension: string };
   try {
-    await putObject(key, parsed.data.bytes);
+    image = await processItemImage(parsed.data.bytes);
+  } catch {
+    return err("INTERNAL", "Failed to save photo.");
+  }
+  const key = buildObjectKey("items", ctx.tenant.id, image.extension);
+  try {
+    await putObject(key, image.bytes);
   } catch {
     // Same contract as the logo path: a failed store is a failed save
     // with no link written, not a crash and not a half-linked row.
