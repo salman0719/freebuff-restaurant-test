@@ -338,28 +338,33 @@ live("cross-tenant isolation (live database)", () => {
     const { tmpdir } = await import("node:os");
     const { join } = await import("node:path");
     const dir = await mkdtemp(join(tmpdir(), "iso-uploads-"));
+    const previousDriver = process.env.STORAGE_DRIVER;
+    process.env.STORAGE_DRIVER = "fs";
     process.env.STORAGE_DIR = dir;
     try {
       const ctx = await getTenantContext({ user: { id: userA, role: "owner" } }, slugA);
       expect(ctx.ok).toBe(true);
       if (!ctx.ok) return expect.unreachable();
-      const png = (fill: number): File =>
-        new File(
-          [new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, fill])],
-          "logo.png",
-          { type: "image/png" }
-        );
+      const { default: sharp } = await import("sharp");
+      const png = async (): Promise<File> => {
+        const buf = await sharp({
+          create: { width: 64, height: 64, channels: 3, background: { r: 120, g: 160, b: 200 } },
+        })
+          .png()
+          .toBuffer();
+        return new File([new Uint8Array(buf)], "logo.png", { type: "image/png" });
+      };
       // Logos need a profile to link onto — the name field feeds it.
       const profiled = await updateTenantProfile(ctx.data, { name: "Trattoria A" });
       expect(profiled.ok).toBe(true);
-      const first = await setTenantLogo(ctx.data, png(1));
+      const first = await setTenantLogo(ctx.data, await png());
       expect(first.ok).toBe(true);
       if (!first.ok) return expect.unreachable();
       const firstKey = first.data.logoImageKey;
-      expect(firstKey).toMatch(/^tenants\/.+\/logos\/.+\.png$/);
+      expect(firstKey).toMatch(/^tenants\/.+\/logos\/.+\.webp$/);
       expect(await getObject(firstKey as string)).not.toBeNull();
       // Replacing mints a new key and removes the old file.
-      const second = await setTenantLogo(ctx.data, png(2));
+      const second = await setTenantLogo(ctx.data, await png());
       expect(second.ok).toBe(true);
       if (!second.ok) return expect.unreachable();
       expect(second.data.logoImageKey).not.toBe(firstKey);
@@ -372,7 +377,7 @@ live("cross-tenant isolation (live database)", () => {
       const item = await createTenantItem(ctx.data, { name: "Dish", priceCents: 100 });
       expect(item.ok).toBe(true);
       if (!item.ok) return expect.unreachable();
-      const photo = await setTenantItemImage(ctx.data, item.data.id, png(3));
+      const photo = await setTenantItemImage(ctx.data, item.data.id, await png());
       expect(photo.ok).toBe(true);
       if (!photo.ok) return expect.unreachable();
       expect(await getObject(photo.data.imageKey as string)).not.toBeNull();
@@ -382,14 +387,14 @@ live("cross-tenant isolation (live database)", () => {
       expect(cleared.data.imageKey).toBeNull();
       expect(await getObject(photo.data.imageKey as string)).toBeNull();
       // Another tenant's item refuses both photo paths.
-      const badPhoto = await setTenantItemImage(ctx.data, itemB, png(4));
+      const badPhoto = await setTenantItemImage(ctx.data, itemB, await png());
       expect(badPhoto.ok).toBe(false);
       if (!badPhoto.ok) expect(badPhoto.error.code).toBe("FORBIDDEN");
       const badClear = await clearTenantItemImage(ctx.data, itemB);
       expect(badClear.ok).toBe(false);
       if (!badClear.ok) expect(badClear.error.code).toBe("FORBIDDEN");
       // Deleting an item removes its photo file too.
-      const relinked = await setTenantItemImage(ctx.data, item.data.id, png(5));
+      const relinked = await setTenantItemImage(ctx.data, item.data.id, await png());
       expect(relinked.ok).toBe(true);
       if (!relinked.ok) return expect.unreachable();
       const removed = await deleteTenantItem(ctx.data, item.data.id);
@@ -398,6 +403,8 @@ live("cross-tenant isolation (live database)", () => {
     } finally {
       await rm(dir, { recursive: true, force: true });
       delete process.env.STORAGE_DIR;
+      if (previousDriver === undefined) delete process.env.STORAGE_DRIVER;
+      else process.env.STORAGE_DRIVER = previousDriver;
     }
   });
 
