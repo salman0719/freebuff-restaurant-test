@@ -10,6 +10,7 @@ import {
   MAX_IMAGE_BYTES,
   parseImageUpload,
   putObject,
+  resolveStorageDriver,
   storageDir,
 } from "./storage";
 import { imageUrlForKey } from "./image-url";
@@ -81,14 +82,43 @@ describe("object keys", () => {
   });
 });
 
+describe("storage driver selection", () => {
+  it("prefers an explicit STORAGE_DRIVER and defaults to r2 when R2_ACCOUNT_ID is set", async () => {
+    const previousDriver = process.env.STORAGE_DRIVER;
+    const previousAccount = process.env.R2_ACCOUNT_ID;
+    try {
+      process.env.STORAGE_DRIVER = "fs";
+      delete process.env.R2_ACCOUNT_ID;
+      expect(resolveStorageDriver()).toBe("fs");
+      process.env.STORAGE_DRIVER = "r2";
+      expect(resolveStorageDriver()).toBe("r2");
+      delete process.env.STORAGE_DRIVER;
+      process.env.R2_ACCOUNT_ID = "abc123";
+      expect(resolveStorageDriver()).toBe("r2");
+      delete process.env.R2_ACCOUNT_ID;
+      expect(resolveStorageDriver()).toBe("fs");
+    } finally {
+      if (previousDriver === undefined) delete process.env.STORAGE_DRIVER;
+      else process.env.STORAGE_DRIVER = previousDriver;
+      if (previousAccount === undefined) delete process.env.R2_ACCOUNT_ID;
+      else process.env.R2_ACCOUNT_ID = previousAccount;
+    }
+  });
+});
+
 describe("object round-trip", () => {
   let dir = "";
+  let previousDriver: string | undefined;
   afterAll(async () => {
     if (dir) await rm(dir, { recursive: true, force: true });
     delete process.env.STORAGE_DIR;
+    if (previousDriver === undefined) delete process.env.STORAGE_DRIVER;
+    else process.env.STORAGE_DRIVER = previousDriver;
   });
 
   it("stores, reads, and deletes within an isolated root", async () => {
+    previousDriver = process.env.STORAGE_DRIVER;
+    process.env.STORAGE_DRIVER = "fs";
     dir = await mkdtemp(join(tmpdir(), "storage-test-"));
     process.env.STORAGE_DIR = dir;
     expect(storageDir()).toBe(dir);
