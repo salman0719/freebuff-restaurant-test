@@ -21,8 +21,11 @@ npm run test:e2e
 
 Playwright starts the production build on `http://localhost:4030` and runs
 Chromium. `e2e/global-setup.ts` resets the dedicated `e2e-bistro` owner
-fixture; every other journey owns a UUID-suffixed tenant/account and removes
-it in teardown. For a focused rerun:
+fixture. The owner-validation and public-isolation specs use UUID-suffixed
+tenants/accounts; operator provisioning uses its own named fixtures with
+pre-run and teardown cleanup, and domain-claim uses a timestamped fixture.
+Each suite owns its fixture lifecycle rather than sharing mutable tenant state.
+For a focused rerun:
 
 ```bash
 npm run test:e2e -- --grep 'owner profile validation (6.4)'
@@ -65,8 +68,8 @@ On the working revision before its atomic commits:
   domain claim/refusal.
 - `TEST_DATABASE_URL=postgresql://app:secret@localhost:4432/restaurant_app npm run test:run`
   — **664 passed, 2 skipped**. The skips are the two R2 live-bucket cases;
-  local bucket calls were not part of this matrix run. All 11 DB-gated suites
-  ran against local Docker Postgres.
+  local bucket contract calls were not part of this matrix run. All 10
+  database-gated suites ran against local Docker Postgres.
 - Targeted `npm run typecheck`, changed-file Prettier check, and ESLint on the
   E2E tree passed. `git diff --check` passed.
 - `npm run check` did **not** pass: its repository-wide ESLint traverses
@@ -77,13 +80,11 @@ On the working revision before its atomic commits:
   (`eslint src db e2e scripts *.config.mjs *.config.ts`) passes. No unrelated
   scratch files were changed to conceal the issue.
 
-The pending row below is a **release-specific record template**, not a claim
-that this uncommitted working revision has a CI or Vercel deployment result.
-Update it only after a clean revision receives those results.
-
-| Run                              | Revision       | Build             | E2E               | Preview/redeploy evidence | Notes                                                                      |
-| -------------------------------- | -------------- | ----------------- | ----------------- | ------------------------- | -------------------------------------------------------------------------- |
-| Release CI / Vercel verification | pending commit | CI status pending | CI status pending | Not run                   | Local results above are verified; hosted checks await a released revision. |
+The local result is tied to the tested working tree containing
+[`e2e/owner-validation.spec.ts`](../../e2e/owner-validation.spec.ts)
+(commit `c091bbd`); the later documentation commit adds no runtime changes.
+CI for the revision and Vercel Preview/redeploy evidence remain pending, not
+inferred from local tests.
 
 ## Recording a run
 
@@ -92,9 +93,9 @@ Postgres version, Playwright summary, and whether the Vercel Preview checks
 were run. Keep the compact result here or link to the CI run; do not paste
 secrets, customer content, full environment dumps, or raw auth tokens.
 
-| Run                             | Revision       | Build   | E2E     | Preview/redeploy evidence | Notes                                                                                        |
-| ------------------------------- | -------------- | ------- | ------- | ------------------------- | -------------------------------------------------------------------------------------------- |
-| 2026-10-17 local acceptance run | pending commit | pending | pending | Not run                   | Run commands above after this change is committed; hosted evidence remains separately gated. |
+| Run                             | Revision  | Build  | E2E       | Live DB tests                  | Preview/redeploy evidence | Notes                                                                                 |
+| ------------------------------- | --------- | ------ | --------- | ------------------------------ | ------------------------- | ------------------------------------------------------------------------------------- |
+| 2026-10-17 local acceptance run | `c091bbd` | Passed | 19 passed | 664 passed; 2 R2 tests skipped | Not run                   | `npm run check` blocked by ignored scratch JS; scoped lint passed. Hosted CI pending. |
 
 ## Exit rule
 
