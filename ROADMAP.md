@@ -1630,6 +1630,24 @@ Test the complete journeys: 1. Operator creates a restaurant. 2. Owner
 accesses the correct tenant. 3. Owner edits restaurant details and menu. 4. Owner chooses a theme and previews. 5. Owner publishes changes. 6.
 Public visitor sees only the published content on the correct hostname. 7. A different tenant cannot access the first tenant's private content. 8. Errors and invalid input are handled clearly.
 
+**Status:** In progress — repeatable regression coverage is documented in
+[`docs/plans/phase-6.4-regression-matrix.md`](docs/plans/phase-6.4-regression-matrix.md).
+The matrix maps the operator happy/refusal journey, full owner journey,
+invalid owner profile input, published-vs-draft/unknown-host isolation,
+sign-in rate-limit honesty, and custom-domain refusal/verification to the
+existing E2E specs. Added `e2e/owner-validation.spec.ts`: a whitespace-only
+required restaurant name is rejected by the real server action with field
+feedback, preserved input, no success announcement and no persisted profile;
+correcting the value then saves and survives reload. This spec owns and
+cleans up a disposable tenant/account. Verified locally 2026-10-17 against
+Postgres + Mailpit: production build passed, full Playwright suite passed
+(19/19), and live-DB Vitest passed (664 passed, 2 R2-bucket tests skipped).
+See the matrix for commands and the repository-wide lint limitation: `npm run
+check` is blocked by an ESLint error in ignored local scratch JS, while the
+same lint over CI's source/config scope passes. Vercel Preview build-log and
+upload-through-redeploy evidence remain deployment-specific and unverified
+here. Do not call 6.4 complete until the matrix's release gate is recorded.
+
 **Deliverable:** Repeatable regression suite and results.
 
 ## 6.5 Deployment and support documentation
@@ -1640,6 +1658,15 @@ Public visitor sees only the published content on the correct hostname. 7. A dif
   domain, and troubleshoot common problems.
 - Establish a basic process for reporting and resolving customer
   issues.
+
+**Status:** In progress — initial [pilot deployment and support runbook](docs/runbooks/pilot-deployment-support.md)
+records the environment inventory, release/migration sequence, forward-safe
+migration policy, app-vs-database rollback boundaries, owner onboarding,
+domain verification, issue intake/triage, and support closure. Production DB
+provider/backups and restoration drill, base-domain/deployment confirmation,
+and support escalation ownership remain explicit readiness gates, not assumed
+facts. Existing [operations reliability runbook](docs/runbooks/ops-reliability.md)
+continues to own health/logging and infrastructure failure behavior.
 
 **Deliverable:** Pilot runbook.
 

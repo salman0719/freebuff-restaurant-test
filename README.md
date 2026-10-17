@@ -107,6 +107,12 @@ exceeds the ceiling in `src/lib/perf-budget.ts` (13 chunks, 630 KB raw /
 197 KB gzip at the time of writing), printing the per-chunk table so a failure
 names the culprit. CI runs it right after `npm run build`.
 
+Phase 6.4's repeatable journey matrix and evidence record are in
+[docs/plans/phase-6.4-regression-matrix.md](docs/plans/phase-6.4-regression-matrix.md).
+The pilot deployment, migration, rollback, onboarding, and support procedures
+are in [docs/runbooks/pilot-deployment-support.md](docs/runbooks/pilot-deployment-support.md);
+read its explicit readiness gaps before any production/pilot data change.
+
 ## Conventions
 
 - Agent rules live in [AGENTS.md](AGENTS.md).
