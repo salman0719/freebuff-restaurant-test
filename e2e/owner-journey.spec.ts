@@ -9,6 +9,7 @@
  * draft preview, publish, public site on the tenant subdomain, and
  * unpublish cleanup.
  */
+import sharp from "sharp";
 import { expect, test } from "@playwright/test";
 import { E2E_EMAIL, E2E_NAME, E2E_SLUG, fetchSignInLink, purgeMailpitFor } from "./helpers";
 
@@ -25,7 +26,7 @@ test.beforeAll(async () => {
   await purgeMailpitFor(E2E_EMAIL);
 });
 
-test("owner signs in, edits, and publishes the restaurant site", async ({ page }) => {
+test("owner signs in, edits, and publishes the restaurant site", async ({ page, browser }) => {
   // Exactly one live sign-in form (the 3.9 stale-fallback regression).
   await page.goto("/login");
   await expect(page.getByRole("button", { name: /email me a sign-in link/i })).toBeVisible();
@@ -44,13 +45,31 @@ test("owner signs in, edits, and publishes the restaurant site", async ({ page }
   await page.waitForURL(dashboard);
   await expect(page.getByText(/only you can see it until it is published/i)).toBeVisible();
 
-  // Profile: name the restaurant.
+  // Profile: save public content and upload an actual image through the owner UI.
   await page.goto(`${dashboard}/profile`);
   await page.getByLabel(/restaurant name/i).fill(E2E_NAME);
+  const logoBytes = await sharp({
+    create: { width: 64, height: 64, channels: 3, background: { r: 170, g: 95, b: 40 } },
+  })
+    .png()
+    .toBuffer();
+  await page.getByLabel("Logo").setInputFiles({
+    name: "owner-logo.png",
+    mimeType: "image/png",
+    buffer: logoBytes,
+  });
   await page.getByRole("button", { name: /save profile/i }).click();
   await expect(page.getByRole("status")).toContainText(/profile saved/i, {
     timeout: ACTION_TIMEOUT,
   });
+  await page.reload();
+  const logoPreview = page.getByRole("img", { name: "Current restaurant logo" });
+  await expect(logoPreview).toBeVisible();
+  const logoUrl = await logoPreview.getAttribute("src");
+  const logoImagePath = decodeURIComponent(
+    new URL(logoUrl ?? "/", page.url()).searchParams.get("url") ?? ""
+  );
+  expect(logoImagePath).toContain("/api/images/");
 
   // Menu: one category, one item inside it.
   await page.goto(`${dashboard}/menu`);
@@ -106,6 +125,32 @@ test("owner signs in, edits, and publishes the restaurant site", async ({ page }
   await expect(page.getByText(E2E_NAME).first()).toBeVisible();
   await expect(page.getByText("E2E Burger")).toBeVisible();
   await expect(page.getByText("Mains", { exact: true })).toBeVisible();
+  const publicLogo = page.getByRole("img", { name: `${E2E_NAME} logo` });
+  await expect(publicLogo).toBeVisible();
+  const srcSet = await publicLogo.getAttribute("srcset");
+  expect(decodeURIComponent(srcSet ?? "")).toContain("/api/images/");
+  const directImageUrl = new URL(logoImagePath, page.url());
+  const logoResponse = await page.request.get(directImageUrl.toString());
+  expect(logoResponse.ok()).toBe(true);
+  expect(logoResponse.headers()["content-type"]).toBe("image/webp");
+  expect(Number(logoResponse.headers()["content-length"])).toBeGreaterThan(0);
+  const firstDeploymentLogo = Buffer.from(await logoResponse.body());
+
+  // A freshly created browser context has no image cache. After the owner
+  // navigates away, public delivery must still come from durable storage.
+  const visitor = await browser.newPage();
+  try {
+    await visitor.goto(publicSite);
+    const visitorLogo = visitor.getByRole("img", { name: `${E2E_NAME} logo` });
+    await expect(visitorLogo).toBeVisible();
+    const visitorImage = new URL(logoImagePath, visitor.url());
+    const visitorResponse = await visitor.request.get(visitorImage.toString());
+    expect(visitorResponse.ok()).toBe(true);
+    expect(visitorResponse.headers()["content-type"]).toBe("image/webp");
+    expect(Buffer.from(await visitorResponse.body())).toEqual(firstDeploymentLogo);
+  } finally {
+    await visitor.close();
+  }
 
   // Cleanup: take the site back offline for the next run. The publish
   // controls render server-side, so reload for the fresh published state.
