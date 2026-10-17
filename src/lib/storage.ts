@@ -1,6 +1,6 @@
 /**
- * Object storage selector (R2 swap, commit 1). Server-only: delegates to a
- * driver, never touches bytes itself.
+ * Object storage selector (R2 swap, commits 1–2). Server-only: delegates
+ * to a driver, never touches bytes itself.
  *
  * Drivers share the provider-neutral key shape (`./storage-keys.ts`) and
  * the adapter signatures (`putObject` / `getObject` / `deleteObject`), so
@@ -26,7 +26,6 @@
  */
 import { err, ok, type ServiceResult } from "./result";
 import { buildObjectKey, isValidObjectKey } from "./storage-keys";
-import { deleteObjectFs, getObjectFs, probeStorageFs, putObjectFs, storageDir } from "./storage-fs";
 import {
   deleteObjectR2,
   getObjectR2,
@@ -35,7 +34,7 @@ import {
   putObjectR2,
 } from "./storage-r2";
 
-export { buildObjectKey, isValidObjectKey, storageDir };
+export { buildObjectKey, isValidObjectKey };
 export { isR2Configured };
 
 /** Largest accepted upload: 2 MB. Phone originals must be downsized first. */
@@ -115,6 +114,16 @@ export function resolveStorageDriver(): StorageDriver {
   if (explicit === "fs" || explicit === "r2") return explicit;
   return process.env.R2_ACCOUNT_ID ? "r2" : "fs";
 }
+/**
+ * Dev-only fs fallback, reachable only behind the driver selector. Dynamic
+ * import keeps `node:fs` (and its whole-project Turbopack trace — see
+ * `docs/tech-debt/turbopack-storage-tracing.md`) out of the production
+ * route graph: deployed environments are R2 by construction, so no
+ * production bundle statically includes the fs driver.
+ */
+async function fsDriver() {
+  return import("./storage-fs");
+}
 
 /** Store validated bytes via the selected driver. Throws on invalid keys or I/O failures. */
 export async function putObject(key: string, bytes: Uint8Array): Promise<void> {
@@ -122,6 +131,7 @@ export async function putObject(key: string, bytes: Uint8Array): Promise<void> {
     await putObjectR2(key, bytes);
     return;
   }
+  const { putObjectFs } = await fsDriver();
   await putObjectFs(key, bytes);
 }
 
@@ -130,6 +140,7 @@ export async function getObject(key: string): Promise<{ bytes: Buffer; mimeType:
   if (resolveStorageDriver() === "r2") {
     return getObjectR2(key);
   }
+  const { getObjectFs } = await fsDriver();
   return getObjectFs(key);
 }
 
@@ -139,6 +150,7 @@ export async function deleteObject(key: string): Promise<void> {
     await deleteObjectR2(key);
     return;
   }
+  const { deleteObjectFs } = await fsDriver();
   await deleteObjectFs(key);
 }
 
@@ -148,5 +160,6 @@ export async function probeStorage(): Promise<void> {
     await probeStorageR2();
     return;
   }
+  const { probeStorageFs } = await fsDriver();
   await probeStorageFs();
 }

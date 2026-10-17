@@ -19,16 +19,27 @@ const IMAGE_TYPES = {
   "image/webp": "webp",
 } as const;
 
-/** Storage root, overridable for tests (`STORAGE_DIR`). Read per call. */
+/**
+ * Storage root, overridable for tests (`STORAGE_DIR`). Read per call.
+ *
+ * Dev-only driver: never on the production request path (see
+ * `./storage.ts` dynamic fallback). The inline `turbopackIgnore` markers
+ * are the documented opt-out for Turbopack's whole-project trace (see
+ * `docs/tech-debt/turbopack-storage-tracing.md`); the strict key
+ * allowlist + contained-resolve guard below survive any driver.
+ */
 export function storageDir(): string {
-  return resolve(process.cwd(), process.env.STORAGE_DIR ?? join("local", "uploads"));
+  return resolve(
+    /*turbopackIgnore: true*/ process.cwd(),
+    process.env.STORAGE_DIR ?? join("local", "uploads")
+  );
 }
 
 function pathForKey(key: string): string {
   if (!isValidObjectKey(key)) {
     throw new Error("Invalid object key.");
   }
-  const full = resolve(storageDir(), key);
+  const full = resolve(/*turbopackIgnore: true*/ storageDir(), key);
   if (!full.startsWith(storageDir() + sep)) {
     throw new Error("Invalid object key.");
   }
@@ -38,8 +49,8 @@ function pathForKey(key: string): string {
 /** Store validated bytes. Throws on invalid keys or I/O failures. */
 export async function putObjectFs(key: string, bytes: Uint8Array): Promise<void> {
   const full = pathForKey(key);
-  await mkdir(dirname(full), { recursive: true });
-  await writeFile(full, bytes);
+  await mkdir(/*turbopackIgnore: true*/ dirname(full), { recursive: true });
+  await writeFile(/*turbopackIgnore: true*/ full, bytes);
 }
 
 /** Read bytes plus their MIME type, or `null` when absent/invalid. */
@@ -56,7 +67,7 @@ export async function getObjectFs(
   const mimeType = Object.entries(IMAGE_TYPES).find(([, ext]) => ext === extension)?.[0] ?? null;
   if (!mimeType) return null;
   try {
-    return { bytes: await readFile(full), mimeType };
+    return { bytes: await readFile(/*turbopackIgnore: true*/ full), mimeType };
   } catch {
     return null;
   }
@@ -71,7 +82,7 @@ export async function deleteObjectFs(key: string): Promise<void> {
     return;
   }
   try {
-    await unlink(full);
+    await unlink(/*turbopackIgnore: true*/ full);
   } catch (error) {
     if ((error as { code?: unknown }).code !== "ENOENT") throw error;
   }
@@ -79,5 +90,5 @@ export async function deleteObjectFs(key: string): Promise<void> {
 
 /** Liveness probe for the fs driver: the root is writable. */
 export async function probeStorageFs(): Promise<void> {
-  await mkdir(storageDir(), { recursive: true });
+  await mkdir(/*turbopackIgnore: true*/ storageDir(), { recursive: true });
 }
