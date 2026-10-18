@@ -1630,7 +1630,7 @@ Test the complete journeys: 1. Operator creates a restaurant. 2. Owner
 accesses the correct tenant. 3. Owner edits restaurant details and menu. 4. Owner chooses a theme and previews. 5. Owner publishes changes. 6.
 Public visitor sees only the published content on the correct hostname. 7. A different tenant cannot access the first tenant's private content. 8. Errors and invalid input are handled clearly.
 
-**Status:** In progress — repeatable regression coverage is documented in
+**Status:** Done 2026-10-18 — regression coverage is documented in
 [`docs/plans/phase-6.4-regression-matrix.md`](docs/plans/phase-6.4-regression-matrix.md).
 The matrix maps the operator happy/refusal journey, full owner journey,
 invalid owner profile input, published-vs-draft/unknown-host isolation,
@@ -1642,11 +1642,23 @@ correcting the value then saves and survives reload. This spec owns and
 cleans up a disposable tenant/account. Verified locally 2026-10-17 against
 Postgres + Mailpit: production build passed, full Playwright suite passed
 (19/19), and live-DB Vitest passed (664 passed, 2 R2-bucket tests skipped).
-See the matrix for commands and the repository-wide lint limitation: `npm run
-check` is blocked by an ESLint error in ignored local scratch JS, while the
-same lint over CI's source/config scope passes. Vercel Preview build-log and
-upload-through-redeploy evidence remain deployment-specific and unverified
-here. Do not call 6.4 complete until the matrix's release gate is recorded.
+Release-gate close-out (all 2026-10-18): the repository-wide `npm run check`
+blocker (ignored scratch JS) is gone; the full local gate is green at
+`f7ec7b6` (migrate, build, client-JS budget, 19/19 E2E, 670 unit tests,
+`check` exit 0). CI is green at `7a26d8a` — a fast-forward of the same tree
+onto `phase6`, run
+[39110045182](https://github.com/salman0719/freebuff-restaurant-test/actions/runs/39110045182),
+with every step passing: check, migrate, unit tests, build, client-JS
+budget, route smoke, and the full Playwright suite. Vercel evidence is
+recorded too: a clean Turbopack Preview build with zero storage-trace
+warnings, and upload-through-redeploy verified end to end — a logo uploaded
+on one Preview deployment served byte-identical (198 B, matching sha256)
+after a redeploy, with the disposable fixture deleted afterwards. Two finds
+fixed on the way: a duplicate image alt that broke the owner journey's
+strict locator, and Preview database 503s traced to URI-unsafe characters
+in the connection-string password (percent-encoded; no code change). One
+debt item left recorded, not hidden: a single 198-byte test object remains
+in the R2 bucket after fixture cleanup.
 
 **Deliverable:** Repeatable regression suite and results.
 

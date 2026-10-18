@@ -118,8 +118,8 @@ in a git-ignored `local/` harness, which links do not reach CI.
 
 **Preview half of the exit rule:** run the same day — see "Vercel Preview
 build and redeploy evidence (2026-10-18)" below. Build and
-upload-through-redeploy are both verified on Vercel. Only CI for `f7ec7b6`
-remains before 6.4 can be called complete.
+upload-through-redeploy are both verified on Vercel, and CI went green on
+the merged `phase6` head the same day (run 39110045182 at `7a26d8a`).
 
 ## Vercel Preview build and redeploy evidence (2026-10-18)
 
@@ -214,10 +214,10 @@ Postgres version, Playwright summary, and whether the Vercel Preview checks
 were run. Keep the compact result here or link to the CI run; do not paste
 secrets, customer content, full environment dumps, or raw auth tokens.
 
-| Run                             | Revision  | Build  | E2E       | Live DB tests                  | Preview/redeploy evidence                        | Notes                                                                                                 |
-| ------------------------------- | --------- | ------ | --------- | ------------------------------ | ------------------------------------------------ | ----------------------------------------------------------------------------------------------------- |
-| 2026-10-17 local acceptance run | `c091bbd` | Passed | 19 passed | 664 passed; 2 R2 tests skipped | Not run                                          | `npm run check` blocked by ignored scratch JS; scoped lint passed. Hosted CI pending.                 |
-| 2026-10-18 release-gate run     | `f7ec7b6` | Passed | 19 passed | 670 passed; 2 R2 tests skipped | Preview build + upload-through-redeploy verified | Clean tree; Node 22.23.2 / Postgres 17.11 / Playwright 1.64.0. `npm run check` + `perf:budget` green. |
+| Run                             | Revision  | Build  | E2E       | Live DB tests                  | Preview/redeploy evidence                        | Notes                                                                                                                                          |
+| ------------------------------- | --------- | ------ | --------- | ------------------------------ | ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-10-17 local acceptance run | `c091bbd` | Passed | 19 passed | 664 passed; 2 R2 tests skipped | Not run                                          | `npm run check` blocked by ignored scratch JS; scoped lint passed. Hosted CI pending.                                                          |
+| 2026-10-18 release-gate run     | `f7ec7b6` | Passed | 19 passed | 670 passed; 2 R2 tests skipped | Preview build + upload-through-redeploy verified | Clean tree; Node 22.23.2 / Postgres 17.11 / Playwright 1.64.0. `npm run check` + `perf:budget` green; CI green at `7a26d8a` (run 39110045182). |
 
 ## Exit rule
 
@@ -226,8 +226,11 @@ CI is green for the same revision, and the distinct Preview/deploy checks
 are recorded as either verified or explicitly blocked. A local build is not
 a Preview build, and an isolated visitor context is not a redeploy test.
 
-**Standing after the 2026-10-18 run:** the local gate is green at
-`f7ec7b6`, and the Preview/deploy half is verified the same day — build
-clean on Vercel with zero trace warnings, upload byte-identical across two
-Preview deployments with the fixture cleaned up. One item remains before 6.4
-can be marked complete: CI green for `f7ec7b6`.
+**Standing after the 2026-10-18 run:** all three exit-rule conditions are met —
+local gate green at `f7ec7b6`; CI green at `7a26d8a` (run
+[39110045182](https://github.com/salman0719/freebuff-restaurant-test/actions/runs/39110045182),
+every step passing: check, migrate, unit, build, client-JS budget, route
+smoke, E2E); Preview build and upload-through-redeploy verified. `7a26d8a`
+is a fast-forward of the same tree onto `phase6` — three docs-only commits
+sit on top of `f7ec7b6`, so the tested code is identical. **6.4 is
+complete.**
