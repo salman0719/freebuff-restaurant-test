@@ -86,6 +86,40 @@ The local result is tied to the tested working tree containing
 CI for the revision and Vercel Preview/redeploy evidence remain pending, not
 inferred from local tests.
 
+## Release-gate run (2026-10-18)
+
+Full gate on a clean tree at `f7ec7b6` (`feature/configurable-brand-expressions`),
+Node v22.23.2, Playwright 1.64.0, Postgres 17.11, Mailpit on :8025:
+
+- `docker compose up -d` → `npm run db:migrate` (journal already current).
+- `npm run build` — passed (Next.js 16.4.0 / Turbopack), then
+  `npm run perf:budget` — **PASS**, public-route client JS within budget.
+- `npm run test:e2e` — **19 passed** (22.5 s, Chromium, production build),
+  including owner validation, full owner journey, public tenant isolation,
+  operator provisioning/access, sign-in rate limit, and domain claim.
+- `TEST_DATABASE_URL=… npm run test:run` — **670 passed, 2 skipped**. The
+  skips are the two R2 live-bucket cases: `R2_BUCKET` is empty in
+  `.env.local`, so that suite stays opt-in exactly as its own header says.
+- `npm run check` — exit 0 (lint 0 errors, typecheck, Prettier clean).
+
+**What the run caught:** the takeaway brand-direction work was uncommitted
+at the time and rendered the restaurant logo twice — a new brand chip beside
+the h1 plus the hero panel — both with the same accessible name, so
+`owner-journey`'s strict `getByRole("img", …)` matched two elements and the
+suite ended 18/19. The chip is decorative (the restaurant name follows
+immediately), so it now carries `alt=""`; the spec stayed strict and
+unchanged. Feature and fix were committed as one (`f7ec7b6`), the tree is
+clean, and the rerun is 19/19.
+
+**Lint limitation resolved:** the earlier run's repository-wide blocker
+(`local/ubereats-menu-extraction/content.js`) is gone from the workspace,
+so `npm run check` exits 0 today — its single warning is an unused variable
+in a git-ignored `local/` harness, which links do not reach CI.
+
+**Still outstanding for the exit rule:** CI green for `f7ec7b6`, and the
+Vercel Preview build-log / upload-through-redeploy checks (this checkout has
+no `.vercel/project.json`; no deployment was attempted from here).
+
 ## Recording a run
 
 For each release candidate, record the commit SHA, date, Node version,
@@ -93,13 +127,19 @@ Postgres version, Playwright summary, and whether the Vercel Preview checks
 were run. Keep the compact result here or link to the CI run; do not paste
 secrets, customer content, full environment dumps, or raw auth tokens.
 
-| Run                             | Revision  | Build  | E2E       | Live DB tests                  | Preview/redeploy evidence | Notes                                                                                 |
-| ------------------------------- | --------- | ------ | --------- | ------------------------------ | ------------------------- | ------------------------------------------------------------------------------------- |
-| 2026-10-17 local acceptance run | `c091bbd` | Passed | 19 passed | 664 passed; 2 R2 tests skipped | Not run                   | `npm run check` blocked by ignored scratch JS; scoped lint passed. Hosted CI pending. |
+| Run                             | Revision  | Build  | E2E       | Live DB tests                  | Preview/redeploy evidence | Notes                                                                                                 |
+| ------------------------------- | --------- | ------ | --------- | ------------------------------ | ------------------------- | ----------------------------------------------------------------------------------------------------- |
+| 2026-10-17 local acceptance run | `c091bbd` | Passed | 19 passed | 664 passed; 2 R2 tests skipped | Not run                   | `npm run check` blocked by ignored scratch JS; scoped lint passed. Hosted CI pending.                 |
+| 2026-10-18 release-gate run     | `f7ec7b6` | Passed | 19 passed | 670 passed; 2 R2 tests skipped | Not run                   | Clean tree; Node 22.23.2 / Postgres 17.11 / Playwright 1.64.0. `npm run check` + `perf:budget` green. |
 
 ## Exit rule
 
 Call 6.4 complete only when the matrix passes against the production build,
-CI is green for the same revision, and the distinct Preview/deploy checks are
-recorded as either verified or explicitly blocked. A local build is not a
-Preview build, and an isolated visitor context is not a redeploy test.
+CI is green for the same revision, and the distinct Preview/deploy checks
+are recorded as either verified or explicitly blocked. A local build is not
+a Preview build, and an isolated visitor context is not a redeploy test.
+
+**Standing after the 2026-10-18 run:** the local gate is green at
+`f7ec7b6`. Two items remain before 6.4 can be marked complete — CI green
+for that revision, and the Preview/deploy checks recorded as verified or as
+explicitly blocked.
