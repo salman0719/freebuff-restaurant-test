@@ -26,6 +26,7 @@ import { Heading, Text } from "@/components/ui/typography";
 import { getTenantContext } from "@/lib/tenant-context";
 import {
   accentsFor,
+  brandDirectionsFor,
   MENU_LAYOUTS,
   resolveThemeConfig,
   themeToggle,
@@ -125,7 +126,9 @@ async function ThemePicker({ params }: Props): Promise<React.ReactElement> {
           slug={tenantSlug}
           accents={accentsFor(current)}
           layouts={MENU_LAYOUTS}
+          brandDirections={brandDirectionsFor(current)}
           current={{
+            brandDirection: "brandDirection" in config ? config.brandDirection : "",
             accent: config.accent,
             menuLayout: config.menuLayout,
             toggleName: toggle.name,

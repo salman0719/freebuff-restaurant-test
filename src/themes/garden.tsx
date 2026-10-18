@@ -47,6 +47,9 @@ export function GardenTheme({ restaurant, config }: ThemeProps): React.ReactElem
                 alt={`${restaurant.name} logo`}
                 width={320}
                 height={320}
+                // The largest painted block on this theme's mobile hero — the
+                // measured LCP element — so it loads eagerly (Phase 6.3).
+                priority
                 className="w-full max-w-72 rounded-[2rem] object-cover lg:ml-auto"
               />
             ) : null}

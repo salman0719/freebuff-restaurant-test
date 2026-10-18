@@ -31,6 +31,9 @@ const live = TEST_URL ? describe : describe.skip;
 
 /** A valid PNG header, so file validation passes and the ID check is what runs. */
 function pngFile(fill: number): File {
+  // Note: forged attempts return FORBIDDEN before `sharp` runs (ID check
+  // precedes resize), so a magic-valid stub is enough here. Real uploads
+  // elsewhere use decodable images (see `realPng` below).
   return new File(
     [new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, fill])],
     "x.png",
@@ -59,6 +62,17 @@ live("resource-id forgery (live database)", () => {
     const schema = await import("../../db/schema");
     const { db } = await import("../../db");
     return { ...ctx, ...data, schema, db };
+  }
+
+  /** Real decodable PNG for the one honest upload (`sharp` must succeed). */
+  async function realPng(): Promise<File> {
+    const { default: sharp } = await import("sharp");
+    const buf = await sharp({
+      create: { width: 64, height: 64, channels: 3, background: { r: 90, g: 140, b: 190 } },
+    })
+      .png()
+      .toBuffer();
+    return new File([new Uint8Array(buf)], "x.png", { type: "image/png" });
   }
 
   async function contextFor(userId: string, slug: string) {
@@ -208,7 +222,7 @@ live("resource-id forgery (live database)", () => {
     const { readdir } = await import("node:fs/promises");
 
     // Give B a real photo first, so "unchanged" covers a stored file too.
-    const withPhoto = await libsApi.setTenantItemImage(ctxB, itemB, pngFile(9));
+    const withPhoto = await libsApi.setTenantItemImage(ctxB, itemB, await realPng());
     expect(withPhoto.ok).toBe(true);
     if (!withPhoto.ok) return expect.unreachable();
     const photoKey = withPhoto.data.imageKey as string;

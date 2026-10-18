@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Caprasimo, Fraunces, Geist, Geist_Mono } from "next/font/google";
+import { Fraunces, Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
 
@@ -8,27 +8,21 @@ const geistSans = Geist({
   subsets: ["latin"],
 });
 
+/**
+ * Used only by `<code>` styling (the domain editor's record snippets), so it
+ * is deliberately not preloaded: every other page would download 23 KB it
+ * never renders. The @font-face stays, so the face is unchanged wherever a
+ * code snippet does appear — it is fetched on demand instead of up front.
+ */
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+  preload: false,
 });
 
 /** Editorial display serif used for public headings (see `--font-display`). */
 const fraunces = Fraunces({
   variable: "--font-fraunces",
-  subsets: ["latin"],
-  display: "swap",
-});
-
-/**
- * Retro display face for the Diner Revival theme (0004) — a Cooper-style
- * serif based on Fraunces, so it harmonises with the house display face.
- * Registered here once; only pages that reference `--font-caprasimo`
- * (the diner theme wrapper) actually fetch it. Libre/OFL via Google Fonts.
- */
-const caprasimo = Caprasimo({
-  variable: "--font-caprasimo",
-  weight: "400",
   subsets: ["latin"],
   display: "swap",
 });
@@ -46,7 +40,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${geistSans.variable} ${geistMono.variable} ${fraunces.variable} ${caprasimo.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${fraunces.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col bg-background font-sans text-foreground">
         <ThemeProvider>

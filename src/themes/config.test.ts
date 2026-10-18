@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { THEME_IDS } from "../../db/constants";
-import { accentsFor, resolveThemeConfig, themeToggle } from "./config";
+import { accentsFor, brandDirectionsFor, resolveThemeConfig, themeToggle } from "./config";
 
 describe("resolveThemeConfig", () => {
   it("fills defaults for missing keys", () => {
@@ -11,6 +11,7 @@ describe("resolveThemeConfig", () => {
     });
     expect(resolveThemeConfig("takeaway", {})).toEqual({
       accent: "chili",
+      brandDirection: "smokehouse",
       menuLayout: "compact",
       showDescription: true,
     });
@@ -34,6 +35,7 @@ describe("resolveThemeConfig", () => {
     });
     expect(resolveThemeConfig("takeaway", { menuLayout: "grid" })).toEqual({
       accent: "chili",
+      brandDirection: "smokehouse",
       menuLayout: "grid",
       showDescription: true,
     });
@@ -81,6 +83,26 @@ describe("accentsFor", () => {
 
   it("gives every shipped theme a palette list", () => {
     for (const id of THEME_IDS) expect(accentsFor(id).length).toBeGreaterThan(0);
+  });
+});
+
+describe("brandDirectionsFor", () => {
+  it("offers curated fast-casual directions only where supported", () => {
+    expect(brandDirectionsFor("takeaway").map(({ value }) => value)).toEqual([
+      "smokehouse",
+      "drive-in",
+      "modern",
+    ]);
+    expect(brandDirectionsFor("cafe")).toEqual([]);
+  });
+
+  it("falls back safely for stale or invalid stored directions", () => {
+    expect(resolveThemeConfig("takeaway", { brandDirection: "custom-js" })).toEqual({
+      accent: "chili",
+      brandDirection: "smokehouse",
+      menuLayout: "compact",
+      showDescription: true,
+    });
   });
 });
 

@@ -19,6 +19,7 @@ export const TAKEAWAY_ACCENTS = ["chili", "charcoal", "gold"] as const;
 export const BISTRO_ACCENTS = ["plum", "navy", "sage"] as const;
 export const DINER_ACCENTS = ["cherry", "butter", "cola"] as const;
 export const GARDEN_ACCENTS = ["fern", "brook", "celery"] as const;
+export const TAKEAWAY_BRAND_DIRECTIONS = ["smokehouse", "drive-in", "modern"] as const;
 export const MENU_LAYOUTS = ["editorial", "compact", "grid"] as const;
 
 export type MenuLayout = (typeof MENU_LAYOUTS)[number];
@@ -31,6 +32,7 @@ const cafeConfigSchema = z.object({
 
 const takeawayConfigSchema = z.object({
   accent: z.enum(TAKEAWAY_ACCENTS).default("chili"),
+  brandDirection: z.enum(TAKEAWAY_BRAND_DIRECTIONS).default("smokehouse"),
   menuLayout: z.enum(MENU_LAYOUTS).default("compact"),
   showDescription: z.boolean().default(true),
 });
@@ -67,6 +69,35 @@ export type BistroConfig = z.infer<typeof bistroConfigSchema>;
 export type DinerConfig = z.infer<typeof dinerConfigSchema>;
 export type GardenConfig = z.infer<typeof gardenConfigSchema>;
 export type ThemeConfig = CafeConfig | TakeawayConfig | BistroConfig | DinerConfig | GardenConfig;
+
+export interface BrandDirectionOption {
+  value: (typeof TAKEAWAY_BRAND_DIRECTIONS)[number];
+  label: string;
+  description: string;
+}
+
+const TAKEAWAY_DIRECTIONS: readonly BrandDirectionOption[] = [
+  {
+    value: "smokehouse",
+    label: "Smokehouse",
+    description: "Deep charcoal, warm ember accents, and a bold grill-side welcome.",
+  },
+  {
+    value: "drive-in",
+    label: "Drive-in",
+    description: "Buttercream, cherry-red details, and a playful retro counter feel.",
+  },
+  {
+    value: "modern",
+    label: "Modern counter",
+    description: "Crisp neutral surfaces, clear type, and a contemporary fast-casual look.",
+  },
+];
+
+/** Curated, safe visual directions available to each theme. */
+export function brandDirectionsFor(themeId: ThemeId): readonly BrandDirectionOption[] {
+  return themeId === "takeaway" ? TAKEAWAY_DIRECTIONS : [];
+}
 
 /**
  * The strict schema for a theme — no silent fallback, for write paths that

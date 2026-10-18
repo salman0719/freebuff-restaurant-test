@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { Caprasimo } from "next/font/google";
 import {
   buttonClasses,
   cn,
@@ -20,17 +21,38 @@ import type { ThemeProps } from "./types";
  * framed "menu board", and a full-bleed band strip carrying the
  * call-to-order CTA (a plain `tel:` link — no ordering, same rule as
  * takeaway). The wrapper swaps `--display-font` to Caprasimo, the retro
- * face registered in the root layout; body copy stays Geist.
+ * face registered here (only diner pages ever download its 20 KB file);
+ * body copy stays Geist.
  *
  * Same content model and shared sections as every other theme — only the
  * arrangement, density, and palette differ.
  */
+/**
+ * Cooper-style serif based on Fraunces, so it harmonises with the house
+ * display face. Libre/OFL via Google Fonts. Scoped to this wrapper and
+ * deliberately not preloaded: the registry imports every theme component
+ * into every public page, so a preloaded face here would still be fetched
+ * by the four themes that never render it. The @font-face stays in the
+ * shared CSS, so a diner page downloads the 20 KB file on demand behind
+ * the metric-matched fallback — the same swap every non-preloaded face
+ * already does.
+ */
+const caprasimo = Caprasimo({
+  variable: "--font-caprasimo",
+  weight: "400",
+  subsets: ["latin"],
+  display: "swap",
+  preload: false,
+});
+
 export function DinerTheme({ restaurant, config }: ThemeProps): React.ReactElement {
   const { accent, menuLayout, showHours } = config as DinerConfig;
   const classes = accentClasses(accent);
   const phone = restaurant.contact.phone;
   return (
-    <div className={cn(classes.surface, "[--display-font:var(--font-caprasimo)]")}>
+    <div
+      className={cn(classes.surface, caprasimo.variable, "[--display-font:var(--font-caprasimo)]")}
+    >
       {/* Awning crown: the diner's fixed red/cream identity, accent-independent. */}
       <div aria-hidden="true" className="h-3 bg-cherry-700" />
       <div aria-hidden="true" className="h-3 bg-butter-400" />
@@ -44,6 +66,9 @@ export function DinerTheme({ restaurant, config }: ThemeProps): React.ReactEleme
                 alt={`${restaurant.name} logo`}
                 width={112}
                 height={112}
+                // Hero identity image: first screen on every theme, so eager
+                // and preloaded instead of lazy (Phase 6.3).
+                priority
                 className="rounded-full object-contain ring-4 ring-cherry-600"
               />
             ) : null}

@@ -39,4 +39,35 @@ describe("Button", () => {
     expect(buttonClasses({ variant: "ghost", size: "sm" })).toContain("h-8");
     expect(buttonClasses({ fullWidth: true })).toContain("w-full");
   });
+
+  // `loading` sets `disabled`, and a disabled element cannot hold focus:
+  // the browser drops it to <body> and nothing brings it back. Found by
+  // the 6.3 keyboard sweep, which landed on <body> after a saved form.
+  // jsdom does not enforce the disabled-focus rule, so the test starts
+  // where a real load leaves focus — nowhere — and asserts it comes back.
+  it("hands focus back when a loading round trip ends", () => {
+    const { rerender } = render(<Button loading>Save changes</Button>);
+    const button = screen.getByRole("button", { name: "Save changes" });
+    expect(document.activeElement).toBe(document.body);
+
+    rerender(<Button>Save changes</Button>);
+
+    expect(document.activeElement).toBe(button);
+  });
+
+  it("keeps focus the user moved elsewhere while the button was loading", () => {
+    const view = (busy: boolean) => (
+      <div>
+        <Button loading={busy}>Save changes</Button>
+        <input aria-label="Notes" />
+      </div>
+    );
+    const { rerender } = render(view(true));
+    const notes = screen.getByLabelText("Notes");
+    notes.focus();
+
+    rerender(view(false));
+
+    expect(document.activeElement).toBe(notes);
+  });
 });

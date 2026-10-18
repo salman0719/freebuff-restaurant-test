@@ -1119,14 +1119,45 @@ correct tenant and communicate domain setup status clearly.
 
 ## 5.1 Platform subdomains
 
-**Status:** In progress 2026-10-15 (`phase5`): format decided as
+**Status:** Done 2026-10-15. Format decided as
 `{slug}.{PLATFORM_BASE_DOMAIN}` and recorded in
 `docs/runbooks/platform-subdomains.md` (local `*.localhost` behavior,
 Vercel wildcard production steps, limitations); hostname helpers hardened
 (trim/case/FQDN trailing dot/IPv6/bracketed port, malformed-base refusal)
 with 8 new unit cases; live resolution + public-flow suites green against
-local Postgres (19/19). Blocked on operator input for the hosted step:
-real base domain, Vercel project, and DNS access (see runbook).
+local Postgres (19/19).
+
+The hosted half — the part that was blocked on operator input — closed
+2026-10-15. Base domain is `easyeatery.online`; Vercel holds
+`*.easyeatery.online` on the project (attached, DNS validated),
+`PLATFORM_BASE_DOMAIN` is set in production, and `main@d5f7c86` is the
+live deployment.
+
+**The non-obvious part, worth not rediscovering:** a wildcard
+certificate cannot be issued over HTTP the way the apex and `www`
+can — there is no HTTP-01 answer for "every possible subdomain", so
+Vercel's dashboard sat on _Invalid Configuration_ indefinitely while
+the apex validated in minutes. It needed the two NS records that
+delegate certificate validation to the provider at
+`_acme-challenge.easyeatery.online` (`ns1`/`ns2.vercel-dns.com`). The
+traffic `*` CNAME alone routes requests but proves nothing about
+control, so the certificate never started. Both records must stay put
+for renewals. This is why the runbook lists them rather than just the
+CNAME.
+
+**Verified in production, not assumed:** a published tenant
+(`demo`) serves `https://demo.easyeatery.online` with HTTP 200 and its
+own theme content; an unknown slug
+(`ghost-xyz-123.easyeatery.online`) renders the not-found page with no
+tenant content in it; apex and `www` stay 200 alongside. TLS completes
+on arbitrary subdomains, so the wildcard really does answer.
+
+**Known wart (does not affect isolation):** an unknown host currently
+answers HTTP 200 with 404 _content_ — `notFound()` fires correctly in
+`src/app/page.tsx`, but the status that leaves the edge is 200.
+No cross-tenant leak, yet wrong for crawlers and status-based
+checks; raised as follow-up work rather than folded into this
+subphase.
 
 **Can be done independently:** Yes, once host resolution and deployment
 constraints are documented.
@@ -1414,6 +1445,51 @@ are recorded in the review as changes of their own.
 
 ## 6.2 Reliability and error handling
 
+**Status:** Done 2026-10-16 (`phase6`). Deliverable is
+`docs/runbooks/ops-reliability.md` (failure matrix, incident
+checklist, backup/restore expectations) plus the mechanisms it
+describes.
+
+**What shipped:** `GET /api/health` (unauthenticated; DB + storage
+probes, 5 s per-probe budget, coarse `{status, checks}` body — 200 when
+ok, 503 when degraded, never a driver message); `src/lib/server-log.ts`
+(structured JSON lines, info→stdout warn/error→stderr, credential keys
+redacted structurally with breadth/depth/length caps, sink failures
+swallowed); root `global-error.tsx` (self-contained markup, generic
+copy + digest reference), root-segment `error.tsx`, and
+`operator/error.tsx` beside the existing dashboard boundary; and
+storage-failure honesty in `setTenantLogo`/`setTenantItemImage` (a failed
+store returns `INTERNAL` with no link written and no orphan file —
+previously it threw, so the action crashed instead of reporting "saved,
+logo not"). Publish/domain honesty needed no change: publish is a
+single write (commits or throws, never half-published) and domain
+liveness already folds to `pending` unless routing + HTTPS all hold
+(5.3/5.4 suites). Health is deliberately outside the smoke route list —
+200 and 503 are both legitimate there depending on dependency state.
+
+**The real find (verified against a production server with the database
+down):** a throw inside the public page's `<Suspense>` hole does NOT
+reach `error.tsx` or `global-error.tsx` — it resolves to the not-found
+page, whose "isn't published yet" copy is exactly the misleading state
+this subphase forbids. So `src/app/page.tsx` catches dependency
+failures itself and renders an inline `SiteUnavailable` (logged,
+redacted, byte-identical for known and unknown hosts — no oracle, no
+leak; proven by curling both shapes against the down database). Same
+status wart as 5.1's: the honest content answers HTTP 200, so
+status-based monitors watch `/api/health`, not `/`. Lesson recorded in
+`docs/runbooks/ops-reliability.md` ("The Suspense-hole lesson").
+
+**Open item (recorded in the runbook, blocks pilot onboarding not this
+subphase):** the production `DATABASE_URL` provider's backup/PITR story
+is unconfirmed — name it, prove a restore to staging with E2E green,
+and until then `pg_dump` before every production migration.
+
+**Verification:** 13 new unit tests (logger redaction/routing,
+health states incl. hung-probe timeout, endpoint shape with no-leak
+scan) green; 2 new live tests (failed logo/photo store → INTERNAL,
+row unchanged) skip without a database locally and run in CI;
+`npm run check` + `npm run build` green (see 6.2 commits).
+
 - Handle database and storage failures gracefully.
 - Avoid leaking internal errors to visitors.
 - Add basic health checks and actionable server-side logging.
@@ -1424,6 +1500,120 @@ are recorded in the review as changes of their own.
 **Deliverable:** Operational checklist and tested failure states.
 
 ## 6.3 Performance and accessibility
+
+**Status:** Done 2026-10-16 (`phase6`) — all three slices landed:
+performance (`574eab2`, `171bdaf`, `04073e4`), accessibility (`cedb6a0`,
+`f27bfbd`, `e4d4c52`, `a8a9407`), and the font payload (`e806d75`,
+`239c1c2`).
+
+**What shipped:**
+
+- `npm run perf:budget` (`src/lib/perf-budget.ts` +
+  `scripts/perf-budget.ts`, CI step after `npm run build`): the public
+  route's shipped JavaScript, measured against a ceiling. Nothing
+  measured it before — Turbopack prints no route sizes, `npm run check`
+  stops at lint/type/format, and the unit job runs before any build
+  exists. Baseline: 13 chunks, 645,075 raw / 202,132 gzipped bytes;
+  ceilings 700,000 / 220,000 (~8% headroom), exit 0/1/2, 11 unit tests
+  on the pure rules.
+- Hero logos load with `priority` in all five themes instead of Next's
+  default `loading="lazy"`. Measured at 390px/DPR 3 against a production
+  build with seeded logos: logo fetch start 364–593 ms → 41–97 ms, page
+  totals unchanged (1302.7 → 1302.8 KB across four tenants — the preload
+  resolves to the same optimizer URL, so nothing loads twice), exactly
+  one image preload per page and always for that page's own tenant.
+- Menu scale guards: `public-menu-scale.test.ts` (live) holds
+  `getPublicRestaurant` to five queries for an 8-item and a 400-item
+  tenant alike — counted at `client.unsafe`, the seam every postgres-js
+  query crosses — with a 1 s smoke ceiling on the 400-item load (~10 ms
+  actual); `menu-scale.test.tsx` renders a 100-item menu through all
+  three `MenuSection` layouts under 2 s (306 ms slowest) with a clean
+  React console.
+
+**Accessibility slice (the half the appearance round never covered):**
+a keyboard-only sweep of the owner editors — ten dashboard pages walked
+tab stop by tab stop, checking accessible names, label association,
+focus visibility, WCAG 2.5.8 target size with its spacing exception, and
+behaviour probes (two-step delete opened and cancelled, a valid and a
+server-rejected save). The driver is scratch tooling
+(`local/qa-keyboard.mjs`; it signs in with a real session row the way
+the E2E specs do), so the method is described here rather than
+committed. It found four real defects, each fixed in its own commit:
+
+- `cedb6a0` — `Field` only wired its label onto a control that _was_
+  the whole field; a compound field (the logo picker) rendered a
+  label pointing at nothing and an unnamed file input.
+- `f27bfbd` — a `loading` button disables itself, and a disabled
+  element cannot hold focus: the browser dropped the keyboard user to
+  `<body>` mid-save. The button now hands focus back when the round
+  trip ends.
+- `e4d4c52` — the two-step delete replaced its own trigger on open
+  and lost focus to `<body>` on cancel; focus now travels across the
+  confirm and returns to the trigger.
+- `a8a9407` — every dashboard checkbox row was a 16–20 px target;
+  `min-h-6` on the wrapping label lifts it to 24 px with the layout
+  unchanged (the operator tenant form had the same pattern and rides
+  along).
+
+Final sweep: 0 issues across all 10 pages, both behaviour probes green.
+One reported crowd (a "Restaurants" link against a preset button on the
+theme page) turned out to be a harness bug, not a defect: the nav is
+sticky, so a viewport taken mid-scroll stacked it against content
+356 px away. The harness now scrolls to the top before measuring.
+
+**Font slice:** measured first — a network capture per theme and per
+editor page showed every page preloading all four faces (Geist 28.6,
+Fraunces 35.7, Geist Mono 22.6, Caprasimo 20.3 = 107.2 KiB), because the
+root layout registered all four and the theme registry pulls every
+theme component into the module graph. Then: Caprasimo is declared in
+the diner wrapper with `preload: false` (`e806d75` — only diner pages
+render it, and only they download it now), and Geist Mono drops its
+preload (`239c1c2` — the only `<code>` styling lives in the domain
+editor, which still gets the face on demand). Result: 64.3 KiB preloaded
+on a public page, 84.6 KiB on a diner page (Caprasimo fetched behind its
+metric-matched fallback), 86.9 KiB on the domain editor. Faces are
+visually unchanged — the diner `<h1>` still resolves to
+`"Caprasimo, Caprasimo Fallback"`, the bistro `<h1>` to Fraunces, both
+checked in a live browser against the production build. Known
+remainder: Fraunces is still preloaded on diner public pages (35.7 KiB)
+where nothing renders it; scoping it would need per-theme lazy loading
+of the registry, which was judged a bigger change than the bytes are
+worth.
+
+**Measured and rejected (the pass's real output):**
+
+- Responsive `sizes` on the fixed-width theme images would _raise_
+  mobile bytes. Density descriptors already cap selection at 2x — the
+  garden logo (288px display, 320px intrinsic) picks 640w, 50 KB —
+  while `sizes` switches the browser to layout×DPR and it picks 1080w,
+  240 KB, measured straight off the optimizer.
+- AVIF: 89,858 B against WebP's 50,580 B at 640w, and 486 ms to encode
+  against 72 ms, on this content. Bigger and slower, so `formats` stays
+  WebP-only.
+- Images are no longer the weight problem: one public page now ships
+  178 KB of JavaScript on the wire (the budget's own level-9 gzip sum of
+  the same 13 chunks is 197 KB) and, at the time, 109 KB of fonts across
+  four display faces instantiated in the root layout — all four
+  preloaded everywhere. The font slice below cut that to 64 KiB.
+
+**Verification:** `npm run typecheck`, `prettier --check`, and `eslint`
+over `src`, `scripts`, `db`, `e2e` and the configs all green; `npm run
+build` green; full suite with the live database attached ends at 604
+passed / 56 skipped, 0 failed. Measurements came from a production
+build (`next start`) driven by scratch harnesses (`local/perf-images.mjs`,
+`local/seed-logos.mjs`, `local/measure-fonts.mjs`, `local/qa-keyboard.mjs`
+— `local/` is git-ignored per convention, so the method is described
+here rather than committed): per-class wire bytes, image resource
+timing, the LCP element for each of the four published tenants, every
+font request per theme, and the keyboard sweep above.
+
+**Still open:** nothing in the sweep's own scope. Outstanding from
+5.1/6.2: the unavailable and not-found pages answer HTTP 200, so status
+monitors watch `/api/health`. Next up for this phase's infrastructure
+thread: the R2 storage swap, scoped as three bounded commits in
+`docs/plans/r2-storage-swap.md` (uploads do not persist on Vercel with
+the local-filesystem driver, and it is also what triggers Turbopack's
+"traces the whole project" warnings).
 
 - Check mobile performance and image sizes.
 - Avoid unnecessary client-side JavaScript.
@@ -1440,6 +1630,36 @@ Test the complete journeys: 1. Operator creates a restaurant. 2. Owner
 accesses the correct tenant. 3. Owner edits restaurant details and menu. 4. Owner chooses a theme and previews. 5. Owner publishes changes. 6.
 Public visitor sees only the published content on the correct hostname. 7. A different tenant cannot access the first tenant's private content. 8. Errors and invalid input are handled clearly.
 
+**Status:** Done 2026-10-18 — regression coverage is documented in
+[`docs/plans/phase-6.4-regression-matrix.md`](docs/plans/phase-6.4-regression-matrix.md).
+The matrix maps the operator happy/refusal journey, full owner journey,
+invalid owner profile input, published-vs-draft/unknown-host isolation,
+sign-in rate-limit honesty, and custom-domain refusal/verification to the
+existing E2E specs. Added `e2e/owner-validation.spec.ts`: a whitespace-only
+required restaurant name is rejected by the real server action with field
+feedback, preserved input, no success announcement and no persisted profile;
+correcting the value then saves and survives reload. This spec owns and
+cleans up a disposable tenant/account. Verified locally 2026-10-17 against
+Postgres + Mailpit: production build passed, full Playwright suite passed
+(19/19), and live-DB Vitest passed (664 passed, 2 R2-bucket tests skipped).
+Release-gate close-out (all 2026-10-18): the repository-wide `npm run check`
+blocker (ignored scratch JS) is gone; the full local gate is green at
+`f7ec7b6` (migrate, build, client-JS budget, 19/19 E2E, 670 unit tests,
+`check` exit 0). CI is green at `7a26d8a` — a fast-forward of the same tree
+onto `phase6`, run
+[39110045182](https://github.com/salman0719/freebuff-restaurant-test/actions/runs/39110045182),
+with every step passing: check, migrate, unit tests, build, client-JS
+budget, route smoke, and the full Playwright suite. Vercel evidence is
+recorded too: a clean Turbopack Preview build with zero storage-trace
+warnings, and upload-through-redeploy verified end to end — a logo uploaded
+on one Preview deployment served byte-identical (198 B, matching sha256)
+after a redeploy, with the disposable fixture deleted afterwards. Two finds
+fixed on the way: a duplicate image alt that broke the owner journey's
+strict locator, and Preview database 503s traced to URI-unsafe characters
+in the connection-string password (percent-encoded; no code change). One
+debt item left recorded, not hidden: a single 198-byte test object remains
+in the R2 bucket after fixture cleanup.
+
 **Deliverable:** Repeatable regression suite and results.
 
 ## 6.5 Deployment and support documentation
@@ -1450,6 +1670,15 @@ Public visitor sees only the published content on the correct hostname. 7. A dif
   domain, and troubleshoot common problems.
 - Establish a basic process for reporting and resolving customer
   issues.
+
+**Status:** In progress — initial [pilot deployment and support runbook](docs/runbooks/pilot-deployment-support.md)
+records the environment inventory, release/migration sequence, forward-safe
+migration policy, app-vs-database rollback boundaries, owner onboarding,
+domain verification, issue intake/triage, and support closure. Production DB
+provider/backups and restoration drill, base-domain/deployment confirmation,
+and support escalation ownership remain explicit readiness gates, not assumed
+facts. Existing [operations reliability runbook](docs/runbooks/ops-reliability.md)
+continues to own health/logging and infrastructure failure behavior.
 
 **Deliverable:** Pilot runbook.
 

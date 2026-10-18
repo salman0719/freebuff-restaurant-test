@@ -1,0 +1,94 @@
+name: Weekly production backup
+
+# Decision 1(a): weekly pg_dump of production Postgres, pushed to R2,
+# keeping the last 4 dumps. Manual runs via the Actions tab
+# ("Run workflow") use the same steps.
+#
+# Secrets (repo Settings → Secrets and variables → Actions):
+#   BACKUP_DATABASE_URL      production Postgres URL (may contain raw
+#                            special chars in the password — the dump step
+#                            percent-encodes it first, same as Phase A A0)
+#   R2_ACCOUNT_ID            Cloudflare account id (32 hex chars)
+#   R2_BACKUP_BUCKET         e.g. restaurant-app-backups (NOT the images bucket)
+#   R2_BACKUP_ACCESS_KEY_ID  token scoped Object Read & Write to that bucket
+#   R2_BACKUP_SECRET_ACCESS_KEY
+#
+# Why GitHub Actions and not an in-app cron: a serverless function has no
+# pg_dump binary and Hobby timeouts; the runner has Docker and awscli and
+# costs nothing at this scale (see the Phase 6.5 runbook).
+
+on:
+  schedule:
+    # Sundays 03:00 UTC — low-traffic window for the pilot.
+    - cron: "0 3 * * 0"
+  workflow_dispatch:
+
+concurrency:
+  group: production-backup
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      AWS_DEFAULT_REGION: auto
+    steps:
+      - name: Dump production (custom format, no owner/privileges)
+        run: |
+          STAMP="$(date +%F)"
+          NAME="prod-backup-${STAMP}.dump"
+          ENCODED="$(BACKUP_DATABASE_URL="${{ secrets.BACKUP_DATABASE_URL }}" python3 -c 'import os; from urllib.parse import quote; raw = os.environ["BACKUP_DATABASE_URL"].strip(); scheme, rest = raw.split("://", 1); auth, host = rest.rsplit("@", 1); user, pw = auth.split(":", 1); print(f"{scheme}://{quote(user, safe=\"\")}:{quote(pw, safe=\"\")}@{host}")')"
+          docker run --rm -v "$GITHUB_WORKSPACE:/out" postgres:17-alpine \
+            pg_dump --no-owner --no-privileges "$ENCODED" -Fc -f "/out/$NAME"
+          unset ENCODED
+          SIZE="$(stat -c %s "$NAME")"
+          if [ "$SIZE" -le 0 ]; then
+            echo "Dump is empty — failing loudly, nothing uploaded." >&2
+            exit 1
+          fi
+          echo "NAME=$NAME" >> "$GITHUB_ENV"
+          echo "SIZE=$SIZE" >> "$GITHUB_ENV"
+          echo "Dump $NAME ($SIZE bytes) verified non-empty."
+
+      - name: Upload dump to R2
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_BACKUP_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_BACKUP_SECRET_ACCESS_KEY }}
+        run: |
+          ENDPOINT="https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com"
+          aws s3 cp "$NAME" "s3://${{ secrets.R2_BACKUP_BUCKET }}/backups/$NAME" --endpoint-url "$ENDPOINT"
+          REMOTE_SIZE="$(aws s3api head-object --bucket "${{ secrets.R2_BACKUP_BUCKET }}" --key "backups/$NAME" --query ContentLength --output text --endpoint-url "$ENDPOINT")"
+          if [ "$REMOTE_SIZE" != "$SIZE" ]; then
+            echo "Remote size $REMOTE_SIZE != local size $SIZE — failing loudly." >&2
+            exit 1
+          fi
+          echo "ENDPOINT=$ENDPOINT" >> "$GITHUB_ENV"
+          echo "Uploaded backups/$NAME ($REMOTE_SIZE bytes) and verified the size matches."
+
+      - name: Retain last 4 dumps, delete older
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_BACKUP_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_BACKUP_SECRET_ACCESS_KEY }}
+        run: |
+          ENDPOINT="https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com"
+          BUCKET="${{ secrets.R2_BACKUP_BUCKET }}"
+          OLD="$(aws s3api list-objects-v2 --bucket "$BUCKET" --prefix "backups/prod-backup-" --query "Contents[].[Key, LastModified]" --output json --endpoint-url "$ENDPOINT" \
+            | jq -r '[.[]?] | sort_by(.[1]) | reverse | .[4:] | .[][0]')"
+          DELETED=0
+          if [ -n "$OLD" ]; then
+            while IFS= read -r KEY; do
+              [ -n "$KEY" ] || continue
+              aws s3 rm "s3://$BUCKET/$KEY" --endpoint-url "$ENDPOINT"
+              DELETED=$((DELETED + 1))
+            done <<< "$OLD"
+          fi
+          {
+            echo "## Weekly production backup"
+            echo ""
+            echo "- Uploaded \`backups/$NAME\` ($SIZE bytes)."
+            echo "- Deleted $DELETED dump(s) older than the newest 4."
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -18,6 +18,7 @@
 
 import { useActionState, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { useConfirmFocus } from "@/components/ui/confirm-focus";
 import { Field } from "@/components/ui/field";
 import { ErrorState } from "@/components/ui/feedback";
 import { FormActions } from "@/components/ui/form-actions";
@@ -64,6 +65,7 @@ export function DomainControls({ slug, claim }: { slug: string; claim: DomainCla
     { status: "idle" }
   );
   const [confirming, setConfirming] = useState(false);
+  const { triggerRef, cancelRef } = useConfirmFocus(confirming);
 
   const routingTone = {
     live: "border-green-300 bg-green-50 text-green-800",
@@ -213,13 +215,23 @@ export function DomainControls({ slug, claim }: { slug: string; claim: DomainCla
               <Button type="submit" variant="danger" loading={removePending}>
                 {removePending ? "Removing…" : "Confirm removal"}
               </Button>
-              <Button type="button" variant="outline" onClick={() => setConfirming(false)}>
+              <Button
+                ref={cancelRef}
+                type="button"
+                variant="outline"
+                onClick={() => setConfirming(false)}
+              >
                 Keep domain
               </Button>
             </form>
           ) : (
             <div>
-              <Button type="button" variant="outline" onClick={() => setConfirming(true)}>
+              <Button
+                ref={triggerRef}
+                type="button"
+                variant="outline"
+                onClick={() => setConfirming(true)}
+              >
                 Remove domain…
               </Button>
             </div>

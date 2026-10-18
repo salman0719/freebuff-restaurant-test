@@ -59,6 +59,7 @@ Adminer login: system `PostgreSQL`, server `db` (pre-filled), username
 | `npm run test:coverage`           | Vitest with V8 coverage                 |
 | `npm run test:e2e`                | Playwright E2E (Chromium)               |
 | `npm run smoke`                   | Route smoke check against a running app |
+| `npm run perf:budget`             | Client-JS budget for the public route   |
 | `npm run check`                   | lint + typecheck + format:check         |
 | `npx tsx <file.ts>`               | Run one-off TypeScript scripts          |
 
@@ -98,6 +99,19 @@ starting; CI uses it rather than a fixed sleep, which would be either too
 short on a cold runner or wasted time on a warm one. CI starts the production
 build and runs exactly this, so a gate that stops bouncing requests fails the
 job instead of reaching a deploy.
+
+`npm run perf:budget` guards page weight the same way, after a build. It
+reads the public route's prerendered shell from `.next`, sums the bytes of
+every chunk that shell asks the browser for, and exits non-zero when the total
+exceeds the ceiling in `src/lib/perf-budget.ts` (13 chunks, 630 KB raw /
+197 KB gzip at the time of writing), printing the per-chunk table so a failure
+names the culprit. CI runs it right after `npm run build`.
+
+Phase 6.4's repeatable journey matrix and evidence record are in
+[docs/plans/phase-6.4-regression-matrix.md](docs/plans/phase-6.4-regression-matrix.md).
+The pilot deployment, migration, rollback, onboarding, and support procedures
+are in [docs/runbooks/pilot-deployment-support.md](docs/runbooks/pilot-deployment-support.md);
+read its explicit readiness gaps before any production/pilot data change.
 
 ## Conventions
 

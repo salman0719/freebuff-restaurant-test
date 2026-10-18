@@ -3,8 +3,24 @@ import type { PublicOpeningHours } from "@/lib/restaurant";
 
 const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
+export function weekdayName(weekday: number): string {
+  return WEEKDAYS[weekday] ?? `Day ${weekday}`;
+}
+
+export function formatHours(hour: PublicOpeningHours): string {
+  return hour.isClosed || !hour.openTime || !hour.closeTime
+    ? "Closed"
+    : `${hour.openTime}–${hour.closeTime}`;
+}
+
 /** Shared opening-hours list. Themes choose placement, not content. */
-export function HoursList({ hours }: { hours: PublicOpeningHours[] }): React.ReactElement {
+export function HoursList({
+  hours,
+  className,
+}: {
+  hours: PublicOpeningHours[];
+  className?: string;
+}): React.ReactElement {
   if (hours.length === 0) {
     return <Text>Opening hours coming soon.</Text>;
   }
@@ -13,11 +29,8 @@ export function HoursList({ hours }: { hours: PublicOpeningHours[] }): React.Rea
     <ul>
       {ordered.map((hour) => (
         <li key={hour.weekday}>
-          <Text>
-            {WEEKDAYS[hour.weekday] ?? `Day ${hour.weekday}`}:{" "}
-            {hour.isClosed || !hour.openTime || !hour.closeTime
-              ? "Closed"
-              : `${hour.openTime}–${hour.closeTime}`}
+          <Text className={className}>
+            {weekdayName(hour.weekday)}: {formatHours(hour)}
           </Text>
         </li>
       ))}

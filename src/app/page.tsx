@@ -2,10 +2,12 @@ import { createElement, Suspense } from "react";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { getPublicRestaurant } from "@/lib/public-restaurant";
+import { logServerEvent } from "@/lib/server-log";
 import { resolveTenantByHost } from "@/lib/tenant-resolution";
 import { resolveThemeConfig } from "@/themes/config";
 import { getTheme, resolveThemeId } from "@/themes/registry";
 import { RestaurantLoading } from "./_components/restaurant-loading";
+import { SiteUnavailable } from "./_components/site-unavailable";
 
 /**
  * Public restaurant website (Phase 2.7).
@@ -28,11 +30,36 @@ export default function Home(): React.ReactElement {
 
 async function TenantPage(): Promise<React.ReactElement> {
   const host = (await headers()).get("host") ?? "";
-  const resolution = await resolveTenantByHost(host);
+  // Dependency failures (database unreachable) are RENDERED, not thrown:
+  // a throw inside this Suspense hole resolves to the not-found page,
+  // whose "isn't published yet" copy would be a lie during an outage
+  // (verified against a production server, Phase 6.2). Unknown tenants
+  // still `notFound()` — that path means "no tenant here", honestly.
+  let resolution: Awaited<ReturnType<typeof resolveTenantByHost>>;
+  try {
+    resolution = await resolveTenantByHost(host);
+  } catch {
+    logServerEvent({
+      event: "public.resolve.failed",
+      level: "error",
+      message: "Public page could not resolve the tenant; serving unavailable state.",
+      context: { host },
+    });
+    return <SiteUnavailable />;
+  }
   if (!resolution.found) {
     notFound();
   }
-  const result = await getPublicRestaurant(resolution.tenant.slug);
+  const result = await getPublicRestaurant(resolution.tenant.slug).catch(() => null);
+  if (!result) {
+    logServerEvent({
+      event: "public.load.failed",
+      level: "error",
+      message: "Public page could not load published content; serving unavailable state.",
+      context: { slug: resolution.tenant.slug },
+    });
+    return <SiteUnavailable />;
+  }
   if (!result.ok) {
     notFound();
   }
