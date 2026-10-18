@@ -89,6 +89,39 @@ customer data lands:
 Migration discipline (unchanged): versioned files, test the path on a
 development database first, explicit approval for anything destructive.
 
+### Phase 6.5 restore rehearsal (2026-10-18, Phase A complete)
+
+- **Provider:** Supabase Postgres 17 (pooler, ap-southeast-2). Free tier:
+  no automated backups, no PITR — hence Decision 1 below.
+- **Backup:** `pg_dump --no-owner --no-privileges -Fc`, 322,405 bytes,
+  483 TOC entries, 12 `public` tables (the app schema), plus the
+  Supabase-managed system schemas.
+- **Restore** into the disposable preview project (public schema wiped
+  first, never production): 13 s. Full `pg_restore` exits 1 with 405
+  errors, all confined to Supabase-managed system objects (superuser-owned
+  event triggers); the `public` schema restores completely and row counts
+  match production exactly (tenants=1, users=2, restaurants=1,
+  menu_items=1, sessions=1, audit=2).
+- **Rehearsal connection notes** (both needed on the pooler URL):
+  - Preview pooler sessions start with an empty `search_path` (production
+    has `"$user", public, extensions`), so the rehearsal URL carries
+    `?options=-c search_path=public,extensions`.
+  - `postgres.js` prepared statements fail under concurrency through the
+    pooler (`prepared statement ... does not exist`, SQLSTATE 26000),
+    reproduced in isolation; the rehearsal URL carries `prepare=false`
+    and 50 concurrent write transactions then pass clean. **Production
+    `DATABASE_URL` needs the same `prepare=false` (Phase B) if it stays
+    on the pooler**, or move to a direct connection.
+- **Verification on the restored copy:** `npm run db:migrate` succeeds
+  (forward-safe on real production data); `npm run test:run` 670 passed,
+  2 skipped (matches the local known-good baseline of 672 total);
+  `npm run build` green; `npm run test:e2e` 19/19 green (real magic-link
+  round-trip via Mailpit). Production itself was read-only throughout
+  and its row counts are unchanged.
+- **Decision 1 (backups strategy): (a)** weekly `pg_dump` GitHub Action
+  pushing to R2, retaining the last 4 dumps, secret `BACKUP_DATABASE_URL`.
+  Pro upgrade (~$25/mo, daily backups + PITR) deferred to a paid pilot.
+
 ## The Suspense-hole lesson (so nobody re-learns it)
 
 The public page resolves its tenant inside `<Suspense>` (partial

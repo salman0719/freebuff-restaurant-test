@@ -126,8 +126,12 @@ take a `pg_dump` from a consistent source using a secure destination, restrict
 file permissions, and verify the resulting file is non-empty/readable. Keep
 backup artifacts out of Git and ordinary logs. Existing
 [ops-reliability guidance](ops-reliability.md#database-backup-and-restore)
-records the production backup/PITR provider as unresolved; treat that as a
-blocker before real pilot data.
+records the Phase 6.5 restore rehearsal (2026-10-18): production `pg_dump`
+verified restorable into the disposable preview project with the full suite
+green on the restored copy, and Decision 1 taken as weekly `pg_dump` to R2
+(last 4 dumps, secret `BACKUP_DATABASE_URL`). Until that Action exists and
+has run green, keep taking a manual `pg_dump` before every production
+migration.
 
 ### Application rollback
 
