@@ -38,19 +38,19 @@ builds, installs Chromium, then runs the full suite.
 
 ## Matrix and current evidence
 
-| Acceptance case                                                                                               | Repeatable check                                                                                              | Current evidence / remaining limit                                                                                                                                                                                                                                                                                                                                                                    |
-| ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Operator creates restaurant, chooses initial theme, grants owner, records the act, and invited owner opens it | `e2e/operator-provisioning.spec.ts`                                                                           | Browser suite covers happy path and invalid slug, duplicate slug, duplicate grant, and non-operator refusals.                                                                                                                                                                                                                                                                                         |
-| Owner accesses the correct tenant and completes profile, menu, hours, theme, and preview                      | `e2e/owner-journey.spec.ts`                                                                                   | Real magic-link path via Mailpit; fixture begins as draft and ends unpublished.                                                                                                                                                                                                                                                                                                                       |
-| Invalid owner input is an error, not false success                                                            | `e2e/owner-validation.spec.ts`                                                                                | Sends whitespace-only required restaurant name through the server action; asserts general and field errors, invalid field state, typed-value retention, no success status, zero profile write, then corrected save and persisted reload.                                                                                                                                                              |
-| Published visitor sees the correct tenant's content and image                                                 | `e2e/owner-journey.spec.ts`                                                                                   | Public hostname, menu, WebP logo bytes, and fresh visitor context are checked after publish.                                                                                                                                                                                                                                                                                                          |
-| Unknown and unpublished tenants reveal no private/draft content                                               | `e2e/public-tenant-isolation.spec.ts`                                                                         | Same generic not-found heading and no draft description/menu for unknown vs unpublished host.                                                                                                                                                                                                                                                                                                         |
-| Tenant boundary protects public and private views                                                             | `e2e/public-tenant-isolation.spec.ts`                                                                         | One published tenant cannot display its neighbor's public content; owner A cannot access B's profile; publish/unpublish B affects B only.                                                                                                                                                                                                                                                             |
-| Publish visibility changes are correct                                                                        | Owner and public-isolation specs                                                                              | Owner journey publishes the UI fixture; isolation test flips a second tenant and confirms before/after visibility and neighbor stability.                                                                                                                                                                                                                                                             |
-| Sign-in refusal has honest feedback and does not send mail                                                    | `e2e/signin-rate-limit.spec.ts`                                                                               | Exhausts the configured address budget, observes inline wait guidance, confirms the blocked attempt adds no Mailpit message and another address remains unaffected.                                                                                                                                                                                                                                   |
-| Custom-domain verification/refusal has honest feedback                                                        | `e2e/domain-claim.spec.ts`                                                                                    | Covers not-yet-seen / DNS-query failure without false verification, domain conflict, switch, and removal. Depends on external DNS behavior, while asserting the invariant rather than one resolver's message.                                                                                                                                                                                         |
-| Owner-uploaded image survives a redeploy                                                                      | `e2e/owner-journey.spec.ts` tests upload and an independent browser context; deployment-specific continuation | A fresh visitor context proves no browser-cache dependency; it does **not** prove survival across a Vercel redeploy. The hosted check is **explicitly blocked**: Preview has no `DATABASE_URL`/`SMTP`, the four `R2_*` credentials are empty on both targets (fs driver → ephemeral uploads), and deployment protection returns an SSO 302. Causes and unblock steps in the 2026-10-18 section below. |
-| Hosting build trace warnings and preview behavior                                                             | Vercel Preview build                                                                                          | Verified 2026-10-18 against a real Vercel Preview build (`dpl_4VmcmPbwdRCqsuuNfWUAmcUoaDrJ`, Next 16.4.0 / Turbopack, compiled 14.1 s, build 38 s): 0 Turbopack trace warnings across all 86 log lines vs the three recorded from `main@d5f7c86`, 0 error lines. Preview behind `vercel_authentication` (anonymous 302 to SSO).                                                                       |
+| Acceptance case                                                                                               | Repeatable check                                                                                              | Current evidence / remaining limit                                                                                                                                                                                                                                                                                                              |
+| ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Operator creates restaurant, chooses initial theme, grants owner, records the act, and invited owner opens it | `e2e/operator-provisioning.spec.ts`                                                                           | Browser suite covers happy path and invalid slug, duplicate slug, duplicate grant, and non-operator refusals.                                                                                                                                                                                                                                   |
+| Owner accesses the correct tenant and completes profile, menu, hours, theme, and preview                      | `e2e/owner-journey.spec.ts`                                                                                   | Real magic-link path via Mailpit; fixture begins as draft and ends unpublished.                                                                                                                                                                                                                                                                 |
+| Invalid owner input is an error, not false success                                                            | `e2e/owner-validation.spec.ts`                                                                                | Sends whitespace-only required restaurant name through the server action; asserts general and field errors, invalid field state, typed-value retention, no success status, zero profile write, then corrected save and persisted reload.                                                                                                        |
+| Published visitor sees the correct tenant's content and image                                                 | `e2e/owner-journey.spec.ts`                                                                                   | Public hostname, menu, WebP logo bytes, and fresh visitor context are checked after publish.                                                                                                                                                                                                                                                    |
+| Unknown and unpublished tenants reveal no private/draft content                                               | `e2e/public-tenant-isolation.spec.ts`                                                                         | Same generic not-found heading and no draft description/menu for unknown vs unpublished host.                                                                                                                                                                                                                                                   |
+| Tenant boundary protects public and private views                                                             | `e2e/public-tenant-isolation.spec.ts`                                                                         | One published tenant cannot display its neighbor's public content; owner A cannot access B's profile; publish/unpublish B affects B only.                                                                                                                                                                                                       |
+| Publish visibility changes are correct                                                                        | Owner and public-isolation specs                                                                              | Owner journey publishes the UI fixture; isolation test flips a second tenant and confirms before/after visibility and neighbor stability.                                                                                                                                                                                                       |
+| Sign-in refusal has honest feedback and does not send mail                                                    | `e2e/signin-rate-limit.spec.ts`                                                                               | Exhausts the configured address budget, observes inline wait guidance, confirms the blocked attempt adds no Mailpit message and another address remains unaffected.                                                                                                                                                                             |
+| Custom-domain verification/refusal has honest feedback                                                        | `e2e/domain-claim.spec.ts`                                                                                    | Covers not-yet-seen / DNS-query failure without false verification, domain conflict, switch, and removal. Depends on external DNS behavior, while asserting the invariant rather than one resolver's message.                                                                                                                                   |
+| Owner-uploaded image survives a redeploy                                                                      | `e2e/owner-journey.spec.ts` tests upload and an independent browser context; deployment-specific continuation | A fresh visitor context proves no browser-cache dependency. Survival across a Vercel redeploy is **verified 2026-10-18**: logo uploaded on one Preview deployment fetched byte-identical (198 B, matching sha256) after redeploy; fixture deleted afterwards. Method, deployments, and the R2/password lessons in the 2026-10-18 section below. |
+| Hosting build trace warnings and preview behavior                                                             | Vercel Preview build                                                                                          | Verified 2026-10-18 against a real Vercel Preview build (`dpl_4VmcmPbwdRCqsuuNfWUAmcUoaDrJ`, Next 16.4.0 / Turbopack, compiled 14.1 s, build 38 s): 0 Turbopack trace warnings across all 86 log lines vs the three recorded from `main@d5f7c86`, 0 error lines. Preview behind `vercel_authentication` (anonymous 302 to SSO).                 |
 
 The complete suite may include domain-claim resolution dependent on the test
 network. It must never pass by skipping a required test or treating an
@@ -117,10 +117,9 @@ so `npm run check` exits 0 today — its single warning is an unused variable
 in a git-ignored `local/` harness, which links do not reach CI.
 
 **Preview half of the exit rule:** run the same day — see "Vercel Preview
-build and redeploy evidence (2026-10-18)" below. The build is verified on
-the hosted builder; the upload-through-redeploy check is explicitly blocked
-with its three causes recorded. Only CI for `f7ec7b6` remains before 6.4 can
-be called complete.
+build and redeploy evidence (2026-10-18)" below. Build and
+upload-through-redeploy are both verified on Vercel. Only CI for `f7ec7b6`
+remains before 6.4 can be called complete.
 
 ## Vercel Preview build and redeploy evidence (2026-10-18)
 
@@ -151,30 +150,48 @@ be traced`, **0** Turbopack warnings, **0** error-shaped lines — against
   `install-scripts` allow-list and `cache-dir` config), i.e. tooling, not the
   app.
 
-**Preview behaviour: verified as protected, not exercised as an app.**
+**Preview behaviour: protected, exercised through the automation bypass.**
 Deployment protection is `vercel_authentication`; an anonymous `GET` on the
-Preview URL answers `302` to `https://vercel.com/sso-api?…`, so no signed-out
-visitor flow (and no headless check) reaches the application behind it.
+Preview URL answers `302` to `https://vercel.com/sso-api?…`. The checks below
+drove the app with the project's automation-bypass credential plus a seeded
+owner session — no signed-out visitor flow reaches it, which is the point of
+the protection.
 
-**Upload-through-redeploy: explicitly blocked** (the exit rule permits
-verified _or_ blocked — here it is blocked, and would fail by construction
-until the hosted config exists). Three independent causes, each checked
-against the project's env list:
+**Upload-through-redeploy: VERIFIED 2026-10-18.** With Preview env populated
+(separate Supabase project for Preview; R2 credentials confirmed working —
+see below), runbook step 7 ran end to end on two Preview deployments:
 
-1. **No database or mail on Preview.** `DATABASE_URL`, `AUTH_URL`,
-   `AUTH_SECRET` and `EMAIL_SERVER` are scoped to `production` only — and
-   `DATABASE_URL` and `EMAIL_SERVER` are **empty even there**. Without a
-   database there is no upload to persist; without SMTP an owner cannot sign
-   in to make one.
-2. **No hosted object storage.** `R2_BUCKET` is set, but `R2_ACCOUNT_ID`,
-   `R2_ACCESS_KEY_ID` and `R2_SECRET_ACCESS_KEY` are empty on **both**
-   targets, so a hosted build defaults to the fs driver and its uploads are
-   ephemeral on every deploy — precisely what
-   `docs/plans/r2-storage-swap.md` exists to fix, and precisely why this
-   check cannot pass yet.
-3. **Deployment protection** (above) blocks even an unauthenticated
-   `/api/health` probe, so the Preview cannot be smoke-checked from outside
-   a Vercel session.
+- Migrated the Preview database cleanly, then seeded disposable tenant
+  `vc-persist-1` + owner + database session (the E2E fixture pattern, no
+  email round trip).
+- Uploaded a 64×64 PNG logo through the real Preview dashboard
+  (`freebuff-restaurant-test-5is6oteo3.vercel.app`): stored under
+  `tenants/<uuid>/logos/<uuid>.webp`, served back `200 image/webp`,
+  198 bytes, sha256
+  `aa3e2fad4b925b3734d5017692918f969e80e99319ad70757d372d45d376493b`.
+- Redeployed (`freebuff-restaurant-test-4ey8l776g.vercel.app`) and fetched
+  the same key: **HTTP 200, identical 198 bytes, identical sha256** — the
+  upload survives a Vercel redeploy through R2.
+- Cleaned up: tenant + owner deleted (Preview DB back to zero rows across
+  users/tenants/sessions/memberships/audit_events). One 198-byte test object
+  remains in the R2 bucket — tenant deletion removes the DB link, not the
+  object — recorded, not hidden.
+
+Two things this run settled along the way:
+
+- The R2 credentials were valid all along. The Preview health probe's R2
+  `HeadBucket` answered ok over a ~1 s network round trip, which an
+  authenticated call only does with working keys. The earlier "empty"
+  reading was an API blind spot: `sensitive` values are never returned, so
+  "not returned" was misread as "not set".
+- The Preview database failures (503 in 54–126 ms) were URI parsing, not
+  wrong credentials: the pasted password starts with `/` and contains `%`,
+  so drivers resolved the host as `postgres.<ref>` and failed DNS instantly.
+  Percent-encoding the password fixed it (connect in 226 ms, prepared
+  statements fine — no `prepare: false` change needed), and the exact bytes
+  were then set on Vercel via API after two hand-pastes arrived corrupted
+  (trailing newline). Lesson: connection strings whose passwords contain
+  URI-significant characters must be encoded before they go into any env.
 
 **Related hosted facts observed while checking:** production
 `easyeatery.online` answers `/api/health` with **404** and its deployment
@@ -183,12 +200,12 @@ an older build than this checkout (which is why the 6.2 health route is
 absent). Recorded here for 6.5, whose runbook assumes a current production
 build.
 
-**To unblock the redeploy check:** set a hosted `DATABASE_URL` and
-`EMAIL_SERVER` for preview + production, fill the four `R2_*` values, and
-either configure a protection-bypass secret or drive the flow from an
-authenticated Vercel session — then run step 7 of
-`docs/runbooks/pilot-deployment-support.md` (upload to a disposable tenant,
-redeploy, assert the same bytes).
+**Standing notes for later runs:** Preview env currently mirrors
+Production values by explicit owner decision, with per-domain values to
+follow. Production `DATABASE_URL` was deliberately left on the original
+shared database — untouched by this check. The Preview database is a
+separate Supabase free project, and free projects pause after ~a week idle,
+so unpause it before the next hosted run or the first probe will fail.
 
 ## Recording a run
 
@@ -197,10 +214,10 @@ Postgres version, Playwright summary, and whether the Vercel Preview checks
 were run. Keep the compact result here or link to the CI run; do not paste
 secrets, customer content, full environment dumps, or raw auth tokens.
 
-| Run                             | Revision  | Build  | E2E       | Live DB tests                  | Preview/redeploy evidence                    | Notes                                                                                                 |
-| ------------------------------- | --------- | ------ | --------- | ------------------------------ | -------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| 2026-10-17 local acceptance run | `c091bbd` | Passed | 19 passed | 664 passed; 2 R2 tests skipped | Not run                                      | `npm run check` blocked by ignored scratch JS; scoped lint passed. Hosted CI pending.                 |
-| 2026-10-18 release-gate run     | `f7ec7b6` | Passed | 19 passed | 670 passed; 2 R2 tests skipped | Preview build verified; upload check blocked | Clean tree; Node 22.23.2 / Postgres 17.11 / Playwright 1.64.0. `npm run check` + `perf:budget` green. |
+| Run                             | Revision  | Build  | E2E       | Live DB tests                  | Preview/redeploy evidence                        | Notes                                                                                                 |
+| ------------------------------- | --------- | ------ | --------- | ------------------------------ | ------------------------------------------------ | ----------------------------------------------------------------------------------------------------- |
+| 2026-10-17 local acceptance run | `c091bbd` | Passed | 19 passed | 664 passed; 2 R2 tests skipped | Not run                                          | `npm run check` blocked by ignored scratch JS; scoped lint passed. Hosted CI pending.                 |
+| 2026-10-18 release-gate run     | `f7ec7b6` | Passed | 19 passed | 670 passed; 2 R2 tests skipped | Preview build + upload-through-redeploy verified | Clean tree; Node 22.23.2 / Postgres 17.11 / Playwright 1.64.0. `npm run check` + `perf:budget` green. |
 
 ## Exit rule
 
@@ -210,6 +227,7 @@ are recorded as either verified or explicitly blocked. A local build is not
 a Preview build, and an isolated visitor context is not a redeploy test.
 
 **Standing after the 2026-10-18 run:** the local gate is green at
-`f7ec7b6`, and the Preview/deploy half is recorded the same day — build
-verified on Vercel, upload-through-redeploy explicitly blocked with causes.
-One item remains before 6.4 can be marked complete: CI green for `f7ec7b6`.
+`f7ec7b6`, and the Preview/deploy half is verified the same day — build
+clean on Vercel with zero trace warnings, upload byte-identical across two
+Preview deployments with the fixture cleaned up. One item remains before 6.4
+can be marked complete: CI green for `f7ec7b6`.
