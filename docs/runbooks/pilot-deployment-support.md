@@ -158,7 +158,10 @@ verified restorable into the disposable preview project with the full suite
 green on the restored copy, and Decision 1 taken as weekly `pg_dump` to R2
 (last 4 dumps, secret `BACKUP_DATABASE_URL`). Until that Action exists and
 has run green, keep taking a manual `pg_dump` before every production
-migration.
+migration. Weekly Action first green run 2026-10-18/19:
+`backups/prod-backup-2026-10-18.dump` (322,405 bytes — identical to the
+rehearsal/pre-deploy size, i.e. no writes), 0 deleted, R2 object
+confirmed Standard / 322.4 kB.
 
 ### Application rollback
 
@@ -277,7 +280,9 @@ another tenant's information. If unverified, say so and leave the case open.
   restore rehearsal completed 2026-10-18 (see the
   [ops-reliability backup section](ops-reliability.md#database-backup-and-restore)
   and the backup gate in §3). Weekly R2 dumps are automated via the
-  backup workflow; its first green manual run still needs watching.
+  backup workflow; its first green manual run completed 2026-10-18/19:
+  `backups/prod-backup-2026-10-18.dump` (322,405 bytes, 0 deleted —
+  retention holds the newest 4), R2 object confirmed Standard / 322.4 kB.
 - ~~Production domain/deployment evidence~~ — recorded above: production
   is live on `easyeatery.online` at revision `7121907` with health, smoke,
   and wildcard DNS/TLS verified.
