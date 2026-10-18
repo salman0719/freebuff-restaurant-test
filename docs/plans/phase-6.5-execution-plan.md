@@ -3,7 +3,16 @@
 **Audience:** one Buffy session + one human availability window.
 **Goal:** close the last regression matrix exit rule (production backed up, restored, migrated, current build live, email verified) so we can flip ROADMAP 6.5 to Done.
 
-Nothing here has been run yet. This is the plan you approved in chat.
+**Result (2026-10-18/19): all phases ran green.** Phase A: production
+`pg_dump` (322,405 bytes) restored into the disposable preview project
+with the full suite green on the restored copy; Decision 1 = (a) weekly
+`pg_dump` to R2 (last 4). Phase B: production migrated and live on
+`easyeatery.online` at `7121907` (health + smoke green). Phase C: email
+DNS verified via Resend (DKIM + CNAME delegation + DMARC `p=none`),
+magic-link receipt test passed in seconds, backup Action first green run
+(`prod-backup-2026-10-18.dump`, 322,405 bytes, 0 deleted), escalation
+contact recorded provisional. Detail in the
+[pilot runbook](../runbooks/pilot-deployment-support.md).
 
 ## Inputs you need to provide before Phase A starts
 

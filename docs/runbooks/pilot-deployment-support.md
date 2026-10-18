@@ -111,6 +111,19 @@ ok 1350 ms, storage ok 329 ms] }`, stable across two unauthenticated
   verified production deployment. Current local regression evidence is tracked
   in [the Phase 6.4 matrix](../plans/phase-6.4-regression-matrix.md).
 
+### Outbound email DNS (Phase 6.5 C1, 2026-10-19)
+
+- Sender: `EasyEatery <noreply@auth.easyeatery.online>`, provider Resend.
+- DKIM `resend._domainkey.auth.easyeatery.online`: present (Resend key).
+- DMARC `_dmarc.easyeatery.online`: `v=DMARC1; p=none` — covers the
+  subdomain; monitoring-only is acceptable for the pilot.
+- SPF/MX: delegated via Resend CNAMEs — `send.auth` →
+  `send.forge.rmta.net`, `rsend.auth` → `rsend-apne1.forge.rmta.net`
+  (no apex-level SPF needed; apex SPF covers registrar forwarding only).
+  Resend dashboard shows the domain Verified (operator-confirmed
+  2026-10-19) — C1 closed. C2 receipt test passed 2026-10-19: magic
+  link arrived in seconds and logged in.
+
 ## 2. Database migrations
 
 Migrations are ordered, committed SQL under `db/migrations/` and tracked by
@@ -286,7 +299,9 @@ another tenant's information. If unverified, say so and leave the case open.
 - ~~Production domain/deployment evidence~~ — recorded above: production
   is live on `easyeatery.online` at revision `7121907` with health, smoke,
   and wildcard DNS/TLS verified.
-- Confirm the authorized operations/support contact, coverage hours, customer
-  communications channel, and security incident escalation owner.
+- Operations/support + security incident escalation contact (C4, 2026-10-19,
+  **provisional — operator to edit later**): Salman Hossain
+  <codemen.salman@gmail.com>. Coverage hours, customer communications
+  channel, and any separate security owner still to confirm.
 - Confirm deployment permissions, owner approval process for initial publish,
   and data-retention/deletion handling with the product operator.
