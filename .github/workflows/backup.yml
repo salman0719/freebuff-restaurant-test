@@ -41,7 +41,7 @@ jobs:
         run: |
           STAMP="$(date +%F)"
           NAME="prod-backup-${STAMP}.dump"
-          ENCODED="$(BACKUP_DATABASE_URL="${{ secrets.BACKUP_DATABASE_URL }}" python3 -c 'import os; from urllib.parse import quote; raw = os.environ["BACKUP_DATABASE_URL"].strip(); scheme, rest = raw.split("://", 1); auth, host = rest.rsplit("@", 1); user, pw = auth.split(":", 1); print(f"{scheme}://{quote(user, safe=\"\")}:{quote(pw, safe=\"\")}@{host}")')"
+          ENCODED="$(BACKUP_DATABASE_URL="${{ secrets.BACKUP_DATABASE_URL }}" python3 -c "import os; from urllib.parse import quote; raw = os.environ['BACKUP_DATABASE_URL'].strip(); scheme, rest = raw.split('://', 1); auth, host = rest.rsplit('@', 1); user, pw = auth.split(':', 1); print(scheme + '://' + quote(user, safe='') + ':' + quote(pw, safe='') + '@' + host)")"
           docker run --rm -v "$GITHUB_WORKSPACE:/out" postgres:17-alpine \
             pg_dump --no-owner --no-privileges "$ENCODED" -Fc -f "/out/$NAME"
           unset ENCODED

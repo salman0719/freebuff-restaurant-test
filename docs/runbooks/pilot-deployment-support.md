@@ -71,6 +71,33 @@ references: [operations reliability](ops-reliability.md), [platform subdomains](
    smoke outcomes, image-persistence result, operator, and timestamp in the
    release record. Redact all environment values and customer content.
 
+### Production release record (Phase 6.5 B1–B6, 2026-10-18 UTC)
+
+- **Revision:** `7121907` on `phase6`, deployed by CLI as planned
+  (`npx vercel deploy --prod --yes`) — deployment
+  `freebuff-restaurant-test-a3kahyh9f.vercel.app`, aliased to
+  `https://easyeatery.online`, Ready in 46s.
+- **Pre-migrate backup:** `local/prod-backup-predeploy-2026-10-19.dump`,
+  322,405 bytes — identical in size to the 10-18 restore-rehearsal dump,
+  i.e. no writes landed between rehearsal and deploy.
+- **Migration:** `npm run db:migrate` against production exit 0; journal
+  11 applied = 11 committed migration files.
+- **Database URL hardening:** production `DATABASE_URL` on Vercel now
+  carries `?prepare=false` (Supabase pooler at port 6543), effective from
+  this deploy — the transaction-pooler prepared-statement failure proven
+  during A5 can no longer bite the app under concurrency; 75 concurrent
+  reads against the same URL shape probed clean beforehand.
+- **Health:** `GET /api/health` → `200 { status: "ok", checks: [database
+ok 1350 ms, storage ok 329 ms] }`, stable across two unauthenticated
+  calls (this also retires the old 404 health response: the current build
+  is live).
+- **Smoke:** `npm run smoke -- https://easyeatery.online` → 9/9 routes;
+  edge gate bounces all six private paths, all three public paths answer 200.
+- **DNS/TLS:** wildcard `*.easyeatery.online` resolves (random probe
+  subdomain → `vercel-dns` CNAME); `demo.easyeatery.online` serves HTTP
+  200 from the published tenant; certificate `CN=*.easyeatery.online`
+  (Let's Encrypt), valid 2026-10-15 → 2027-01-13.
+
 ### Before pilot data is accepted
 
 - Identify the production Postgres provider and document automated backup,
@@ -83,6 +110,19 @@ references: [operations reliability](ops-reliability.md), [platform subdomains](
 - The above are readiness gates, not assertions that this checkout has a
   verified production deployment. Current local regression evidence is tracked
   in [the Phase 6.4 matrix](../plans/phase-6.4-regression-matrix.md).
+
+### Outbound email DNS (Phase 6.5 C1, 2026-10-19)
+
+- Sender: `EasyEatery <noreply@auth.easyeatery.online>`, provider Resend.
+- DKIM `resend._domainkey.auth.easyeatery.online`: present (Resend key).
+- DMARC `_dmarc.easyeatery.online`: `v=DMARC1; p=none` — covers the
+  subdomain; monitoring-only is acceptable for the pilot.
+- SPF/MX: delegated via Resend CNAMEs — `send.auth` →
+  `send.forge.rmta.net`, `rsend.auth` → `rsend-apne1.forge.rmta.net`
+  (no apex-level SPF needed; apex SPF covers registrar forwarding only).
+  Resend dashboard shows the domain Verified (operator-confirmed
+  2026-10-19) — C1 closed. C2 receipt test passed 2026-10-19: magic
+  link arrived in seconds and logged in.
 
 ## 2. Database migrations
 
@@ -131,7 +171,10 @@ verified restorable into the disposable preview project with the full suite
 green on the restored copy, and Decision 1 taken as weekly `pg_dump` to R2
 (last 4 dumps, secret `BACKUP_DATABASE_URL`). Until that Action exists and
 has run green, keep taking a manual `pg_dump` before every production
-migration.
+migration. Weekly Action first green run 2026-10-18/19:
+`backups/prod-backup-2026-10-18.dump` (322,405 bytes — identical to the
+rehearsal/pre-deploy size, i.e. no writes), 0 deleted, R2 object
+confirmed Standard / 322.4 kB.
 
 ### Application rollback
 
@@ -246,11 +289,19 @@ another tenant's information. If unverified, say so and leave the case open.
 
 ## 6. Pilot readiness gaps to resolve
 
-- Production database provider and backup/PITR/restore rehearsal are not
-  identified in the current runbook; resolve before storing real customer data.
-- Production domain/base-domain choice and Vercel production/Preview release
-  evidence must be recorded; local E2E is not deployment verification.
-- Confirm the authorized operations/support contact, coverage hours, customer
-  communications channel, and security incident escalation owner.
+- Production database provider is identified as **Supabase** with its
+  restore rehearsal completed 2026-10-18 (see the
+  [ops-reliability backup section](ops-reliability.md#database-backup-and-restore)
+  and the backup gate in §3). Weekly R2 dumps are automated via the
+  backup workflow; its first green manual run completed 2026-10-18/19:
+  `backups/prod-backup-2026-10-18.dump` (322,405 bytes, 0 deleted —
+  retention holds the newest 4), R2 object confirmed Standard / 322.4 kB.
+- ~~Production domain/deployment evidence~~ — recorded above: production
+  is live on `easyeatery.online` at revision `7121907` with health, smoke,
+  and wildcard DNS/TLS verified.
+- Operations/support + security incident escalation contact (C4, 2026-10-19,
+  **provisional — operator to edit later**): Salman Hossain
+  <codemen.salman@gmail.com>. Coverage hours, customer communications
+  channel, and any separate security owner still to confirm.
 - Confirm deployment permissions, owner approval process for initial publish,
   and data-retention/deletion handling with the product operator.

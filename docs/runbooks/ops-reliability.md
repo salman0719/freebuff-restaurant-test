@@ -109,9 +109,10 @@ development database first, explicit approval for anything destructive.
   - `postgres.js` prepared statements fail under concurrency through the
     pooler (`prepared statement ... does not exist`, SQLSTATE 26000),
     reproduced in isolation; the rehearsal URL carries `prepare=false`
-    and 50 concurrent write transactions then pass clean. **Production
-    `DATABASE_URL` needs the same `prepare=false` (Phase B) if it stays
-    on the pooler**, or move to a direct connection.
+    and 50 concurrent write transactions then pass clean. **Applied to
+    production during Phase B (2026-10-18):** the Vercel `DATABASE_URL`
+    now carries `?prepare=false` — see the pilot runbook's production
+    release record.
 - **Verification on the restored copy:** `npm run db:migrate` succeeds
   (forward-safe on real production data); `npm run test:run` 670 passed,
   2 skipped (matches the local known-good baseline of 672 total);

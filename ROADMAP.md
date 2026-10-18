@@ -1671,13 +1671,22 @@ in the R2 bucket after fixture cleanup.
 - Establish a basic process for reporting and resolving customer
   issues.
 
-**Status:** In progress — initial [pilot deployment and support runbook](docs/runbooks/pilot-deployment-support.md)
-records the environment inventory, release/migration sequence, forward-safe
-migration policy, app-vs-database rollback boundaries, owner onboarding,
-domain verification, issue intake/triage, and support closure. Production DB
-provider/backups and restoration drill, base-domain/deployment confirmation,
-and support escalation ownership remain explicit readiness gates, not assumed
-facts. Existing [operations reliability runbook](docs/runbooks/ops-reliability.md)
+**Status:** Done 2026-10-19 — execution per
+[`docs/plans/phase-6.5-execution-plan.md`](docs/plans/phase-6.5-execution-plan.md).
+Phase A: production `pg_dump` (322,405 bytes) restored into the disposable
+preview project with the full suite green on the restored copy; backups
+strategy (a) weekly `pg_dump` to R2 retaining the last 4. Phase B:
+production migrated and live on `easyeatery.online` at `7121907` (health
+200, smoke 9/9, wildcard DNS/TLS verified). Phase C: sender
+`noreply@auth.easyeatery.online` via Resend — DKIM + CNAME delegation +
+DMARC `p=none` verified, magic-link receipt test passed in seconds;
+backup Action first green run (`prod-backup-2026-10-18.dump`, 322,405
+bytes, 0 deleted, R2 object confirmed); escalation contact recorded
+provisional (operator to edit later). The [pilot runbook](docs/runbooks/pilot-deployment-support.md)
+owns environment inventory, release/migration sequence, rollback
+boundaries, onboarding, triage, and the remaining pre-pilot confirmations
+(coverage hours, comms channel, retention/deletion handling). Existing
+[operations reliability runbook](docs/runbooks/ops-reliability.md)
 continues to own health/logging and infrastructure failure behavior.
 
 **Deliverable:** Pilot runbook.
