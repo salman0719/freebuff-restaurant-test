@@ -3,7 +3,9 @@ import { afterEach, describe, expect, it } from "vitest";
 
 afterEach(cleanup);
 import type { PublicRestaurant } from "@/lib/restaurant";
-import { resolveThemeConfig } from "./config";
+import { TAKEAWAY_BRAND_DIRECTIONS, resolveThemeConfig } from "./config";
+import { HoursList } from "./hours";
+import { TAKEAWAY_DIRECTIONS } from "./sections";
 import { getTheme } from "./registry";
 
 function restaurant(overrides: Partial<PublicRestaurant> = {}): PublicRestaurant {
@@ -40,7 +42,7 @@ function restaurant(overrides: Partial<PublicRestaurant> = {}): PublicRestaurant
 /** One accent per theme, with the class that proves it reached the page. */
 const ACCENT_CASE = {
   cafe: { accent: "tomato", marker: "bg-red-50/70" },
-  takeaway: { accent: "gold", marker: "bg-yellow-800" },
+  takeaway: { accent: "gold", marker: "text-yellow-200" },
   bistro: { accent: "sage", marker: "bg-lime-50/60" },
   diner: { accent: "butter", marker: "bg-butter-50/70" },
   garden: { accent: "brook", marker: "bg-teal-50/70" },
@@ -52,6 +54,46 @@ const CALL_CTA_THEMES = ["takeaway", "diner"] as const;
 /** Every shipped theme; kept as a one-liner so adding one stays a diff of one. */
 const THEME_CASES = ["cafe", "takeaway", "bistro", "diner", "garden"] as const;
 
+describe("HoursList palette", () => {
+  it("applies theme text colors to each opening-hours row", () => {
+    const { container } = render(<HoursList hours={restaurant().hours} className="text-zinc-50" />);
+    expect(container.querySelector("p")).toHaveClass("text-zinc-50");
+  });
+});
+
+describe("takeaway brand directions", () => {
+  it.each(TAKEAWAY_BRAND_DIRECTIONS)("renders the %s visual direction", (brandDirection) => {
+    const Component = getTheme("takeaway");
+    const { container } = render(
+      <Component
+        restaurant={restaurant({ theme: "takeaway" })}
+        config={resolveThemeConfig("takeaway", { brandDirection })}
+      />
+    );
+    expect(container.querySelector("main")?.className).toContain(
+      TAKEAWAY_DIRECTIONS[brandDirection].surface
+    );
+    expect(container.querySelector('[aria-label="Come on by"]')).toHaveClass("px-6", "py-8");
+    expect(container.querySelector("footer")?.textContent).toContain("Springfield");
+    expect(screen.getByRole("navigation", { name: "Main" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /explore menu/i })).toHaveAttribute("href", "#menu");
+    expect(screen.getByRole("heading", { level: 1, name: "Marios" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "On the menu" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Come on by" })).toBeInTheDocument();
+    expect(screen.getByRole("contentinfo")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Contact" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Hours" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "0123" })).toHaveAttribute("href", "tel:0123");
+    expect(screen.getAllByText(/Monday/)[0]).toHaveClass(
+      brandDirection === "smokehouse"
+        ? "text-zinc-50"
+        : brandDirection === "drive-in"
+          ? "text-cola-950"
+          : "text-slate-950"
+    );
+  });
+});
+
 describe.each(THEME_CASES)("theme %s", (id) => {
   it("renders the same public content model", () => {
     const Component = getTheme(id);
@@ -60,10 +102,12 @@ describe.each(THEME_CASES)("theme %s", (id) => {
     expect(screen.getByRole("heading", { name: "Pizza" })).toBeInTheDocument();
     // Scoped to the menu landmark: garden repeats a featured item in its
     // market module by design, and this asserts the menu itself renders it.
-    const menu = within(screen.getByRole("region", { name: "Menu" }));
+    const menu = within(
+      screen.getByRole("region", { name: id === "takeaway" ? "On the menu" : "Menu" })
+    );
     expect(menu.getByText(/Margherita/)).toBeInTheDocument();
     expect(menu.getByText(/12\.99/)).toBeInTheDocument();
-    expect(screen.getByText(/Monday/)).toBeInTheDocument();
+    expect(screen.getAllByText(/Monday/).length).toBeGreaterThanOrEqual(1);
     // At least one rendering of the phone number — takeaway repeats it in
     // the call CTA and the contact block, which is intentional, not a bug.
     expect(screen.getAllByText(/0123/).length).toBeGreaterThanOrEqual(1);
@@ -73,7 +117,7 @@ describe.each(THEME_CASES)("theme %s", (id) => {
     if (!(CALL_CTA_THEMES as readonly string[]).includes(id)) return;
     const Component = getTheme(id);
     render(<Component restaurant={restaurant()} config={resolveThemeConfig(id, {})} />);
-    expect(screen.getByRole("link", { name: /call 0123/i })).toHaveAttribute("href", "tel:0123");
+    expect(screen.getByRole("link", { name: /call/i })).toHaveAttribute("href", "tel:0123");
   });
 
   it("omits the call CTA without a phone number", () => {
@@ -111,13 +155,13 @@ describe.each(THEME_CASES)("theme %s", (id) => {
     );
     // next/image optimises through `/_next/image?url=…` with the source
     // URL-encoded inside — assert on the encoded key, not the raw path.
-    expect(screen.getByRole("img", { name: "Marios logo" })).toHaveAttribute(
+    expect(screen.getAllByRole("img", { name: "Marios logo" })[0]).toHaveAttribute(
       "src",
       expect.stringContaining(encodeURIComponent("/api/images/tenants/t/logos/k.png"))
     );
     // Logo plus one item photo (decorative `alt=""`, so counted via the
     // DOM, not the accessible tree); text-only menus render no <img>.
-    expect(container.querySelectorAll("img")).toHaveLength(2);
+    expect(container.querySelectorAll("img")).toHaveLength(id === "takeaway" ? 3 : 2);
   });
 
   it("renders no images without keys, keeping the text layout", () => {
@@ -135,7 +179,7 @@ describe.each(THEME_CASES)("theme %s", (id) => {
       />
     );
     expect(screen.getByText(/menu is coming soon/i)).toBeInTheDocument();
-    expect(screen.getByText(/hours coming soon/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/hours coming soon/i).length).toBeGreaterThanOrEqual(1);
   });
   it("applies the configured accent palette, not just the defaults", () => {
     const Component = getTheme(id);

@@ -60,6 +60,7 @@ export async function saveThemeOptions(
   const input: Record<string, unknown> = {
     accent: text("accent"),
     menuLayout: text("menuLayout"),
+    ...(themeId === "takeaway" ? { brandDirection: text("brandDirection") } : {}),
     [toggleName]: formData.get(toggleName) === "on",
   };
   const saved = await updateTenantThemeConfig(context.data, themeId, input);

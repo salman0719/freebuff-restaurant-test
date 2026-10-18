@@ -235,6 +235,43 @@ export const ACCENTS: Record<string, AccentPalette> = {
   },
 };
 
+/** Static palette set for the takeaway brand direction picker. */
+export const TAKEAWAY_DIRECTIONS = {
+  smokehouse: {
+    surface: "bg-zinc-950 text-zinc-50",
+    ink: "text-zinc-50",
+    muted: "text-zinc-300",
+    panel: "bg-zinc-900",
+    border: "border-zinc-700",
+    highlight: "text-amber-300",
+    button: "bg-amber-300 text-zinc-950 hover:bg-amber-200",
+    badge: "bg-zinc-800 text-amber-200",
+    stripe: "bg-amber-300",
+  },
+  "drive-in": {
+    surface: "bg-butter-50 text-cola-950",
+    ink: "text-cola-950",
+    muted: "text-cola-800",
+    panel: "bg-white",
+    border: "border-butter-300",
+    highlight: "text-cherry-700",
+    button: "bg-cherry-700 text-white hover:bg-cherry-800",
+    badge: "bg-butter-200 text-cola-950",
+    stripe: "bg-cherry-600",
+  },
+  modern: {
+    surface: "bg-slate-50 text-slate-950",
+    ink: "text-slate-950",
+    muted: "text-slate-600",
+    panel: "bg-white",
+    border: "border-slate-200",
+    highlight: "text-blue-700",
+    button: "bg-blue-700 text-white hover:bg-blue-800",
+    badge: "bg-blue-50 text-blue-800",
+    stripe: "bg-blue-700",
+  },
+} as const;
+
 /** Never throws: an unknown accent (stale database value) falls back. */
 export function accentClasses(accent: string): AccentPalette {
   return ACCENTS[accent] ?? ACCENTS.default;
@@ -307,12 +344,20 @@ function ItemPhoto({ imageKey, size }: { imageKey: string | null; size: number }
   );
 }
 
+export type SectionPalette = Pick<AccentPalette, "eyebrow" | "heading" | "rule"> & {
+  item?: string;
+  muted?: string;
+  panel?: string;
+  border?: string;
+};
+
 export function MenuSection({
   menu,
   accent,
   heading = "Menu",
   emptyText = "Our menu is coming soon — please check back later.",
   layout = "editorial",
+  palette,
 }: {
   menu: PublicMenuCategory[];
   accent: string;
@@ -320,21 +365,30 @@ export function MenuSection({
   emptyText?: string;
   /** Editorial (spacious), compact (dense dotted rows), or grid (cards). */
   layout?: MenuLayout;
+  /** Theme-specific semantic colors for branded variants. */
+  palette?: SectionPalette;
 }): React.ReactElement {
   const classes = accentClasses(accent);
+  const headingClass = palette?.heading ?? classes.heading;
+  const ruleClass = palette?.rule ?? classes.rule;
+  const itemClass = palette?.item ?? "text-foreground";
+  const mutedClass = palette?.muted;
+  const panelClass = palette?.panel ?? "bg-surface";
+  const borderClass = palette?.border ?? "border-border";
+  const leaderClass = palette?.border ?? "border-border";
   return (
     <Section aria-label={heading}>
       <Stack>
-        <Heading level={2} className={classes.heading}>
+        <Heading level={2} className={headingClass}>
           {heading}
         </Heading>
-        <AccentRule className={classes.rule} />
+        <AccentRule className={ruleClass} />
         {menu.length === 0 ? (
-          <Text>{emptyText}</Text>
+          <Text className={mutedClass}>{emptyText}</Text>
         ) : layout === "compact" ? (
           menu.map((category) => (
             <section key={category.id} aria-label={category.name}>
-              <Heading level={3} className={classes.heading}>
+              <Heading level={3} className={headingClass}>
                 {category.name}
               </Heading>
               <ul>
@@ -343,17 +397,17 @@ export function MenuSection({
                     <ItemPhoto imageKey={item.imageKey} size={56} />
                     <div className="min-w-0 flex-1">
                       <span className="flex items-baseline gap-2">
-                        <span className="text-base font-medium text-foreground">{item.name}</span>
+                        <span className={`text-base font-medium ${itemClass}`}>{item.name}</span>
                         <span
                           aria-hidden="true"
-                          className="mx-1 flex-1 border-b border-dotted border-border"
+                          className={`mx-1 flex-1 border-b border-dotted ${leaderClass}`}
                         />
-                        <span className="text-base font-semibold text-foreground tabular-nums">
+                        <span className={`text-base font-semibold tabular-nums ${itemClass}`}>
                           {formatPrice(item.priceCents)}
                         </span>
                       </span>
                       {item.description ? (
-                        <Text size="sm" muted>
+                        <Text size="sm" muted className={mutedClass}>
                           {item.description}
                         </Text>
                       ) : null}
@@ -366,26 +420,30 @@ export function MenuSection({
         ) : layout === "grid" ? (
           menu.map((category) => (
             <section key={category.id} aria-label={category.name}>
-              <Heading level={3} className={classes.heading}>
+              <Heading level={3} className={headingClass}>
                 {category.name}
               </Heading>
-              {category.description ? <Text muted>{category.description}</Text> : null}
+              {category.description ? (
+                <Text muted className={mutedClass}>
+                  {category.description}
+                </Text>
+              ) : null}
               <ul className="grid gap-3 sm:grid-cols-2">
                 {category.items.map((item) => (
                   <li
                     key={item.id}
-                    className="flex gap-3 rounded-xl border border-border bg-surface p-4 shadow-sm"
+                    className={`flex gap-3 rounded-xl border p-4 shadow-sm ${borderClass} ${panelClass}`}
                   >
                     <ItemPhoto imageKey={item.imageKey} size={56} />
                     <div className="min-w-0 flex-1">
                       <p className="flex items-baseline justify-between gap-2">
-                        <span className="text-base font-medium text-foreground">{item.name}</span>
-                        <span className="text-base font-semibold text-foreground tabular-nums">
+                        <span className={`text-base font-medium ${itemClass}`}>{item.name}</span>
+                        <span className={`text-base font-semibold tabular-nums ${itemClass}`}>
                           {formatPrice(item.priceCents)}
                         </span>
                       </p>
                       {item.description ? (
-                        <Text size="sm" muted>
+                        <Text size="sm" muted className={mutedClass}>
                           {item.description}
                         </Text>
                       ) : null}
@@ -398,19 +456,27 @@ export function MenuSection({
         ) : (
           menu.map((category) => (
             <section key={category.id} aria-label={category.name}>
-              <Heading level={3} className={classes.heading}>
+              <Heading level={3} className={headingClass}>
                 {category.name}
               </Heading>
-              {category.description ? <Text muted>{category.description}</Text> : null}
+              {category.description ? (
+                <Text muted className={mutedClass}>
+                  {category.description}
+                </Text>
+              ) : null}
               <ul>
                 {category.items.map((item) => (
                   <li key={item.id} className="flex items-start gap-3">
                     <ItemPhoto imageKey={item.imageKey} size={64} />
                     <div className="min-w-0 flex-1">
-                      <Text>
+                      <Text className={itemClass}>
                         {item.name} — {formatPrice(item.priceCents)}
                       </Text>
-                      {item.description ? <Text muted>{item.description}</Text> : null}
+                      {item.description ? (
+                        <Text muted className={mutedClass}>
+                          {item.description}
+                        </Text>
+                      ) : null}
                     </div>
                   </li>
                 ))}
@@ -428,32 +494,45 @@ export function VisitSection({
   accent,
   showHours = true,
   title = "Visit us",
+  palette,
+  className,
 }: {
   restaurant: PublicRestaurant;
   accent: string;
   showHours?: boolean;
   title?: string;
+  palette?: SectionPalette;
+  className?: string;
 }): React.ReactElement {
   const classes = accentClasses(accent);
+  const headingClass = palette?.heading ?? classes.heading;
+  const ruleClass = palette?.rule ?? classes.rule;
+  const mutedClass = palette?.muted;
   const address = [restaurant.address.line1, restaurant.address.city, restaurant.address.country]
     .filter(Boolean)
     .join(", ");
   const hasContact = restaurant.contact.phone || restaurant.contact.email || address;
   return (
-    <Section aria-label={title}>
+    <Section aria-label={title} className={className}>
       <Stack>
-        <Heading level={2} className={classes.heading}>
+        <Heading level={2} className={headingClass}>
           {title}
         </Heading>
-        <AccentRule className={classes.rule} />
-        {showHours ? <HoursList hours={restaurant.hours} /> : null}
+        <AccentRule className={ruleClass} />
+        {showHours ? <HoursList hours={restaurant.hours} className={palette?.item} /> : null}
         {!hasContact ? (
-          <Text muted>Contact details coming soon.</Text>
+          <Text muted className={mutedClass}>
+            Contact details coming soon.
+          </Text>
         ) : (
           <address>
-            {restaurant.contact.phone ? <Text>{restaurant.contact.phone}</Text> : null}
-            {restaurant.contact.email ? <Text>{restaurant.contact.email}</Text> : null}
-            {address ? <Text>{address}</Text> : null}
+            {restaurant.contact.phone ? (
+              <Text className={palette?.item}>{restaurant.contact.phone}</Text>
+            ) : null}
+            {restaurant.contact.email ? (
+              <Text className={palette?.item}>{restaurant.contact.email}</Text>
+            ) : null}
+            {address ? <Text className={palette?.item}>{address}</Text> : null}
           </address>
         )}
       </Stack>

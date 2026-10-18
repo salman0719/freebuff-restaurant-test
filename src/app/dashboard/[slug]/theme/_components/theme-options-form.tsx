@@ -16,6 +16,7 @@ import { FormActions } from "@/components/ui/form-actions";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { saveThemeOptions, type ThemeOptionsState } from "../actions";
+import type { BrandDirectionOption } from "@/themes/config";
 
 /**
  * Swatch colours, mirroring each palette's band fill in
@@ -45,7 +46,9 @@ export interface ThemeOptionsFormProps {
   slug: string;
   accents: readonly string[];
   layouts: readonly string[];
+  brandDirections: readonly BrandDirectionOption[];
   current: {
+    brandDirection: string;
     accent: string;
     menuLayout: string;
     /** Name of the theme's own visibility toggle, e.g. `showHours`. */
@@ -55,7 +58,13 @@ export interface ThemeOptionsFormProps {
   };
 }
 
-export function ThemeOptionsForm({ slug, accents, layouts, current }: ThemeOptionsFormProps) {
+export function ThemeOptionsForm({
+  slug,
+  accents,
+  layouts,
+  brandDirections,
+  current,
+}: ThemeOptionsFormProps) {
   const [state, action, pending] = useActionState<ThemeOptionsState, FormData>(saveThemeOptions, {
     status: "idle",
   });
@@ -101,6 +110,34 @@ export function ThemeOptionsForm({ slug, accents, layouts, current }: ThemeOptio
           ))}
         </div>
       </fieldset>
+
+      {brandDirections.length > 0 ? (
+        <fieldset className="flex flex-col gap-3">
+          <legend className="text-sm font-medium text-foreground/80">Brand direction</legend>
+          <div className="grid gap-3 sm:grid-cols-3">
+            {brandDirections.map((direction) => (
+              <label
+                key={direction.value}
+                className="flex cursor-pointer flex-col gap-2 rounded-xl border border-border p-3 hover:bg-surface-muted focus-within:ring-2 focus-within:ring-ring"
+              >
+                <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                  <input
+                    type="radio"
+                    name="brandDirection"
+                    value={direction.value}
+                    defaultChecked={direction.value === current.brandDirection}
+                    className="size-4 accent-brand-600"
+                  />
+                  {direction.label}
+                </span>
+                <span className="text-xs leading-5 text-muted-foreground">
+                  {direction.description}
+                </span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      ) : null}
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="theme-menu-layout">Menu layout</Label>
