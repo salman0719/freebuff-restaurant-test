@@ -71,6 +71,33 @@ references: [operations reliability](ops-reliability.md), [platform subdomains](
    smoke outcomes, image-persistence result, operator, and timestamp in the
    release record. Redact all environment values and customer content.
 
+### Production release record (Phase 6.5 B1–B6, 2026-10-18 UTC)
+
+- **Revision:** `7121907` on `phase6`, deployed by CLI as planned
+  (`npx vercel deploy --prod --yes`) — deployment
+  `freebuff-restaurant-test-a3kahyh9f.vercel.app`, aliased to
+  `https://easyeatery.online`, Ready in 46s.
+- **Pre-migrate backup:** `local/prod-backup-predeploy-2026-10-19.dump`,
+  322,405 bytes — identical in size to the 10-18 restore-rehearsal dump,
+  i.e. no writes landed between rehearsal and deploy.
+- **Migration:** `npm run db:migrate` against production exit 0; journal
+  11 applied = 11 committed migration files.
+- **Database URL hardening:** production `DATABASE_URL` on Vercel now
+  carries `?prepare=false` (Supabase pooler at port 6543), effective from
+  this deploy — the transaction-pooler prepared-statement failure proven
+  during A5 can no longer bite the app under concurrency; 75 concurrent
+  reads against the same URL shape probed clean beforehand.
+- **Health:** `GET /api/health` → `200 { status: "ok", checks: [database
+ok 1350 ms, storage ok 329 ms] }`, stable across two unauthenticated
+  calls (this also retires the old 404 health response: the current build
+  is live).
+- **Smoke:** `npm run smoke -- https://easyeatery.online` → 9/9 routes;
+  edge gate bounces all six private paths, all three public paths answer 200.
+- **DNS/TLS:** wildcard `*.easyeatery.online` resolves (random probe
+  subdomain → `vercel-dns` CNAME); `demo.easyeatery.online` serves HTTP
+  200 from the published tenant; certificate `CN=*.easyeatery.online`
+  (Let's Encrypt), valid 2026-10-15 → 2027-01-13.
+
 ### Before pilot data is accepted
 
 - Identify the production Postgres provider and document automated backup,
@@ -246,10 +273,14 @@ another tenant's information. If unverified, say so and leave the case open.
 
 ## 6. Pilot readiness gaps to resolve
 
-- Production database provider and backup/PITR/restore rehearsal are not
-  identified in the current runbook; resolve before storing real customer data.
-- Production domain/base-domain choice and Vercel production/Preview release
-  evidence must be recorded; local E2E is not deployment verification.
+- Production database provider is identified as **Supabase** with its
+  restore rehearsal completed 2026-10-18 (see the
+  [ops-reliability backup section](ops-reliability.md#database-backup-and-restore)
+  and the backup gate in §3). Weekly R2 dumps are automated via the
+  backup workflow; its first green manual run still needs watching.
+- ~~Production domain/deployment evidence~~ — recorded above: production
+  is live on `easyeatery.online` at revision `7121907` with health, smoke,
+  and wildcard DNS/TLS verified.
 - Confirm the authorized operations/support contact, coverage hours, customer
   communications channel, and security incident escalation owner.
 - Confirm deployment permissions, owner approval process for initial publish,
